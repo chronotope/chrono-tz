@@ -1,0 +1,9 @@
+[package]
+name = "olson-parse"
+version = "0.1.0"
+authors = ["Ben S <ogham@bsago.me>"]
+
+[dependencies]
+datetime = "*"
+lazy_static = "*"
+regex = "*"
