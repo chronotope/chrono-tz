@@ -288,9 +288,9 @@ impl FromStr for Day {
             let day     = caps.name("day").unwrap().parse().unwrap();
 
             match caps.name("sign").unwrap() {
-                "<" => Ok(Day::LastOnOrBefore(weekday, day)),
-                ">" => Ok(Day::LastOnOrAfter(weekday, day)),
-                 _  => unreachable!("The regex only matches one of those two"),
+                "<=" => Ok(Day::LastOnOrBefore(weekday, day)),
+                ">=" => Ok(Day::LastOnOrAfter(weekday, day)),
+                 _   => unreachable!("The regex only matches one of those two"),
             }
         }
         else {
@@ -568,12 +568,23 @@ mod test {
         letters:      None,
     }));
 
-    test!(zone: "Zone  Australia/Adelaide  9:30    Aus         AC%sT   1971 Oct 31  2:00" => Line::Zone(Zone {
+    test!(rule_3: "Rule	EU	1977	1980	-	Apr	Sun>=1	 1:00u	1:00	S" => Line::Rule(Rule {
+        name: "EU",
+        from_year: Year::Number(1977),
+        to_year: Some(Year::Number(1980)),
+        month: Month(local::Month::April),
+        day: Day::LastOnOrAfter(Weekday(local::Weekday::Sunday), 1),
+        time_of_day: Time::HoursMinutes(1, 0, Some('u')),
+        time_to_add: Time::HoursMinutes(1, 0, None),
+        letters:     Some("S"),
+    }));
+
+    test!(zone: "Zone  Australia/Adelaide  9:30    Aus         AC%sT   1971 Oct 31  2:00:00" => Line::Zone(Zone {
         name:        "Australia/Adelaide",
         gmt_offset:  Time::HoursMinutes(9, 30, None),
         rules_save:  RulesSave::Rules("Aus"),
         format:      "AC%sT",
-        time:        Some(ZoneTime::UntilTime(Year::Number(1971), Month(local::Month::October), Day::Ordinal(31), Time::HoursMinutes(2, 0, None))),
+        time:        Some(ZoneTime::UntilTime(Year::Number(1971), Month(local::Month::October), Day::Ordinal(31), Time::HoursMinutesSeconds(2, 0, 0, None))),
     }));
 
     test!(link: "Link  Europe/Istanbul  Asia/Istanbul" => Line::Link(Link {
@@ -584,5 +595,11 @@ mod test {
     #[test]
     fn month() {
         assert_eq!(Month::from_str("Aug"), Ok(Month(local::Month::August)));
+        assert_eq!(Month::from_str("December"), Ok(Month(local::Month::December)));
+    }
+
+    #[test]
+    fn golb() {
+        assert!(Line::from_str("GOLB").is_err());
     }
 }
