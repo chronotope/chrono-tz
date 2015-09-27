@@ -15,7 +15,7 @@ extern crate datetime;
 use datetime::local;
 
 extern crate regex;
-use regex::Regex;
+use regex::{Regex, Captures};
 
 #[macro_use]
 extern crate lazy_static;
@@ -39,7 +39,7 @@ lazy_static! {
         ( ?P<at>      \S+)  \s+
         ( ?P<save>    \S+)  \s+
         ( ?P<letters> \S+)
-    $ "##).unwrap();
+    "##).unwrap();
 
     /// Format of a Day specification in a Rule.
     static ref DAY_FIELD: Regex = Regex::new(r##"(?x) ^
@@ -50,20 +50,20 @@ lazy_static! {
 
     /// Format of an hour and a minute.
     static ref HM_FIELD: Regex = Regex::new(r##"(?x) ^
-        ( ?P<hour> \d{1,2} ) : ( ?P<minute> \d{2} )
+        ( ?P<hour> -? \d{1,2} ) : ( ?P<minute> \d{2} )
         ( ?P<flag> [wsugz] )?
     $ "##).unwrap();
 
     /// Format of an hour, a minute, and a second.
     static ref HMS_FIELD: Regex = Regex::new(r##"(?x) ^
-        ( ?P<hour> \d{1,2} ) : ( ?P<minute> \d{2} ) : ( ?P<second> \d{2} )
+        ( ?P<hour> -? \d{1,2} ) : ( ?P<minute> \d{2} ) : ( ?P<second> \d{2} )
         ( ?P<flag> [wsugz] )?
     $ "##).unwrap();
 
     /// Format of a Zone line, with one capturing group per field.
     static ref ZONE_LINE: Regex = Regex::new(r##"(?x) ^
         Zone \s+
-        ( ?P<name> [ A-Z a-z / ]+ )  \s+
+        ( ?P<name> [ A-Z a-z 0-9 / _ + - ]+ )  \s+
         ( ?P<gmtoff>     \S+ )  \s+
         ( ?P<rulessave>  \S+ )  \s+
         ( ?P<format>     \S+ )  \s*
@@ -71,14 +71,27 @@ lazy_static! {
         ( ?P<month>      \S+ )? \s*
         ( ?P<day>        \S+ )? \s*
         ( ?P<time>       \S+ )?
-    $ "##).unwrap();
+    "##).unwrap();
+
+    /// Format of a Continuation Zone line, which is the same as the opening
+    /// Zone line except the first two fields are replaced by whitespace.
+    static ref CONTINUATION_LINE: Regex = Regex::new(r##"(?x) ^
+        \s+
+        ( ?P<gmtoff>     \S+ )  \s+
+        ( ?P<rulessave>  \S+ )  \s+
+        ( ?P<format>     \S+ )  \s*
+        ( ?P<year>       \S+ )? \s*
+        ( ?P<month>      \S+ )? \s*
+        ( ?P<day>        \S+ )? \s*
+        ( ?P<time>       \S+ )?
+    "##).unwrap();
 
     /// Format of a Link line, with one capturing group per field.
     static ref LINK_LINE: Regex = Regex::new(r##"(?x) ^
         Link  \s+
         ( ?P<target>  \S+ )  \s+
         ( ?P<name>    \S+ )
-    $ "##).unwrap();
+    "##).unwrap();
 }
 
 
@@ -325,7 +338,7 @@ impl FromStr for Time {
         if input == "-" {
             Ok(Time::Zero)
         }
-        else if input.chars().all(|c| c.is_digit(10)) {
+        else if input.chars().all(|c| c == '-' || c.is_digit(10)) {
             Ok(Time::Hours(input.parse().unwrap()))
         }
         else if let Some(caps) = HM_FIELD.captures(input) {
@@ -355,6 +368,14 @@ pub struct Zone<'line> {
     /// The name of the time zone.
     pub name: &'line str,
 
+    /// All the other fields of info.
+    pub info: ZoneInfo<'line>,
+}
+
+/// The information contained in both zone lines and zone continuation lines.
+#[derive(PartialEq, Debug, Copy, Clone)]
+pub struct ZoneInfo<'line> {
+
     /// The amount of time to be added to Universal Time, to get standard time
     /// in this zone.
     pub gmt_offset: Time,
@@ -373,31 +394,41 @@ pub struct Zone<'line> {
 impl<'line> Zone<'line> {
     fn from_str(input: &str) -> Result<Zone, Error> {
         if let Some(caps) = ZONE_LINE.captures(input) {
-            let name          = caps.name("name").unwrap();
-            let gmt_offset    = try!(caps.name("gmtoff").unwrap().parse());
-            let rules_save    = try!(RulesSave::from_str(caps.name("rulessave").unwrap()));
-            let format        = caps.name("format").unwrap();
-
-            let time = match (caps.name("year"), caps.name("month"), caps.name("day"), caps.name("time")) {
-                (Some(y), Some(m), Some(d), Some(t)) => Some(ZoneTime::UntilTime  (try!(y.parse()), try!(m.parse()), try!(d.parse()), try!(t.parse()))),
-                (Some(y), Some(m), Some(d), _      ) => Some(ZoneTime::UntilDay   (try!(y.parse()), try!(m.parse()), try!(d.parse()))),
-                (Some(y), Some(m), _      , _      ) => Some(ZoneTime::UntilMonth (try!(y.parse()), try!(m.parse()))),
-                (Some(y), _      , _      , _      ) => Some(ZoneTime::UntilYear  (try!(y.parse()))),
-                (None   , None   , None   , None   ) => None,
-                _                                    => return Err(Error::Fail),
-            };
+            let name = caps.name("name").unwrap();
+            let info = try!(ZoneInfo::from_captures(caps));
 
             Ok(Zone {
-                name:        name,
-                gmt_offset:  gmt_offset,
-                rules_save:  rules_save,
-                format:      format,
-                time:        time,
+                name: name,
+                info: info,
             })
         }
         else {
             Err(Error::Fail)
         }
+    }
+}
+
+impl<'line> ZoneInfo<'line> {
+    fn from_captures(caps: Captures<'line>) -> Result<ZoneInfo<'line>, Error> {
+        let gmt_offset    = try!(caps.name("gmtoff").unwrap().parse());
+        let rules_save    = try!(RulesSave::from_str(caps.name("rulessave").unwrap()));
+        let format        = caps.name("format").unwrap();
+
+        let time = match (caps.name("year"), caps.name("month"), caps.name("day"), caps.name("time")) {
+            (Some(y), Some(m), Some(d), Some(t)) => Some(ZoneTime::UntilTime  (try!(y.parse()), try!(m.parse()), try!(d.parse()), try!(t.parse()))),
+            (Some(y), Some(m), Some(d), _      ) => Some(ZoneTime::UntilDay   (try!(y.parse()), try!(m.parse()), try!(d.parse()))),
+            (Some(y), Some(m), _      , _      ) => Some(ZoneTime::UntilMonth (try!(y.parse()), try!(m.parse()))),
+            (Some(y), _      , _      , _      ) => Some(ZoneTime::UntilYear  (try!(y.parse()))),
+            (None   , None   , None   , None   ) => None,
+            _                                    => return Err(Error::Fail),
+        };
+
+        Ok(ZoneInfo {
+            gmt_offset:  gmt_offset,
+            rules_save:  rules_save,
+            format:      format,
+            time:        time,
+        })
     }
 }
 
@@ -411,11 +442,17 @@ pub enum RulesSave<'line> {
 
     /// The amount of **save** time to add.
     Save(Time),
+
+    /// Neither of these were specified.
+    Neither,
 }
 
 impl<'line> RulesSave<'line> {
     fn from_str(input: &str) -> Result<RulesSave, Error> {
-        if input.chars().all(char::is_alphabetic) {
+        if input == "-" {
+            Ok(RulesSave::Neither)
+        }
+        else if input.chars().all(|c| c == '-' || c == '_' || c.is_alphabetic()) {
             Ok(RulesSave::Rules(input))
         }
         else if HM_FIELD.is_match(input) {
@@ -485,14 +522,14 @@ pub enum Error {
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Line<'line> {
 
-    /// This line is a comment.
-    Comment,
-
     /// This line is empty.
     Space,
 
     /// This line contains a **zone** definition.
     Zone(Zone<'line>),
+
+    /// This line contains a **continuation** of a zone definition.
+    Continuation(ZoneInfo<'line>),
 
     /// This line contains a **rule** definition.
     Rule(Rule<'line>),
@@ -505,14 +542,14 @@ impl<'line> Line<'line> {
 
     /// Attempts to parse the given string into a value of this type.
     pub fn from_str(input: &str) -> Result<Line, Error> {
-        if input.starts_with("#") {
-            Ok(Line::Comment)
-        }
-        else if input.is_empty() {
+        if input.is_empty() || input.chars().all(char::is_whitespace) {
             Ok(Line::Space)
         }
         else if let Ok(zone) = Zone::from_str(input) {
             Ok(Line::Zone(zone))
+        }
+        else if let Some(caps) = CONTINUATION_LINE.captures(input) {
+            Ok(Line::Continuation(try!(ZoneInfo::from_captures(caps))))
         }
         else if let Ok(rule) = Rule::from_str(input) {
             Ok(Line::Rule(rule))
@@ -543,7 +580,6 @@ mod test {
         };
     }
 
-    test!(comment:  "# comment"  => Line::Comment);
     test!(empty:    ""           => Line::Space);
 
     test!(example: "Rule  US    1967  1973  ‐     Apr  lastSun  2:00  1:00  D" => Line::Rule(Rule {
@@ -580,7 +616,16 @@ mod test {
     }));
 
     test!(zone: "Zone  Australia/Adelaide  9:30    Aus         AC%sT   1971 Oct 31  2:00:00" => Line::Zone(Zone {
-        name:        "Australia/Adelaide",
+        name: "Australia/Adelaide",
+        info: ZoneInfo {
+            gmt_offset:  Time::HoursMinutes(9, 30, None),
+            rules_save:  RulesSave::Rules("Aus"),
+            format:      "AC%sT",
+            time:        Some(ZoneTime::UntilTime(Year::Number(1971), Month(local::Month::October), Day::Ordinal(31), Time::HoursMinutesSeconds(2, 0, 0, None))),
+        },
+    }));
+
+    test!(continuation: "                          9:30    Aus         AC%sT   1971 Oct 31  2:00:00" => Line::Continuation(ZoneInfo {
         gmt_offset:  Time::HoursMinutes(9, 30, None),
         rules_save:  RulesSave::Rules("Aus"),
         format:      "AC%sT",
@@ -591,6 +636,25 @@ mod test {
         existing:  "Europe/Istanbul",
         new:       "Asia/Istanbul",
     }));
+
+    test!(continuatio2: "			1:00	C-Eur	CE%sT	1943 Oct 25" => Line::Continuation(ZoneInfo {
+        gmt_offset:  Time::HoursMinutes(1, 00, None),
+        rules_save:  RulesSave::Rules("C-Eur"),
+        format:      "CE%sT",
+        time:        Some(ZoneTime::UntilDay(Year::Number(1943), Month(local::Month::October), Day::Ordinal(25))),
+    }));
+
+    test!(zone_hyphen: "Zone Asia/Ust-Nera\t 9:32:54 -\tLMT\t1919" => Line::Zone(Zone {
+        name: "Asia/Ust-Nera",
+        info: ZoneInfo {
+            gmt_offset:  Time::HoursMinutesSeconds(9, 32, 54, None),
+            rules_save:  RulesSave::Neither,
+            format:      "LMT",
+            time:        Some(ZoneTime::UntilYear(Year::Number(1919))),
+        },
+    }));
+
+    /// "Zone Asia/Ust-Nera\t 9:32:54 -\tLMT\t1919 Dec 15"
 
     #[test]
     fn month() {
