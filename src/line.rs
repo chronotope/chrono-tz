@@ -113,7 +113,7 @@ pub struct Rule<'line> {
     pub day: DaySpec,
 
     /// The time of day at which the rule takes effect.
-    pub time_of_day: TimeSpec,
+    pub time: TimeSpecAndType,
 
     /// The amount of time to be added when the rule is in effect.
     pub time_to_add: TimeSpec,
@@ -149,7 +149,7 @@ impl<'line> Rule<'line> {
 
             let month         = try!(caps.name("in").unwrap().parse());
             let day           = try!(caps.name("on").unwrap().parse());
-            let time_of_day   = try!(caps.name("at").unwrap().parse());
+            let time          = try!(caps.name("at").unwrap().parse());
             let time_to_add   = try!(caps.name("save").unwrap().parse());
             let letters       = match caps.name("letters").unwrap() {
                 "-"  => None,
@@ -162,7 +162,7 @@ impl<'line> Rule<'line> {
                 to_year:      to_year,
                 month:        month,
                 day:          day,
-                time_of_day:  time_of_day,
+                time:         time,
                 time_to_add:  time_to_add,
                 letters:      letters,
             })
@@ -212,7 +212,7 @@ pub struct ZoneInfo<'line> {
 
     /// The name of all the rules that should apply in the time zone, or the
     /// amount of time to add.
-    pub rules_save: RulesSave<'line>,
+    pub saving: Saving<'line>,
 
     /// The format for time zone abbreviations, with `%s` as the string marker.
     pub format: &'line str,
@@ -241,7 +241,7 @@ impl<'line> Zone<'line> {
 impl<'line> ZoneInfo<'line> {
     fn from_captures(caps: Captures<'line>) -> Result<ZoneInfo<'line>, Error> {
         let gmt_offset    = try!(caps.name("gmtoff").unwrap().parse());
-        let rules_save    = try!(RulesSave::from_str(caps.name("rulessave").unwrap()));
+        let saving        = try!(Saving::from_str(caps.name("rulessave").unwrap()));
         let format        = caps.name("format").unwrap();
 
         // The year, month, day, and time fields are all optional, meaning
@@ -258,7 +258,7 @@ impl<'line> ZoneInfo<'line> {
 
         Ok(ZoneInfo {
             gmt_offset:  gmt_offset,
-            rules_save:  rules_save,
+            saving:      saving,
             format:      format,
             time:        time,
         })
@@ -266,31 +266,36 @@ impl<'line> ZoneInfo<'line> {
 }
 
 
-/// A specific type for a certain Zone column.
+/// The amount of daylight saving time (DST) to apply to this timespan. This
+/// is a special type for a certain field in a zone line, which can hold
+/// different types of value.
 #[derive(PartialEq, Debug, Copy, Clone)]
-pub enum RulesSave<'line> {
+pub enum Saving<'line> {
 
-    /// The name of the **rules** to apply.
-    Rules(&'line str),
+    /// Just stick to the base offset.
+    NoSaving,
 
-    /// The amount of **save** time to add.
-    Save(TimeSpec),
+    /// This amount of time should be saved while this timespan is in effect.
+    /// (This is the equivalent to there being a single one-off rule with the
+    /// given amount of time to save).
+    OneOff(TimeSpec),
 
-    /// Neither of these were specified.
-    Neither,
+    /// All rules with the given name should apply while this timespan is in
+    /// effect.
+    Multiple(&'line str),
 }
 
-impl<'line> RulesSave<'line> {
-    fn from_str(input: &str) -> Result<RulesSave, Error> {
+impl<'line> Saving<'line> {
+    fn from_str(input: &str) -> Result<Saving, Error> {
         if input == "-" {
-            Ok(RulesSave::Neither)
+            Ok(Saving::NoSaving)
         }
         else if input.chars().all(|c| c == '-' || c == '_' || c.is_alphabetic()) {
-            Ok(RulesSave::Rules(input))
+            Ok(Saving::Multiple(input))
         }
         else if HM_FIELD.is_match(input) {
             let time = try!(input.parse());
-            Ok(RulesSave::Save(time))
+            Ok(Saving::OneOff(time))
         }
         else {
             Err(Error::Fail)
@@ -314,7 +319,7 @@ pub enum ZoneTime {
 
     /// The earliest point in a particular hour, minute, or second, or one of
     /// those small time units, anyway.
-    UntilTime(YearSpec, MonthSpec, DaySpec, TimeSpec),
+    UntilTime(YearSpec, MonthSpec, DaySpec, TimeSpecAndType),
 }
 
 
@@ -500,32 +505,6 @@ impl FromStr for DaySpec {
     }
 }
 
-impl DaySpec {
-
-    /// Converts this day specification to a concrete date, given the year and
-    /// month it should occur in.
-    fn to_concrete_date(&self, year: i64, month: local::Month) -> local::LocalDate {
-        use datetime::local::{LocalDate, Year, DatePiece};
-
-        match *self {
-            DaySpec::Ordinal(day)           => LocalDate::ymd(year, month, day as i8).unwrap(),
-            DaySpec::Last(w)                => DaySpec::find_weekday(w, Year(year).days_for_month(month).rev()),
-            DaySpec::LastOnOrBefore(w, day) => DaySpec::find_weekday(w, Year(year).days_for_month(month).rev().filter(|d| d.day() < day as i8)),
-            DaySpec::FirstOnOrAfter(w, day) => DaySpec::find_weekday(w, Year(year).days_for_month(month).skip(day as usize - 1)),
-        }
-    }
-
-    /// Find the first-occurring day with the given weekday in the iterator.
-    /// Panics if it can't find one. It should find one!
-    fn find_weekday<I>(weekday: WeekdaySpec, mut iterator: I) -> local::LocalDate
-    where I: Iterator<Item=local::LocalDate> {
-        use datetime::local::DatePiece;
-
-        iterator.find(|date| date.weekday() == weekday.0)
-                .expect("Failed to find weekday")
-    }
-}
-
 
 /// A **time** definition field.
 ///
@@ -535,12 +514,6 @@ impl DaySpec {
 /// Hour 0 is midnight at the start of the day, and Hour 24 is midnight at the
 /// end of the day.
 ///
-/// Additionally, a time may be followed with a letter, signifying what 'type'
-/// of time the timestamp is:
-///
-/// - **w** for "wall clock" time (the default),
-/// - **s** for local standard time,jkdx
-/// - **u** or **g** or **z** for universal time.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum TimeSpec {
 
@@ -548,16 +521,23 @@ pub enum TimeSpec {
     Hours(i32),
 
     /// A number of hours and minutes.
-    HoursMinutes(i32, i32, TimeType),
+    HoursMinutes(i32, i32),
 
     /// A number of hours, minutes, and seconds.
-    HoursMinutesSeconds(i32, i32, i32, TimeType),
+    HoursMinutesSeconds(i32, i32, i32),
 
     /// Zero, or midnight at the start of the day.
     Zero,
 }
 
 /// The "type" of time that a time is.
+///
+/// A time may be followed with a letter, signifying what 'type'
+/// of time the timestamp is:
+///
+/// - **w** for "wall clock" time (the default),
+/// - **s** for local standard time,jkdx
+/// - **u** or **g** or **z** for universal time.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum TimeType {
 
@@ -571,16 +551,26 @@ pub enum TimeType {
     UTC,
 }
 
-impl FromStr for TimeSpec {
+/// A time spec *and* a time type. Certain fields need to have both.
+#[derive(PartialEq, Debug, Copy, Clone)]
+pub struct TimeSpecAndType(pub TimeSpec, pub TimeType);
+
+#[cfg(test)]
+impl TimeSpec {
+    fn with_type(self, time_type: TimeType) -> TimeSpecAndType {
+        TimeSpecAndType(self, time_type)
+    }
+}
+
+impl FromStr for TimeSpecAndType {
     type Err = Error;
 
-    fn from_str(input: &str) -> Result<TimeSpec, Self::Err> {
-
+    fn from_str(input: &str) -> Result<TimeSpecAndType, Self::Err> {
         if input == "-" {
-            Ok(TimeSpec::Zero)
+            Ok(TimeSpecAndType(TimeSpec::Zero, TimeType::Wall))
         }
         else if input.chars().all(|c| c == '-' || c.is_digit(10)) {
-            Ok(TimeSpec::Hours(input.parse().unwrap()))
+            Ok(TimeSpecAndType(TimeSpec::Hours(input.parse().unwrap()), TimeType::Wall))
         }
         else if let Some(caps) = HM_FIELD.captures(input) {
             let hour   = caps.name("hour").unwrap().parse().unwrap();
@@ -588,7 +578,7 @@ impl FromStr for TimeSpec {
             let flag   = caps.name("flag").and_then(|c| TimeType::from_str(&c[0..1]))
                                           .unwrap_or(TimeType::Wall);
 
-            Ok(TimeSpec::HoursMinutes(hour, minute, flag))
+            Ok(TimeSpecAndType(TimeSpec::HoursMinutes(hour, minute), flag))
         }
         else if let Some(caps) = HMS_FIELD.captures(input) {
             let hour   = caps.name("hour").unwrap().parse().unwrap();
@@ -597,10 +587,22 @@ impl FromStr for TimeSpec {
             let flag   = caps.name("flag").and_then(|c| TimeType::from_str(&c[0..1]))
                                           .unwrap_or(TimeType::Wall);
 
-            Ok(TimeSpec::HoursMinutesSeconds(hour, minute, second, flag))
+            Ok(TimeSpecAndType(TimeSpec::HoursMinutesSeconds(hour, minute, second), flag))
         }
         else {
             Err(Error::Fail)
+        }
+    }
+}
+
+impl FromStr for TimeSpec {
+    type Err = Error;
+
+    fn from_str(input: &str) -> Result<TimeSpec, Self::Err> {
+        match input.parse() {
+            Ok(TimeSpecAndType(spec, TimeType::Wall)) => Ok(spec),
+            Ok(TimeSpecAndType(_   , _             )) => Err(Error::Fail),
+            Err(e)                                    => Err(e),
         }
     }
 }
@@ -699,8 +701,8 @@ mod test {
             to_year:      Some(YearSpec::Number(1973)),
             month:        MonthSpec(local::Month::April),
             day:          DaySpec::Last(WeekdaySpec(local::Weekday::Sunday)),
-            time_of_day:  TimeSpec::HoursMinutes(2, 0, TimeType::Wall),
-            time_to_add:  TimeSpec::HoursMinutes(1, 0, TimeType::Wall),
+            time:         TimeSpec::HoursMinutes(2, 0).with_type(TimeType::Wall),
+            time_to_add:  TimeSpec::HoursMinutes(1, 0),
             letters:      Some("D"),
         })));
 
@@ -710,20 +712,20 @@ mod test {
             to_year:      None,
             month:        MonthSpec(local::Month::October),
             day:          DaySpec::Ordinal(10),
-            time_of_day:  TimeSpec::HoursMinutes(2, 0, TimeType::Standard),
+            time:         TimeSpec::HoursMinutes(2, 0).with_type(TimeType::Standard),
             time_to_add:  TimeSpec::Hours(0),
             letters:      None,
         })));
 
         test!(rule_3: "Rule	EU	1977	1980	-	Apr	Sun>=1	 1:00u	1:00	S" => Ok(Line::Rule(Rule {
-            name: "EU",
-            from_year: YearSpec::Number(1977),
-            to_year: Some(YearSpec::Number(1980)),
-            month: MonthSpec(local::Month::April),
-            day: DaySpec::FirstOnOrAfter(WeekdaySpec(local::Weekday::Sunday), 1),
-            time_of_day: TimeSpec::HoursMinutes(1, 0, TimeType::UTC),
-            time_to_add: TimeSpec::HoursMinutes(1, 0, TimeType::Wall),
-            letters:     Some("S"),
+            name:        "EU",
+            from_year:    YearSpec::Number(1977),
+            to_year:      Some(YearSpec::Number(1980)),
+            month:        MonthSpec(local::Month::April),
+            day:          DaySpec::FirstOnOrAfter(WeekdaySpec(local::Weekday::Sunday), 1),
+            time:         TimeSpec::HoursMinutes(1, 0).with_type(TimeType::UTC),
+            time_to_add:  TimeSpec::HoursMinutes(1, 0),
+            letters:      Some("S"),
         })));
 
         test!(no_hyphen: "Rule	EU	1977	1980	HEY	Apr	Sun>=1	 1:00u	1:00	S"         => Err(Error::Fail));
@@ -736,23 +738,23 @@ mod test {
         test!(zone: "Zone  Australia/Adelaide  9:30    Aus         AC%sT   1971 Oct 31  2:00:00" => Ok(Line::Zone(Zone {
             name: "Australia/Adelaide",
             info: ZoneInfo {
-                gmt_offset:  TimeSpec::HoursMinutes(9, 30, TimeType::Wall),
-                rules_save:  RulesSave::Rules("Aus"),
+                gmt_offset:  TimeSpec::HoursMinutes(9, 30),
+                saving:      Saving::Multiple("Aus"),
                 format:      "AC%sT",
-                time:        Some(ZoneTime::UntilTime(YearSpec::Number(1971), MonthSpec(local::Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0, TimeType::Wall))),
+                time:        Some(ZoneTime::UntilTime(YearSpec::Number(1971), MonthSpec(local::Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0))),
             },
         })));
 
         test!(continuation_1: "                          9:30    Aus         AC%sT   1971 Oct 31  2:00:00" => Ok(Line::Continuation(ZoneInfo {
-            gmt_offset:  TimeSpec::HoursMinutes(9, 30, TimeType::Wall),
-            rules_save:  RulesSave::Rules("Aus"),
+            gmt_offset:  TimeSpec::HoursMinutes(9, 30),
+            saving:      Saving::Multiple("Aus"),
             format:      "AC%sT",
-            time:        Some(ZoneTime::UntilTime(YearSpec::Number(1971), MonthSpec(local::Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0, TimeType::Wall))),
+            time:        Some(ZoneTime::UntilTime(YearSpec::Number(1971), MonthSpec(local::Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0))),
         })));
 
         test!(continuation_2: "			1:00	C-Eur	CE%sT	1943 Oct 25" => Ok(Line::Continuation(ZoneInfo {
-            gmt_offset:  TimeSpec::HoursMinutes(1, 00, TimeType::Wall),
-            rules_save:  RulesSave::Rules("C-Eur"),
+            gmt_offset:  TimeSpec::HoursMinutes(1, 00),
+            saving:      Saving::Multiple("C-Eur"),
             format:      "CE%sT",
             time:        Some(ZoneTime::UntilDay(YearSpec::Number(1943), MonthSpec(local::Month::October), DaySpec::Ordinal(25))),
         })));
@@ -760,8 +762,8 @@ mod test {
         test!(zone_hyphen: "Zone Asia/Ust-Nera\t 9:32:54 -\tLMT\t1919" => Ok(Line::Zone(Zone {
             name: "Asia/Ust-Nera",
             info: ZoneInfo {
-                gmt_offset:  TimeSpec::HoursMinutesSeconds(9, 32, 54, TimeType::Wall),
-                rules_save:  RulesSave::Neither,
+                gmt_offset:  TimeSpec::HoursMinutesSeconds(9, 32, 54),
+                saving:      Saving::NoSaving,
                 format:      "LMT",
                 time:        Some(ZoneTime::UntilYear(YearSpec::Number(1919))),
             },
