@@ -1,5 +1,5 @@
 [package]
-name = "olson-parse"
+name = "zoneinfo_parse"
 version = "0.1.0"
 authors = ["Ben S <ogham@bsago.me>"]
 
