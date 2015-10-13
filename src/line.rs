@@ -1,7 +1,7 @@
 use std::ascii::AsciiExt;
 use std::str::FromStr;
 
-use datetime::local;
+use datetime::local::{self, LocalDate, LocalTime, LocalDateTime};
 
 use regex::{Regex, Captures};
 
@@ -322,6 +322,34 @@ pub enum ZoneTime {
     UntilTime(YearSpec, MonthSpec, DaySpec, TimeSpecAndType),
 }
 
+impl ZoneTime {
+    pub fn to_timestamp(&self) -> i64 {
+        use self::ZoneTime::*;
+        use self::YearSpec::Number;
+        use self::DaySpec::Ordinal;
+        use self::TimeSpec::*;
+
+        match *self {
+            UntilYear(Number(y))       => LocalDateTime::new(LocalDate::ymd(y, local::Month::January, 1).unwrap(), LocalTime::midnight()),
+            UntilMonth(Number(y), m)   => LocalDateTime::new(LocalDate::ymd(y, m.0, 1).unwrap(),                   LocalTime::midnight()),
+            UntilDay(Number(y), m, d)  => LocalDateTime::new(d.to_concrete_date(y, m.0),                           LocalTime::midnight()),
+
+            UntilTime(Number(y), m, d, time) => {
+                let local_time = match time.0 {
+                    Zero                          => LocalTime::midnight(),
+                    Hours(h)                      => LocalTime::hms(h, 0, 0).unwrap(),
+                    HoursMinutes(h, mm)           => LocalTime::hms(h, mm, 0).unwrap(),
+                    HoursMinutesSeconds(h, mm, s) => LocalTime::hms(h, mm, s).unwrap(),
+                };
+
+                LocalDateTime::new(d.to_concrete_date(y, m.0), local_time)
+            },
+
+            _ => unreachable!("What happened? {:?}", self),
+        }.to_instant().seconds()
+    }
+}
+
 
 /// A **link** definition line.
 #[derive(PartialEq, Debug, Copy, Clone)]
@@ -367,7 +395,7 @@ pub enum YearSpec {
     Maximum,
 
     /// A specific year number.
-    Number(i32),
+    Number(i64),
 }
 
 impl FromStr for YearSpec {
@@ -455,18 +483,44 @@ impl FromStr for WeekdaySpec {
 pub enum DaySpec {
 
     /// A specific day of the month, given by its number.
-    Ordinal(i32),
+    Ordinal(i8),
 
     /// The last day of the month with a specific weekday.
     Last(WeekdaySpec),
 
     /// The **last** day with the given weekday **before** (or including) a
     /// day with a specific number.
-    LastOnOrBefore(WeekdaySpec, i32),
+    LastOnOrBefore(WeekdaySpec, i8),
 
     /// The **first** day with the given weekday **after** (or including) a
     /// day with a specific number.
-    FirstOnOrAfter(WeekdaySpec, i32)
+    FirstOnOrAfter(WeekdaySpec, i8)
+}
+
+impl DaySpec {
+
+    /// Converts this day specification to a concrete date, given the year and
+    /// month it should occur in.
+    fn to_concrete_date(&self, year: i64, month: local::Month) -> LocalDate {
+        use datetime::local::{LocalDate, Year, DatePiece};
+
+        match *self {
+            DaySpec::Ordinal(day)           => LocalDate::ymd(year, month, day).unwrap(),
+            DaySpec::Last(w)                => DaySpec::find_weekday(w, Year(year).days_for_month(month).rev()),
+            DaySpec::LastOnOrBefore(w, day) => DaySpec::find_weekday(w, Year(year).days_for_month(month).rev().filter(|d| d.day() < day)),
+            DaySpec::FirstOnOrAfter(w, day) => DaySpec::find_weekday(w, Year(year).days_for_month(month).skip(day as usize - 1)),
+        }
+    }
+
+    /// Find the first-occurring day with the given weekday in the iterator.
+    /// Panics if it can't find one. It should find one!
+    fn find_weekday<I>(weekday: WeekdaySpec, mut iterator: I) -> LocalDate
+    where I: Iterator<Item=LocalDate> {
+        use datetime::local::DatePiece;
+
+        iterator.find(|date| date.weekday() == weekday.0)
+                .expect("Failed to find weekday")
+    }
 }
 
 impl FromStr for DaySpec {
@@ -518,13 +572,13 @@ impl FromStr for DaySpec {
 pub enum TimeSpec {
 
     /// A number of hours.
-    Hours(i32),
+    Hours(i8),
 
     /// A number of hours and minutes.
-    HoursMinutes(i32, i32),
+    HoursMinutes(i8, i8),
 
     /// A number of hours, minutes, and seconds.
-    HoursMinutesSeconds(i32, i32, i32),
+    HoursMinutesSeconds(i8, i8, i8),
 
     /// Zero, or midnight at the start of the day.
     Zero,
@@ -555,10 +609,22 @@ pub enum TimeType {
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct TimeSpecAndType(pub TimeSpec, pub TimeType);
 
-#[cfg(test)]
 impl TimeSpec {
+
+    #[cfg(test)]
     fn with_type(self, time_type: TimeType) -> TimeSpecAndType {
         TimeSpecAndType(self, time_type)
+    }
+
+    /// Returns the number of seconds past midnight that this time spec
+    /// represents.
+    pub fn as_seconds(&self) -> i64 {
+        match *self {
+            TimeSpec::Zero                         => 0,
+            TimeSpec::Hours(h)                     => h as i64 * 3600,
+            TimeSpec::HoursMinutes(h, m)           => h as i64 * 3600 + m as i64 * 60,
+            TimeSpec::HoursMinutesSeconds(h, m, s) => h as i64 * 3600 + m as i64 * 60 + s as i64,
+        }
     }
 }
 
@@ -741,7 +807,7 @@ mod test {
                 gmt_offset:  TimeSpec::HoursMinutes(9, 30),
                 saving:      Saving::Multiple("Aus"),
                 format:      "AC%sT",
-                time:        Some(ZoneTime::UntilTime(YearSpec::Number(1971), MonthSpec(local::Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0))),
+                time:        Some(ZoneTime::UntilTime(YearSpec::Number(1971), MonthSpec(local::Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0).with_type(TimeType::Wall))),
             },
         })));
 
@@ -749,7 +815,7 @@ mod test {
             gmt_offset:  TimeSpec::HoursMinutes(9, 30),
             saving:      Saving::Multiple("Aus"),
             format:      "AC%sT",
-            time:        Some(ZoneTime::UntilTime(YearSpec::Number(1971), MonthSpec(local::Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0))),
+            time:        Some(ZoneTime::UntilTime(YearSpec::Number(1971), MonthSpec(local::Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0).with_type(TimeType::Wall))),
         })));
 
         test!(continuation_2: "			1:00	C-Eur	CE%sT	1943 Oct 25" => Ok(Line::Continuation(ZoneInfo {

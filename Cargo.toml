@@ -3,6 +3,10 @@ name = "zoneinfo_parse"
 version = "0.1.0"
 authors = ["Ben S <ogham@bsago.me>"]
 
+[[bin]]
+name = "build-data-crate"
+path = "bin/build-data-crate.rs"
+
 [dependencies]
 datetime = "*"
 lazy_static = "*"
