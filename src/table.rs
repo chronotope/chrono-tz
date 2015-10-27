@@ -184,42 +184,7 @@ impl Table {
             }
         }
 
-        transitions.sort_by(|a, b| a.occurs_at.cmp(&b.occurs_at));
-
-        let mut from_i = 0;
-        let mut to_i = 0;
-
-        while from_i < transitions.len() {
-            if to_i > 1
-            && transitions[from_i].occurs_at.is_some()
-            && transitions[to_i - 1].occurs_at.is_some()
-            && transitions[from_i].occurs_at.unwrap()   + transitions[to_i - 1].total_offset() <=
-               transitions[to_i - 1].occurs_at.unwrap() + transitions[to_i - 2].total_offset() {
-                transitions[to_i - 1] = Transition {
-                    occurs_at:  transitions[to_i - 1].occurs_at,
-                    name:       transitions[from_i].name.clone(),
-                    utc_offset: transitions[from_i].utc_offset,
-                    dst_offset: transitions[from_i].dst_offset,
-                };
-
-                from_i += 1;
-                continue;
-            }
-
-            if to_i == 0
-            || transitions[to_i - 1].utc_offset != transitions[from_i].utc_offset
-            || transitions[to_i - 1].dst_offset != transitions[from_i].dst_offset {
-                transitions[to_i] = transitions[from_i].clone();
-                to_i += 1;
-            }
-
-            from_i += 1
-        }
-
-        if to_i > 0 {
-            transitions.truncate(to_i);
-        }
-
+        sort_and_optimise(&mut transitions);
         transitions
     }
 }
@@ -238,6 +203,44 @@ fn format_name(template: &str, dst_offset: i64, letters: &str) -> String {
     }
     else {
         template.to_owned()
+    }
+}
+
+fn sort_and_optimise(transitions: &mut Vec<Transition>) {
+    transitions.sort_by(|a, b| a.occurs_at.cmp(&b.occurs_at));
+
+    let mut from_i = 0;
+    let mut to_i = 0;
+
+    while from_i < transitions.len() {
+        if to_i > 1
+        && transitions[from_i].occurs_at.is_some()
+        && transitions[to_i - 1].occurs_at.is_some()
+        && transitions[from_i].occurs_at.unwrap()   + transitions[to_i - 1].total_offset() <=
+           transitions[to_i - 1].occurs_at.unwrap() + transitions[to_i - 2].total_offset() {
+            transitions[to_i - 1] = Transition {
+                occurs_at:  transitions[to_i - 1].occurs_at,
+                name:       transitions[from_i].name.clone(),
+                utc_offset: transitions[from_i].utc_offset,
+                dst_offset: transitions[from_i].dst_offset,
+            };
+
+            from_i += 1;
+            continue;
+        }
+
+        if to_i == 0
+        || transitions[to_i - 1].utc_offset != transitions[from_i].utc_offset
+        || transitions[to_i - 1].dst_offset != transitions[from_i].dst_offset {
+            transitions[to_i] = transitions[from_i].clone();
+            to_i += 1;
+        }
+
+        from_i += 1
+    }
+
+    if to_i > 0 {
+        transitions.truncate(to_i);
     }
 }
 
