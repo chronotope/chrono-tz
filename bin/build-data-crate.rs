@@ -1,5 +1,5 @@
 extern crate zoneinfo_parse;
-use zoneinfo_parse::{Line, TableBuilder, Table, Structure, Child, Saving, ZoneTime};
+use zoneinfo_parse::{Line, TableBuilder, Table, Structure, Child};
 
 use std::env::args;
 use std::io::prelude::*;
@@ -93,33 +93,16 @@ impl DataCrate {
     }
 
     fn run(&self) -> IoResult<()> {
-        try!(self.write_rulesets());
         try!(self.create_structure_directories());
         try!(self.write_zonesets());
-        Ok(())
-    }
-
-    fn write_rulesets(&self) -> IoResult<()> {
-        let path = self.base_path.join("rulesets.rs");
-        let mut w = try!(OpenOptions::new().write(true).create(true).truncate(true).open(path));
-        try!(writeln!(w, "{}", WARNING_HEADER));
-        try!(writeln!(w, "{}", RULESETS_HEADER));
-
-        for (name, ruleset) in &self.table.rulesets {
-            try!(writeln!(w, "pub const {}: Ruleset<'static> = Ruleset {{ rules: &[", name.replace("-", "_")));
-            for rule in &ruleset.0 {
-                try!(writeln!(w, "    {:?},", rule));
-            }
-            try!(writeln!(w, "] }};\n\n"));
-        }
-
         Ok(())
     }
 
     fn create_structure_directories(&self) -> IoResult<()> {
         let base_mod_path = self.base_path.join("mod.rs");
         let mut base_w = try!(OpenOptions::new().write(true).create(true).truncate(true).open(base_mod_path));
-        try!(write!(base_w, "pub mod rulesets;\n"));
+        try!(writeln!(base_w, "{}", WARNING_HEADER));
+        try!(writeln!(base_w, "{}", ZONEINFO_HEADER));
 
         for entry in self.table.structure() {
             if !entry.name.contains('/') {
@@ -150,38 +133,39 @@ impl DataCrate {
             }
         }
 
+        try!(writeln!(base_w, "\n\n"));
+        for name in self.table.zonesets.keys().filter(|f| !f.contains('/')) {
+            let sanichild = sanitise_name(name);
+            try!(writeln!(base_w, "mod {};", sanichild));
+            try!(writeln!(base_w, "pub use self::{}::ZONE as {};\n", sanichild, sanichild));
+        }
+
+        try!(writeln!(base_w, "\n\n"));
+        try!(writeln!(base_w, "pub fn lookup(input: &str) -> Option<Zone> {{"));
+        for name in self.table.zonesets.keys() {
+            try!(writeln!(base_w, "    if input == {:?} {{", name));
+            try!(writeln!(base_w, "        return Some({});", sanitise_name(name).replace("/", "::")));
+            try!(writeln!(base_w, "    }}"));
+        }
+        try!(writeln!(base_w, "    return None;"));
+        try!(writeln!(base_w, "}}"));
+
         Ok(())
     }
 
     fn write_zonesets(&self) -> IoResult<()> {
-        for (name, zoneset) in &self.table.zonesets {
+        for name in self.table.zonesets.keys() {
             let components: PathBuf = name.split('/').map(sanitise_name).collect();
             let zoneset_path = self.base_path.join(components).with_extension("rs");
             let mut w = try!(OpenOptions::new().write(true).create(true).truncate(true).open(zoneset_path));
             try!(writeln!(w, "{}", WARNING_HEADER));
-            try!(writeln!(w, "{}", ZONESETS_HEADER));
+            try!(writeln!(w, "{}", ZONEINFO_HEADER));
 
             try!(writeln!(w, "pub const ZONE: Zone<'static> = Zone {{"));
             try!(writeln!(w, "    name: {:?},", name));
-            try!(writeln!(w, "    timespans: &["));
-
-            let mut last_end_time: Option<ZoneTime> = None;
-            for info in &zoneset.0 {
-                let saving = match info.saving {
-                    Saving::NoSaving         => "Saving::NoSaving".to_owned(),
-                    Saving::OneOff(by)       => format!("Saving::OneOff({})", by),
-                    Saving::Multiple(ref n)  => format!("Saving::Multiple(&rulesets::{})", sanitise_name(n)),
-                };
-
-                try!(writeln!(w, "        Timespan {{"));
-                try!(writeln!(w, "            offset: {:?},", info.gmt_offset));
-                try!(writeln!(w, "            format: {:?},", info.format));
-                try!(writeln!(w, "            saving: {},", saving));
-                try!(writeln!(w, "            start_time: {:?},", last_end_time.map(|s| s.to_timestamp())));
-                try!(writeln!(w, "            end_time:   {:?},", info.until.map(|s| s.to_timestamp())));
-                try!(writeln!(w, "        }},"));
-
-                last_end_time = info.until;
+            try!(writeln!(w, "    transitions: &["));
+            for info in &self.table.transitions(&*name) {
+                try!(writeln!(w, "        {:?},", info));
             }
             try!(writeln!(w, "    ],"));
             try!(writeln!(w, "}};\n\n"));
@@ -209,18 +193,6 @@ const WARNING_HEADER: &'static str = r##"
 // ------
 "##;
 
-const RULESETS_HEADER: &'static str = r##"
-use code::*;
-use code::YearSpec::*;
-use code::DaySpec::*;
-use datetime::local::Month::*;
-use datetime::local::Weekday::*;
-"##;
-
-const ZONESETS_HEADER: &'static str = r##"
-use code::*;
-use code::Saving::*;
-
-#[allow(unused_imports)]
-use data::rulesets;
+const ZONEINFO_HEADER: &'static str = r##"
+use datetime::zoned::zoneinfo::*;
 "##;

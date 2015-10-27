@@ -1,5 +1,7 @@
 //! Parsing Olson DB formats.
 
+#![feature(iter_cmp)]
+
 #![warn(missing_copy_implementations)]
 #![warn(missing_debug_implementations)]
 //#![warn(missing_docs)]
