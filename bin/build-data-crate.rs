@@ -133,8 +133,11 @@ impl DataCrate {
             }
         }
 
+        let mut keys: Vec<_> = self.table.zonesets.keys().collect();
+        keys.sort();
+
         try!(writeln!(base_w, "\n\n"));
-        for name in self.table.zonesets.keys().filter(|f| !f.contains('/')) {
+        for name in keys.iter().filter(|f| !f.contains('/')) {
             let sanichild = sanitise_name(name);
             try!(writeln!(base_w, "mod {};", sanichild));
             try!(writeln!(base_w, "pub use self::{}::ZONE as {};\n", sanichild, sanichild));
@@ -142,7 +145,7 @@ impl DataCrate {
 
         try!(writeln!(base_w, "\n\n"));
         try!(writeln!(base_w, "pub fn lookup(input: &str) -> Option<Zone> {{"));
-        for name in self.table.zonesets.keys() {
+        for name in &keys {
             try!(writeln!(base_w, "    if input == {:?} {{", name));
             try!(writeln!(base_w, "        return Some({});", sanitise_name(name).replace("/", "::")));
             try!(writeln!(base_w, "    }}"));
