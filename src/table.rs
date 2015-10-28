@@ -184,14 +184,13 @@ impl Table {
             }
         }
 
-        sort_and_optimise(&mut transitions);
+        transitions.sort_by(|a, b| a.occurs_at.cmp(&b.occurs_at));
+        optimise(&mut transitions);
         transitions
     }
 }
 
-fn sort_and_optimise(transitions: &mut Vec<Transition>) {
-    transitions.sort_by(|a, b| a.occurs_at.cmp(&b.occurs_at));
-
+fn optimise(transitions: &mut Vec<Transition>) {
     let mut from_i = 0;
     let mut to_i = 0;
 
@@ -214,7 +213,8 @@ fn sort_and_optimise(transitions: &mut Vec<Transition>) {
 
         if to_i == 0
         || transitions[to_i - 1].utc_offset != transitions[from_i].utc_offset
-        || transitions[to_i - 1].dst_offset != transitions[from_i].dst_offset {
+        || transitions[to_i - 1].dst_offset != transitions[from_i].dst_offset
+        || transitions[to_i - 1].name       != transitions[from_i].name {
             transitions[to_i] = transitions[from_i].clone();
             to_i += 1;
         }
@@ -491,68 +491,70 @@ pub enum Error<'line> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use super::transitions;
-    use local::Weekday::*;
-    use local::Month::*;
-    use super::DaySpec::*;
-    use super::YearSpec::*;
-    use super::TimeType::*;
+    use super::{Transition, Saving, ZoneInfo, RuleInfo, Ruleset, Table, Zoneset, Format, optimise};
+    use datetime::local::Weekday::*;
+    use datetime::local::Month::*;
+    use datetime::zoned::zoneinfo::TimeType;
+    use line::DaySpec;
+    use line::WeekdaySpec;
+    use line::MonthSpec;
+    use line::YearSpec;
+    use line::TimeSpec;
+    use line::ZoneTime;
 
     #[test]
     fn no_transitions() {
-        let timespan = Timespan {
+        let zone = ZoneInfo {
             offset: 1234,
-            format: "TEST",
+            format: Format::new("TEST"),
             saving: Saving::NoSaving,
             end_time: None,
         };
 
-        let zone = Zone {
-            name: "Test/Zone",
-            timespans: &[ timespan ],
-        };
+        let mut table = Table::default();
+        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ zone ]));
 
-        assert_eq!(zone.transitions(), vec![
+        assert_eq!(table.transitions("Test/Zone"), vec![
             Transition {
-                occurs_at: None,
+                occurs_at:  None,
                 utc_offset: 1234,
                 dst_offset: 0,
+                name:       "TEST".to_owned(),
             }
         ]);
     }
 
     #[test]
     fn one_transition() {
-        let timespan_1 = Timespan {
+        let zone_1 = ZoneInfo {
             offset: 1234,
-            format: "TEST",
+            format: Format::new("TEST"),
             saving: Saving::NoSaving,
-            end_time: Some(123456),
+            end_time: Some(ZoneTime::UntilTime(YearSpec::Number(1970), MonthSpec(January), DaySpec::Ordinal(2), TimeSpec::HoursMinutesSeconds(10, 17, 36).with_type(TimeType::UTC))),
         };
 
-        let timespan_2 = Timespan {
+        let zone_2 = ZoneInfo {
             offset: 5678,
-            format: "TSET",
+            format: Format::new("TSET"),
             saving: Saving::NoSaving,
             end_time: None,
         };
 
-        let zone = Zone {
-            name: "Test/Zone",
-            timespans: &[ timespan_1, timespan_2 ],
-        };
+        let mut table = Table::default();
+        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ zone_1, zone_2 ]));
 
-        assert_eq!(zone.transitions(), vec![
+        assert_eq!(table.transitions("Test/Zone"), vec![
             Transition {
                 occurs_at: None,
                 utc_offset: 1234,
                 dst_offset: 0,
+                name:       "TEST".to_owned(),
             },
             Transition {
                 occurs_at: Some(122222),
                 utc_offset: 5678,
                 dst_offset: 0,
+                name:       "TSET".to_owned(),
             },
         ]);
     }
@@ -560,207 +562,239 @@ mod test {
 
     #[test]
     fn two_transitions() {
-        let timespan_1 = Timespan {
+        let zone_1 = ZoneInfo {
             offset: 1234,
-            format: "TEST",
+            format: Format::new("TEST"),
             saving: Saving::NoSaving,
-            end_time: Some(123456),
+            end_time: Some(ZoneTime::UntilTime(YearSpec::Number(1970), MonthSpec(January), DaySpec::Ordinal(2), TimeSpec::HoursMinutesSeconds(10, 17, 36).with_type(TimeType::Standard))),
         };
 
-        let timespan_2 = Timespan {
+        let zone_2 = ZoneInfo {
             offset: 3456,
-            format: "TSET",
+            format: Format::new("TSET"),
             saving: Saving::NoSaving,
-            end_time: Some(234567),
+            end_time: Some(ZoneTime::UntilTime(YearSpec::Number(1970), MonthSpec(January), DaySpec::Ordinal(3), TimeSpec::HoursMinutesSeconds(17, 09, 27).with_type(TimeType::Standard))),
         };
 
-        let timespan_3 = Timespan {
+        let zone_3 = ZoneInfo {
             offset: 5678,
-            format: "ESTE",
+            format: Format::new("ESTE"),
             saving: Saving::NoSaving,
             end_time: None,
         };
 
-        let zone = Zone {
-            name: "Test/Zone",
-            timespans: &[ timespan_1, timespan_2, timespan_3 ],
-        };
+        let mut table = Table::default();
+        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ zone_1, zone_2, zone_3 ]));
 
-        assert_eq!(zone.transitions(), vec![
+        assert_eq!(table.transitions("Test/Zone"), vec![
             Transition {
                 occurs_at: None,
                 utc_offset: 1234,
                 dst_offset: 0,
+                name: "TEST".to_owned(),
             },
             Transition {
                 occurs_at: Some(122222),
                 utc_offset: 3456,
                 dst_offset: 0,
+                name: "TSET".to_owned(),
             },
             Transition {
                 occurs_at: Some(231111),
                 utc_offset: 5678,
                 dst_offset: 0,
+                name: "ESTE".to_owned(),
             },
         ]);
     }
 
     #[test]
     fn one_rule() {
-        let ruleset = Ruleset { rules: &[
+        let ruleset = Ruleset(vec![
             RuleInfo {
-                from_year:   Number(1980),
+                from_year:   YearSpec::Number(1980),
                 to_year:     None,
                 month:       MonthSpec(February),
-                day:         Ordinal(4),
+                day:         DaySpec::Ordinal(4),
                 time:        0,
-                time_type:   UTC,
+                time_type:   TimeType::UTC,
                 time_to_add: 1000,
                 letters:     None,
             }
-        ] };
+        ]);
 
-        let timespan = Timespan {
+        let zone = ZoneInfo {
             offset: 2000,
-            format: "TEST",
-            saving: Saving::Multiple(&ruleset),
+            format: Format::new("TEST"),
+            saving: Saving::Multiple("Dwayne".to_owned()),
             end_time: None,
         };
 
-        let zone = Zone {
-            name: "Test/Zone",
-            timespans: &[ timespan ],
-        };
+        let mut table = Table::default();
+        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ zone ]));
+        table.rulesets.insert("Dwayne".to_owned(), ruleset);
 
-        assert_eq!(zone.transitions(), vec![
+        assert_eq!(table.transitions("Test/Zone"), vec![
             Transition {
                 occurs_at:  Some(318_470_400),
                 utc_offset: 2000,
                 dst_offset: 1000,
+                name:       "TEST".to_owned(),
             },
         ]);
     }
 
     #[test]
     fn two_rules() {
-        let ruleset = Ruleset { rules: &[
+        let ruleset = Ruleset(vec![
             RuleInfo {
-                from_year:   Number(1980),
+                from_year:   YearSpec::Number(1980),
                 to_year:     None,
                 month:       MonthSpec(February),
-                day:         Ordinal(4),
+                day:         DaySpec::Ordinal(4),
                 time:        0,
-                time_type:   UTC,
+                time_type:   TimeType::UTC,
                 time_to_add: 1000,
                 letters:     None,
             },
             RuleInfo {
-                from_year:   Number(1989),
+                from_year:   YearSpec::Number(1989),
                 to_year:     None,
                 month:       MonthSpec(January),
-                day:         Ordinal(12),
+                day:         DaySpec::Ordinal(12),
                 time:        0,
-                time_type:   UTC,
+                time_type:   TimeType::UTC,
                 time_to_add: 1500,
                 letters:     None,
             },
-        ] };
+        ]);
 
-        let timespan = Timespan {
+        let zone = ZoneInfo {
             offset: 2000,
-            format: "TEST",
-            saving: Saving::Multiple(&ruleset),
+            format: Format::new("TEST"),
+            saving: Saving::Multiple("Dwayne".to_owned()),
             end_time: None,
         };
 
-        let zone = Zone {
-            name: "Test/Zone",
-            timespans: &[ timespan ],
-        };
+        let mut table = Table::default();
+        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ zone ]));
+        table.rulesets.insert("Dwayne".to_owned(), ruleset);
 
-        assert_eq!(zone.transitions(), vec![
+        assert_eq!(table.transitions("Test/Zone"), vec![
             Transition {
                 occurs_at:  Some(318_470_400),
                 utc_offset: 2000,
                 dst_offset: 1000,
+                name:       "TEST".to_owned(),
             },
             Transition {
                 occurs_at:  Some(600_566_400),
                 utc_offset: 2000,
                 dst_offset: 1500,
+                name:       "TEST".to_owned(),
             },
         ]);
     }
 
     #[test]
     fn tripoli() {
-        let libya = Ruleset { rules: &[
-            RuleInfo { from_year: Number(1951), to_year: None,               month: MonthSpec(October),   day: Ordinal(14),               time: 7200, time_type: Wall, time_to_add: 3600, letters: Some("S") },
-            RuleInfo { from_year: Number(1952), to_year: None,               month: MonthSpec(January),   day: Ordinal(1),                time: 0,    time_type: Wall, time_to_add: 0,    letters: None      },
-            RuleInfo { from_year: Number(1953), to_year: None,               month: MonthSpec(October),   day: Ordinal(9),                time: 7200, time_type: Wall, time_to_add: 3600, letters: Some("S") },
-            RuleInfo { from_year: Number(1954), to_year: None,               month: MonthSpec(January),   day: Ordinal(1),                time: 0,    time_type: Wall, time_to_add: 0,    letters: None      },
-            RuleInfo { from_year: Number(1955), to_year: None,               month: MonthSpec(September), day: Ordinal(30),               time: 0,    time_type: Wall, time_to_add: 3600, letters: Some("S") },
-            RuleInfo { from_year: Number(1956), to_year: None,               month: MonthSpec(January),   day: Ordinal(1),                time: 0,    time_type: Wall, time_to_add: 0,    letters: None      },
-            RuleInfo { from_year: Number(1982), to_year: Some(Number(1984)), month: MonthSpec(April),     day: Ordinal(1),                time: 0,    time_type: Wall, time_to_add: 3600, letters: Some("S") },
-            RuleInfo { from_year: Number(1982), to_year: Some(Number(1985)), month: MonthSpec(October),   day: Ordinal(1),                time: 0,    time_type: Wall, time_to_add: 0,    letters: None      },
-            RuleInfo { from_year: Number(1985), to_year: None,               month: MonthSpec(April),     day: Ordinal(6),                time: 0,    time_type: Wall, time_to_add: 3600, letters: Some("S") },
-            RuleInfo { from_year: Number(1986), to_year: None,               month: MonthSpec(April),     day: Ordinal(4),                time: 0,    time_type: Wall, time_to_add: 3600, letters: Some("S") },
-            RuleInfo { from_year: Number(1986), to_year: None,               month: MonthSpec(October),   day: Ordinal(3),                time: 0,    time_type: Wall, time_to_add: 0,    letters: None      },
-            RuleInfo { from_year: Number(1987), to_year: Some(Number(1989)), month: MonthSpec(April),     day: Ordinal(1),                time: 0,    time_type: Wall, time_to_add: 3600, letters: Some("S") },
-            RuleInfo { from_year: Number(1987), to_year: Some(Number(1989)), month: MonthSpec(October),   day: Ordinal(1),                time: 0,    time_type: Wall, time_to_add: 0,    letters: None      },
-            RuleInfo { from_year: Number(1997), to_year: None,               month: MonthSpec(April),     day: Ordinal(4),                time: 0,    time_type: Wall, time_to_add: 3600, letters: Some("S") },
-            RuleInfo { from_year: Number(1997), to_year: None,               month: MonthSpec(October),   day: Ordinal(4),                time: 0,    time_type: Wall, time_to_add: 0,    letters: None      },
-            RuleInfo { from_year: Number(2013), to_year: None,               month: MonthSpec(March),     day: Last(WeekdaySpec(Friday)), time: 3600, time_type: Wall, time_to_add: 3600, letters: Some("S") },
-            RuleInfo { from_year: Number(2013), to_year: None,               month: MonthSpec(October),   day: Last(WeekdaySpec(Friday)), time: 7200, time_type: Wall, time_to_add: 0,    letters: None      },
-        ] };
+        let libya = Ruleset(vec![
+            RuleInfo { from_year: YearSpec::Number(1951), to_year: None,               month: MonthSpec(October),   day: DaySpec::Ordinal(14),               time: 7200, time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(1952), to_year: None,               month: MonthSpec(January),   day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
+            RuleInfo { from_year: YearSpec::Number(1953), to_year: None,               month: MonthSpec(October),   day: DaySpec::Ordinal(9),                time: 7200, time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(1954), to_year: None,               month: MonthSpec(January),   day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
+            RuleInfo { from_year: YearSpec::Number(1955), to_year: None,               month: MonthSpec(September), day: DaySpec::Ordinal(30),               time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(1956), to_year: None,               month: MonthSpec(January),   day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
+            RuleInfo { from_year: YearSpec::Number(1982), to_year: Some(YearSpec::Number(1984)), month: MonthSpec(April),     day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(1982), to_year: Some(YearSpec::Number(1985)), month: MonthSpec(October),   day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
+            RuleInfo { from_year: YearSpec::Number(1985), to_year: None,               month: MonthSpec(April),     day: DaySpec::Ordinal(6),                time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(1986), to_year: None,               month: MonthSpec(April),     day: DaySpec::Ordinal(4),                time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(1986), to_year: None,               month: MonthSpec(October),   day: DaySpec::Ordinal(3),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
+            RuleInfo { from_year: YearSpec::Number(1987), to_year: Some(YearSpec::Number(1989)), month: MonthSpec(April),     day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(1987), to_year: Some(YearSpec::Number(1989)), month: MonthSpec(October),   day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
+            RuleInfo { from_year: YearSpec::Number(1997), to_year: None,               month: MonthSpec(April),     day: DaySpec::Ordinal(4),                time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(1997), to_year: None,               month: MonthSpec(October),   day: DaySpec::Ordinal(4),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
+            RuleInfo { from_year: YearSpec::Number(2013), to_year: None,               month: MonthSpec(March),     day: DaySpec::Last(WeekdaySpec(Friday)), time: 3600, time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(2013), to_year: None,               month: MonthSpec(October),   day: DaySpec::Last(WeekdaySpec(Friday)), time: 7200, time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
+        ]);
 
-        let timespans = &[
-            Timespan { offset: 3164, format: "LMT",   saving: Saving::NoSaving,         end_time: Some(-1577923200),},
-            Timespan { offset: 3600, format: "CE%sT", saving: Saving::Multiple(&libya), end_time: Some(-347155200),},
-            Timespan { offset: 7200, format: "EET",   saving: Saving::NoSaving,         end_time: Some(378691200),},
-            Timespan { offset: 3600, format: "CE%sT", saving: Saving::Multiple(&libya), end_time: Some(641779200),},
-            Timespan { offset: 7200, format: "EET",   saving: Saving::NoSaving,         end_time: Some(844041600),},
-            Timespan { offset: 3600, format: "CE%sT", saving: Saving::Multiple(&libya), end_time: Some(875923200),},
-            Timespan { offset: 7200, format: "EET",   saving: Saving::NoSaving,         end_time: Some(1352512800),},
-            Timespan { offset: 3600, format: "CE%sT", saving: Saving::Multiple(&libya), end_time: Some(1382666400),},
-            Timespan { offset: 7200, format: "EET",   saving: Saving::NoSaving,         end_time: None,},
+        let zone = vec![
+            ZoneInfo { offset: 3164, format: Format::new("LMT"),   saving: Saving::NoSaving,                     end_time: Some(ZoneTime::UntilYear(YearSpec::Number(1920))) },
+            ZoneInfo { offset: 3600, format: Format::new("CE%sT"), saving: Saving::Multiple("Libya".to_owned()), end_time: Some(ZoneTime::UntilYear(YearSpec::Number(1959)))  },
+            ZoneInfo { offset: 7200, format: Format::new("EET"),   saving: Saving::NoSaving,                     end_time: Some(ZoneTime::UntilYear(YearSpec::Number(1982)))   },
+            ZoneInfo { offset: 3600, format: Format::new("CE%sT"), saving: Saving::Multiple("Libya".to_owned()), end_time: Some(ZoneTime::UntilDay (YearSpec::Number(1990), MonthSpec(May),       DaySpec::Ordinal( 4)))   },
+            ZoneInfo { offset: 7200, format: Format::new("EET"),   saving: Saving::NoSaving,                     end_time: Some(ZoneTime::UntilDay (YearSpec::Number(1996), MonthSpec(September), DaySpec::Ordinal(30)))   },
+            ZoneInfo { offset: 3600, format: Format::new("CE%sT"), saving: Saving::Multiple("Libya".to_owned()), end_time: Some(ZoneTime::UntilDay (YearSpec::Number(1997), MonthSpec(October),   DaySpec::Ordinal( 4)))   },
+            ZoneInfo { offset: 7200, format: Format::new("EET"),   saving: Saving::NoSaving,                     end_time: Some(ZoneTime::UntilTime(YearSpec::Number(2012), MonthSpec(November),  DaySpec::Ordinal(10), TimeSpec::HoursMinutes(2, 0).with_type(TimeType::Wall)))  },
+            ZoneInfo { offset: 3600, format: Format::new("CE%sT"), saving: Saving::Multiple("Libya".to_owned()), end_time: Some(ZoneTime::UntilTime(YearSpec::Number(2013), MonthSpec(October),   DaySpec::Ordinal(25), TimeSpec::HoursMinutes(2, 0).with_type(TimeType::Wall)))  },
+            ZoneInfo { offset: 7200, format: Format::new("EET"),   saving: Saving::NoSaving,                     end_time: None              },
         ];
 
-        let transitions = transitions(timespans);
-        assert_eq!(transitions, vec![
-            Transition { utc_offset: 3164, dst_offset: 0,    occurs_at: None                 },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(-1_577_926_364) },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(  -574_902_000) },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(  -568_087_200) },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(  -512_175_600) },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(  -504_928_800) },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(  -449_888_400) },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(  -441_856_800) },
-            Transition { utc_offset: 7200, dst_offset: 0,    occurs_at: Some(  -347_158_800) },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   378_684_000) },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   386_463_600) },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   402_271_200) },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   417_999_600) },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   433_807_200) },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   449_622_000) },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   465_429_600) },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   481_590_000) },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   496_965_600) },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   512_953_200) },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   528_674_400) },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   544_230_000) },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   560_037_600) },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   575_852_400) },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   591_660_000) },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   607_388_400) },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   623_196_000) },
-            Transition { utc_offset: 7200, dst_offset: 0,    occurs_at: Some(   641_775_600) },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   844_034_400) },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   860_108_400) },
-            Transition { utc_offset: 7200, dst_offset: 0,    occurs_at: Some(   875_916_000) },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some( 1_352_505_600) },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some( 1_364_515_200) },
-            Transition { utc_offset: 7200, dst_offset: 0,    occurs_at: Some( 1_382_659_200) },
+        let mut table = Table::default();
+        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(zone));
+        table.rulesets.insert("Libya".to_owned(), libya);
+
+        assert_eq!(table.transitions("Test/Zone"), vec![
+            Transition { utc_offset: 3164, dst_offset: 0,    occurs_at: None,                 name:  "LMT".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(-1_577_926_364), name:  "CET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(  -574_902_000), name: "CEST".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(  -568_087_200), name:  "CET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(  -512_175_600), name: "CEST".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(  -504_928_800), name:  "CET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(  -449_888_400), name: "CEST".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(  -441_856_800), name:  "CET".to_owned() },
+            Transition { utc_offset: 7200, dst_offset: 0,    occurs_at: Some(  -347_158_800), name:  "EET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   378_684_000), name:  "CET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   386_463_600), name: "CEST".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   402_271_200), name:  "CET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   417_999_600), name: "CEST".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   433_807_200), name:  "CET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   449_622_000), name: "CEST".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   465_429_600), name:  "CET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   481_590_000), name: "CEST".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   496_965_600), name:  "CET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   512_953_200), name: "CEST".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   528_674_400), name:  "CET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   544_230_000), name: "CEST".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   560_037_600), name:  "CET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   575_852_400), name: "CEST".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   591_660_000), name:  "CET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   607_388_400), name: "CEST".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   623_196_000), name:  "CET".to_owned() },
+            Transition { utc_offset: 7200, dst_offset: 0,    occurs_at: Some(   641_775_600), name:  "EET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   844_034_400), name:  "CET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   860_108_400), name: "CEST".to_owned() },
+            Transition { utc_offset: 7200, dst_offset: 0,    occurs_at: Some(   875_916_000), name:  "EET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some( 1_352_505_600), name:  "CET".to_owned() },
+            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some( 1_364_515_200), name: "CEST".to_owned() },
+            Transition { utc_offset: 7200, dst_offset: 0,    occurs_at: Some( 1_382_659_200), name:  "EET".to_owned() },
         ]);
     }
+
+    #[test]
+    fn optimise_macquarie() {
+        let mut transitions = vec![
+            Transition { occurs_at: None,              utc_offset:     0, dst_offset:    0, name:  "zzz".to_owned() },
+            Transition { occurs_at: Some(-2214259200), utc_offset: 36000, dst_offset:    0, name: "AEST".to_owned() },
+            Transition { occurs_at: Some(-1680508800), utc_offset: 36000, dst_offset: 3600, name: "AEDT".to_owned() },
+            Transition { occurs_at: Some(-1669892400), utc_offset: 36000, dst_offset: 3600, name: "AEDT".to_owned() },  // gets removed
+            Transition { occurs_at: Some(-1665392400), utc_offset: 36000, dst_offset:    0, name: "AEST".to_owned() },
+            Transition { occurs_at: Some(-1601719200), utc_offset:     0, dst_offset:    0, name:  "zzz".to_owned() },
+            Transition { occurs_at: Some(-687052800),  utc_offset: 36000, dst_offset:    0, name: "AEST".to_owned() },
+            Transition { occurs_at: Some(-94730400),   utc_offset: 36000, dst_offset:    0, name: "AEST".to_owned() },  // also gets removed
+            Transition { occurs_at: Some(-71136000),   utc_offset: 36000, dst_offset: 3600, name: "AEDT".to_owned() },
+            Transition { occurs_at: Some(-55411200),   utc_offset: 36000, dst_offset:    0, name: "AEST".to_owned() },
+            Transition { occurs_at: Some(-37267200),   utc_offset: 36000, dst_offset: 3600, name: "AEDT".to_owned() },
+            Transition { occurs_at: Some(-25776000),   utc_offset: 36000, dst_offset:    0, name: "AEST".to_owned() },
+            Transition { occurs_at: Some(-5817600),    utc_offset: 36000, dst_offset: 3600, name: "AEDT".to_owned() },
+        ];
+
+        let mut result = transitions.clone();
+        result.remove(7);
+        result.remove(3);
+
+        optimise(&mut transitions);
+        assert_eq!(transitions, result);
+    }
+
 }

@@ -450,7 +450,7 @@ impl FromStr for MonthSpec {
 /// A **weekday** field, which is actually just a wrapper around
 /// `datetime::local::Weekday`.
 #[derive(PartialEq, Debug, Copy, Clone)]
-pub struct WeekdaySpec(local::Weekday);
+pub struct WeekdaySpec(pub local::Weekday);
 
 impl FromStr for WeekdaySpec {
     type Err = Error;
@@ -592,7 +592,7 @@ pub struct TimeSpecAndType(pub TimeSpec, pub TimeType);
 impl TimeSpec {
 
     #[cfg(test)]
-    fn with_type(self, time_type: TimeType) -> TimeSpecAndType {
+    pub fn with_type(self, time_type: TimeType) -> TimeSpecAndType {
         TimeSpecAndType(self, time_type)
     }
 
