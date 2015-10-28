@@ -56,7 +56,7 @@ impl Table {
             match timespan.saving {
                 Saving::NoSaving => {
                     dst_offset = 0;
-                    start_zone_id = Some(format_name(&*timespan.format, dst_offset, ""));
+                    start_zone_id = Some(timespan.format.format_constant());
 
                     if insert_start_transition {
                         let t = Transition {
@@ -81,7 +81,7 @@ impl Table {
 
                 Saving::OneOff(amount) => {
                     dst_offset = amount;
-                    start_zone_id = Some(format_name(&*timespan.format, dst_offset, ""));
+                    start_zone_id = Some(timespan.format.format_constant());
 
                     if insert_start_transition {
                         let t = Transition {
@@ -148,12 +148,12 @@ impl Table {
                                 if earliest_at < start_time.unwrap() {
                                     start_utc_offset = timespan.offset;
                                     start_dst_offset = dst_offset;
-                                    start_zone_id = Some(format_name(&*timespan.format, dst_offset, &*earliest_rule.letters.clone().unwrap_or("".to_string())));
+                                    start_zone_id = Some(timespan.format.format(dst_offset, earliest_rule.letters.as_ref()));
                                     continue;
                                 }
 
                                 if start_zone_id.is_none() && start_utc_offset + start_dst_offset == timespan.offset + dst_offset {
-                                    start_zone_id = Some(format_name(&*timespan.format, dst_offset, &*earliest_rule.letters.clone().unwrap_or("".to_string())));
+                                    start_zone_id = Some(timespan.format.format(dst_offset, earliest_rule.letters.as_ref()));
                                 }
                             }
 
@@ -161,7 +161,7 @@ impl Table {
                                 occurs_at:  Some(earliest_at),
                                 utc_offset: timespan.offset,
                                 dst_offset: earliest_rule.time_to_add,
-                                name:       format_name(&*timespan.format, earliest_rule.time_to_add, &*earliest_rule.letters.clone().unwrap_or("".to_string())),
+                                name:       timespan.format.format(earliest_rule.time_to_add, earliest_rule.letters.as_ref()),
                             };
                             transitions.push(t);
                         }
@@ -174,7 +174,7 @@ impl Table {
                     occurs_at:  Some(start_time.unwrap()),
                     utc_offset: start_utc_offset,
                     dst_offset: start_dst_offset,
-                    name:       start_zone_id.clone().unwrap_or(timespan.format.clone()),
+                    name:       start_zone_id.clone().unwrap(),
                 };
                 transitions.push(t);
             }
@@ -186,23 +186,6 @@ impl Table {
 
         sort_and_optimise(&mut transitions);
         transitions
-    }
-}
-
-fn format_name(template: &str, dst_offset: i64, letters: &str) -> String {
-    if let Some(pos) = template.find('/') {
-        if dst_offset == 0 {
-            template[.. pos].to_owned()
-        }
-        else {
-            template[pos + 1 ..].to_owned()
-        }
-    }
-    else if template.contains("%s") {
-        template.replace("%s", letters)
-    }
-    else {
-        template.to_owned()
     }
 }
 
@@ -322,7 +305,7 @@ pub struct Zoneset(pub Vec<ZoneInfo>);
 #[derive(PartialEq, Debug)]
 pub struct ZoneInfo {
     pub offset:    i64,
-    pub format:    String,
+    pub format:    Format,
     pub saving:    Saving,
     pub end_time:  Option<ZoneTime>,
 }
@@ -334,6 +317,13 @@ pub enum Saving {
     Multiple(String),
 }
 
+#[derive(PartialEq, Debug, Clone)]
+pub enum Format {
+    Constant(String),
+    Alternate { standard: String, dst: String },
+    Placeholder(String),
+}
+
 impl<'_> From<line::ZoneInfo<'_>> for ZoneInfo {
     fn from(info: line::ZoneInfo) -> ZoneInfo {
         ZoneInfo {
@@ -343,8 +333,48 @@ impl<'_> From<line::ZoneInfo<'_>> for ZoneInfo {
                 line::Saving::Multiple(s)  => Saving::Multiple(s.to_owned()),
                 line::Saving::OneOff(t)    => Saving::OneOff(t.as_seconds()),
             },
-            format: info.format.to_owned(),
+            format:   Format::new(info.format),
             end_time: info.time,
+        }
+    }
+}
+
+impl Format {
+    fn new(template: &str) -> Format {
+        if let Some(pos) = template.find('/') {
+            Format::Alternate {
+                standard:  template[.. pos].to_owned(),
+                dst:       template[pos + 1 ..].to_owned(),
+            }
+        }
+        else if template.contains("%s") {
+            Format::Placeholder(template.to_owned())
+        }
+        else {
+            Format::Constant(template.to_owned())
+        }
+    }
+
+    fn format(&self, dst_offset: i64, letters: Option<&String>) -> String {
+        let letters = match letters {
+            Some(l) => &**l,
+            None    => "",
+        };
+
+        match *self {
+            Format::Constant(ref s) => s.clone(),
+            Format::Placeholder(ref s) => s.replace("%s", letters),
+            Format::Alternate { ref standard, .. } if dst_offset == 0 => standard.clone(),
+            Format::Alternate { ref dst, .. } => dst.clone(),
+        }
+    }
+
+    fn format_constant(&self) -> String {
+        if let Format::Constant(ref s) = *self {
+            s.clone()
+        }
+        else {
+            panic!("Expected a constant formatting string");
         }
     }
 }
