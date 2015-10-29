@@ -493,6 +493,13 @@ pub enum Error<'line> {
 
 #[cfg(test)]
 mod test {
+
+    // Allow unused results in test code, because the only 'results' that
+    // we need to ignore are the ones from inserting and removing from
+    // tables and vectors. And as we set them up ourselves, they're bound
+    // to be correct, otherwise the tests would fail!
+    #![allow(unused_results)]
+
     use super::{Transition, Saving, ZoneInfo, RuleInfo, Ruleset, Table, Zoneset, Format, optimise};
     use datetime::local::Weekday::*;
     use datetime::local::Month::*;
