@@ -14,8 +14,7 @@ extern crate regex;
 #[macro_use] extern crate lazy_static;
 
 mod line;
-pub use line::{Line, ZoneTime};
-// ^ ZoneTime needs to be here, otherwise you get a linker error (weird!)
+pub use line::Line;
 
 mod table;
 pub use table::{Table, TableBuilder, Saving};
