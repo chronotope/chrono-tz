@@ -195,20 +195,22 @@ fn optimise(transitions: &mut Vec<Transition>) {
     let mut to_i = 0;
 
     while from_i < transitions.len() {
-        if to_i > 1
-        && transitions[from_i].occurs_at.is_some()
-        && transitions[to_i - 1].occurs_at.is_some()
-        && transitions[from_i].occurs_at.unwrap()   + transitions[to_i - 1].total_offset() <=
-           transitions[to_i - 1].occurs_at.unwrap() + transitions[to_i - 2].total_offset() {
-            transitions[to_i - 1] = Transition {
-                occurs_at:  transitions[to_i - 1].occurs_at,
-                name:       transitions[from_i].name.clone(),
-                utc_offset: transitions[from_i].utc_offset,
-                dst_offset: transitions[from_i].dst_offset,
-            };
+        if to_i > 1 {
+            if let (Some(from), Some(to)) = (transitions[from_i].occurs_at, transitions[to_i - 1].occurs_at) {
+                if from + transitions[to_i - 1].total_offset() <= to + transitions[to_i - 2].total_offset() {
+                    let replacement_transition = Transition {
+                        occurs_at:  transitions[to_i - 1].occurs_at,
+                        name:       transitions[from_i].name.clone(),
+                        utc_offset: transitions[from_i].utc_offset,
+                        dst_offset: transitions[from_i].dst_offset,
+                    };
 
-            from_i += 1;
-            continue;
+                    transitions[to_i - 1] = replacement_transition;
+                    from_i += 1;
+                    continue;
+                }
+            }
+
         }
 
         if to_i == 0
