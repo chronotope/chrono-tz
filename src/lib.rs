@@ -17,7 +17,8 @@ mod line;
 pub use line::Line;
 
 mod table;
-pub use table::{Table, TableBuilder, Saving};
+pub use table::{Table, TableBuilder, Saving, Transition};
+// ^ Transition needs to be there, otherwise you get a linker error. Weird huh?
 
 mod structure;
 pub use structure::*;

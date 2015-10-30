@@ -9,10 +9,10 @@ use std::fs::{File, OpenOptions, create_dir, metadata};
 use std::path::{Path, PathBuf};
 use std::process::exit;
 
+
 fn main() {
     let args: Vec<_> = args().skip(1).collect();
 
-    // let base_path = "~/Code/datetime/zoneinfo-data/src/data";
     let data_crate = match DataCrate::new(&args[0], &args[1..]) {
         Ok(dc) => dc,
         Err(_) => {
@@ -167,8 +167,12 @@ impl DataCrate {
             try!(writeln!(w, "pub const ZONE: Zone<'static> = Zone {{"));
             try!(writeln!(w, "    name: {:?},", name));
             try!(writeln!(w, "    transitions: &["));
-            for info in &self.table.transitions(&*name) {
-                try!(writeln!(w, "        {:?},", info));
+            for t in &self.table.transitions(&*name) {
+                try!(writeln!(w, "        Transition {{"));
+                try!(writeln!(w, "            occurs_at: {:?},", t.occurs_at));
+                try!(writeln!(w, "            offset: {:?},",     t.total_offset()));
+                try!(writeln!(w, "            name: {:?},",      t.name));
+                try!(writeln!(w, "        }},"));
             }
             try!(writeln!(w, "    ],"));
             try!(writeln!(w, "}};\n\n"));
