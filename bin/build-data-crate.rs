@@ -170,8 +170,12 @@ impl DataCrate {
             for t in &self.table.transitions(&*name) {
                 try!(writeln!(w, "        Transition {{"));
                 try!(writeln!(w, "            occurs_at: {:?},", t.occurs_at));
-                try!(writeln!(w, "            offset: {:?},",     t.total_offset()));
-                try!(writeln!(w, "            name: {:?},",      t.name));
+
+                // Write the total offset (the only value that gets used)
+                // and both the offsets that get added together, as a
+                // comment in the data crate.
+                try!(writeln!(w, "            offset: {:?},  // UTC offset {:?}, DST offset {:?}", t.total_offset(), t.utc_offset, t.dst_offset));
+                try!(writeln!(w, "            name: {:?},", t.name));
                 try!(writeln!(w, "        }},"));
             }
             try!(writeln!(w, "    ],"));
