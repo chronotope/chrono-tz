@@ -8,8 +8,6 @@ name = "build-data-crate"
 path = "bin/build-data-crate.rs"
 
 [dependencies]
+datetime = "*"
 lazy_static = "*"
 regex = "*"
-
-[dependencies.datetime]
-git = "https://github.com/rust-datetime/datetime.git"
