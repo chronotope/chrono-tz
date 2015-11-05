@@ -23,24 +23,31 @@ pub struct Table {
 pub struct Ruleset(pub Vec<RuleInfo>);
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct Transition {
-    pub occurs_at:  Option<i64>,
+pub struct ZoneSet {
+    pub first: ZoneDetails,
+    pub rest: Vec<(i64, ZoneDetails)>,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct ZoneDetails {
     pub utc_offset: i64,
     pub dst_offset: i64,
     pub name:       String,
 }
 
-impl Transition {
+impl ZoneDetails {
     pub fn total_offset(&self) -> i64 {
         self.utc_offset + self.dst_offset
     }
 }
 
 impl Table {
-    pub fn transitions(&self, zone_name: &str) -> Vec<Transition> {
+    pub fn transitions(&self, zone_name: &str) -> ZoneSet {
         let mut transitions = Vec::new();
         let mut start_time = None;
         let mut until_time = None;
+
+        let mut first_transition = None;
 
         let timespans = &self.zonesets[zone_name];
         for (i, timespan) in timespans.0.iter().enumerate() {
@@ -59,23 +66,20 @@ impl Table {
                     start_zone_id = Some(timespan.format.format_constant());
 
                     if insert_start_transition {
-                        let t = Transition {
-                            occurs_at:  Some(start_time.unwrap()),
+                        let t = (start_time.unwrap(), ZoneDetails {
                             utc_offset: utc_offset,
                             dst_offset: dst_offset,
                             name:       start_zone_id.clone().unwrap_or("".to_string()),
-                        };
+                        });
                         transitions.push(t);
                         insert_start_transition = false;
                     }
                     else {
-                        let t = Transition {
-                            occurs_at:  None,
+                        first_transition = Some(ZoneDetails {
                             utc_offset: utc_offset,
                             dst_offset: dst_offset,
                             name:       start_zone_id.clone().unwrap_or("".to_string()),
-                        };
-                        transitions.push(t);
+                        });
                     }
                 },
 
@@ -84,23 +88,20 @@ impl Table {
                     start_zone_id = Some(timespan.format.format_constant());
 
                     if insert_start_transition {
-                        let t = Transition {
-                            occurs_at:  Some(start_time.unwrap()),
+                        let t = (start_time.unwrap(), ZoneDetails {
                             utc_offset: utc_offset,
                             dst_offset: dst_offset,
                             name:       start_zone_id.clone().unwrap_or("".to_string()),
-                        };
+                        });
                         transitions.push(t);
                         insert_start_transition = false;
                     }
                     else {
-                        let t = Transition {
-                            occurs_at:  None,
+                        first_transition = Some(ZoneDetails {
                             utc_offset: utc_offset,
                             dst_offset: dst_offset,
                             name:       start_zone_id.clone().unwrap_or("".to_string()),
-                        };
-                        transitions.push(t);
+                        });
                     }
                 },
 
@@ -157,12 +158,11 @@ impl Table {
                                 }
                             }
 
-                            let t = Transition {
-                                occurs_at:  Some(earliest_at),
+                            let t = (earliest_at, ZoneDetails {
                                 utc_offset: timespan.offset,
                                 dst_offset: earliest_rule.time_to_add,
                                 name:       timespan.format.format(earliest_rule.time_to_add, earliest_rule.letters.as_ref()),
-                            };
+                            });
                             transitions.push(t);
                         }
                     }
@@ -170,12 +170,11 @@ impl Table {
             }
 
             if insert_start_transition {
-                let t = Transition {
-                    occurs_at:  Some(start_time.unwrap()),
+                let t = (start_time.unwrap(), ZoneDetails {
                     utc_offset: start_utc_offset,
                     dst_offset: start_dst_offset,
                     name:       start_zone_id.clone().unwrap(),
-                };
+                });
                 transitions.push(t);
             }
 
@@ -184,40 +183,44 @@ impl Table {
             }
         }
 
-        transitions.sort_by(|a, b| a.occurs_at.cmp(&b.occurs_at));
-        optimise(&mut transitions);
-        transitions
+        transitions.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let first = match first_transition {
+            Some(ft) => ft,
+            None     => transitions.iter().find(|t| t.1.dst_offset == 0).unwrap().1.clone(),
+        };
+
+        let mut zoneset = ZoneSet {
+            first: first,
+            rest:  transitions,
+        };
+        optimise(&mut zoneset);
+        zoneset
     }
 }
 
-fn optimise(transitions: &mut Vec<Transition>) {
+fn optimise(transitions: &mut ZoneSet) {
     let mut from_i = 0;
     let mut to_i = 0;
 
-    while from_i < transitions.len() {
+    while from_i < transitions.rest.len() {
         if to_i > 1 {
-            if let (Some(from), Some(to)) = (transitions[from_i].occurs_at, transitions[to_i - 1].occurs_at) {
-                if from + transitions[to_i - 1].total_offset() <= to + transitions[to_i - 2].total_offset() {
-                    let replacement_transition = Transition {
-                        occurs_at:  transitions[to_i - 1].occurs_at,
-                        name:       transitions[from_i].name.clone(),
-                        utc_offset: transitions[from_i].utc_offset,
-                        dst_offset: transitions[from_i].dst_offset,
-                    };
+            let from = transitions.rest[from_i].0;
+            let to = transitions.rest[to_i - 1].0;
+            if from + transitions.rest[to_i - 1].1.total_offset() <= to + transitions.rest[to_i - 2].1.total_offset() {
+                let replacement_transition = (transitions.rest[to_i - 1].0, transitions.rest[from_i].1.clone());
 
-                    transitions[to_i - 1] = replacement_transition;
-                    from_i += 1;
-                    continue;
-                }
+                transitions.rest[to_i - 1] = replacement_transition;
+                from_i += 1;
+                continue;
             }
-
         }
 
         if to_i == 0
-        || transitions[to_i - 1].utc_offset != transitions[from_i].utc_offset
-        || transitions[to_i - 1].dst_offset != transitions[from_i].dst_offset
-        || transitions[to_i - 1].name       != transitions[from_i].name {
-            transitions[to_i] = transitions[from_i].clone();
+        || transitions.rest[to_i - 1].1.utc_offset != transitions.rest[from_i].1.utc_offset
+        || transitions.rest[to_i - 1].1.dst_offset != transitions.rest[from_i].1.dst_offset
+        || transitions.rest[to_i - 1].1.name       != transitions.rest[from_i].1.name {
+            transitions.rest[to_i] = transitions.rest[from_i].clone();
             to_i += 1;
         }
 
@@ -225,7 +228,11 @@ fn optimise(transitions: &mut Vec<Transition>) {
     }
 
     if to_i > 0 {
-        transitions.truncate(to_i);
+        transitions.rest.truncate(to_i);
+    }
+
+    if !transitions.rest.is_empty() && transitions.first == transitions.rest[0].1 {
+        transitions.rest.remove(0);
     }
 }
 

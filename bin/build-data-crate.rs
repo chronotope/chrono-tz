@@ -167,15 +167,24 @@ impl DataCrate {
             try!(writeln!(w, "pub const ZONE: Zone<'static> = Zone {{"));
             try!(writeln!(w, "    name: {:?},", name));
             try!(writeln!(w, "    transitions: &["));
-            for t in &self.table.transitions(&*name) {
+
+            let set = self.table.transitions(&*name);
+
                 try!(writeln!(w, "        Transition {{"));
-                try!(writeln!(w, "            occurs_at: {:?},", t.occurs_at));
+                try!(writeln!(w, "            occurs_at: None,"));
+                try!(writeln!(w, "            offset: {:?},  // UTC offset {:?}, DST offset {:?}", set.first.total_offset(), set.first.utc_offset, set.first.dst_offset));
+                try!(writeln!(w, "            name: {:?},", set.first.name));
+                try!(writeln!(w, "        }},"));
+
+            for t in &set.rest {
+                try!(writeln!(w, "        Transition {{"));
+                try!(writeln!(w, "            occurs_at: {:?},", Some(t.0)));
 
                 // Write the total offset (the only value that gets used)
                 // and both the offsets that get added together, as a
                 // comment in the data crate.
-                try!(writeln!(w, "            offset: {:?},  // UTC offset {:?}, DST offset {:?}", t.total_offset(), t.utc_offset, t.dst_offset));
-                try!(writeln!(w, "            name: {:?},", t.name));
+                try!(writeln!(w, "            offset: {:?},  // UTC offset {:?}, DST offset {:?}", t.1.total_offset(), t.1.utc_offset, t.1.dst_offset));
+                try!(writeln!(w, "            name: {:?},", t.1.name));
                 try!(writeln!(w, "        }},"));
             }
             try!(writeln!(w, "    ],"));
