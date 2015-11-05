@@ -199,6 +199,7 @@ impl Table {
     }
 }
 
+#[allow(unused_results)]  // for remove
 fn optimise(transitions: &mut ZoneSet) {
     let mut from_i = 0;
     let mut to_i = 0;
@@ -208,18 +209,13 @@ fn optimise(transitions: &mut ZoneSet) {
             let from = transitions.rest[from_i].0;
             let to = transitions.rest[to_i - 1].0;
             if from + transitions.rest[to_i - 1].1.total_offset() <= to + transitions.rest[to_i - 2].1.total_offset() {
-                let replacement_transition = (transitions.rest[to_i - 1].0, transitions.rest[from_i].1.clone());
-
-                transitions.rest[to_i - 1] = replacement_transition;
+                transitions.rest[to_i - 1].1 = transitions.rest[from_i].1.clone();
                 from_i += 1;
                 continue;
             }
         }
 
-        if to_i == 0
-        || transitions.rest[to_i - 1].1.utc_offset != transitions.rest[from_i].1.utc_offset
-        || transitions.rest[to_i - 1].1.dst_offset != transitions.rest[from_i].1.dst_offset
-        || transitions.rest[to_i - 1].1.name       != transitions.rest[from_i].1.name {
+        if to_i == 0 || transitions.rest[to_i - 1].1 != transitions.rest[from_i].1 {
             transitions.rest[to_i] = transitions.rest[from_i].clone();
             to_i += 1;
         }
@@ -227,9 +223,7 @@ fn optimise(transitions: &mut ZoneSet) {
         from_i += 1
     }
 
-    if to_i > 0 {
-        transitions.rest.truncate(to_i);
-    }
+    transitions.rest.truncate(to_i);
 
     if !transitions.rest.is_empty() && transitions.first == transitions.rest[0].1 {
         transitions.rest.remove(0);
