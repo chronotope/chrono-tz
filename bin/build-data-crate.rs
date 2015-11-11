@@ -147,7 +147,7 @@ impl DataCrate {
         }
 
         try!(writeln!(base_w, "\n\n"));
-        try!(writeln!(base_w, "pub fn lookup(input: &str) -> Option<TimeZone> {{"));
+        try!(writeln!(base_w, "pub fn lookup(input: &str) -> Option<TimeZone<'static>> {{"));
         for name in &keys {
             try!(writeln!(base_w, "    if input == {:?} {{", name));
             try!(writeln!(base_w, "        return Some({});", sanitise_name(name).replace("/", "::")));
