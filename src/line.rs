@@ -129,12 +129,12 @@ impl<'line> Rule<'line> {
     /// Attempts to parse the given string into a value of this type.
     fn from_str(input: &str) -> Result<Rule, Error> {
         if let Some(caps) = RULE_LINE.captures(input) {
-            let name         = caps.name("name").unwrap();
-            let from_year    = try!(caps.name("from").unwrap().parse());
+            let name      = caps.name("name").unwrap();
+            let from_year = try!(caps.name("from").unwrap().parse());
 
             // The end year can be 'only' to indicate that this rule only
             // takes place on that year.
-            let to_year      = match caps.name("to").unwrap() {
+            let to_year = match caps.name("to").unwrap() {
                 "only"  => None,
                 to      => Some(try!(to.parse())),
             };
@@ -148,11 +148,11 @@ impl<'line> Rule<'line> {
                 return Err(Error::Fail);
             }
 
-            let month         = try!(caps.name("in").unwrap().parse());
-            let day           = try!(caps.name("on").unwrap().parse());
-            let time          = try!(caps.name("at").unwrap().parse());
-            let time_to_add   = try!(caps.name("save").unwrap().parse());
-            let letters       = match caps.name("letters").unwrap() {
+            let month        = try!(caps.name("in").unwrap().parse());
+            let day          = try!(caps.name("on").unwrap().parse());
+            let time         = try!(caps.name("at").unwrap().parse());
+            let time_to_add  = try!(caps.name("save").unwrap().parse());
+            let letters      = match caps.name("letters").unwrap() {
                 "-"  => None,
                 l    => Some(l),
             };
@@ -203,6 +203,24 @@ pub struct Zone<'line> {
     pub info: ZoneInfo<'line>,
 }
 
+impl<'line> Zone<'line> {
+    fn from_str(input: &str) -> Result<Zone, Error> {
+        if let Some(caps) = ZONE_LINE.captures(input) {
+            let name = caps.name("name").unwrap();
+            let info = try!(ZoneInfo::from_captures(caps));
+
+            Ok(Zone {
+                name: name,
+                info: info,
+            })
+        }
+        else {
+            Err(Error::Fail)
+        }
+    }
+}
+
+
 /// The information contained in both zone lines *and* zone continuation lines.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct ZoneInfo<'line> {
@@ -220,23 +238,6 @@ pub struct ZoneInfo<'line> {
 
     /// The time at which the rules change for this location, or `None` if these rules
     pub time: Option<ZoneTime>,
-}
-
-impl<'line> Zone<'line> {
-    fn from_str(input: &str) -> Result<Zone, Error> {
-        if let Some(caps) = ZONE_LINE.captures(input) {
-            let name = caps.name("name").unwrap();
-            let info = try!(ZoneInfo::from_captures(caps));
-
-            Ok(Zone {
-                name: name,
-                info: info,
-            })
-        }
-        else {
-            Err(Error::Fail)
-        }
-    }
 }
 
 impl<'line> ZoneInfo<'line> {
