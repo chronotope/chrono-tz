@@ -1,6 +1,3 @@
-extern crate zoneinfo_parse;
-use zoneinfo_parse::{Line, TableBuilder, Table, Structure, Child};
-
 use std::env::args;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -8,6 +5,12 @@ use std::io::Result as IoResult;
 use std::fs::{File, OpenOptions, create_dir, metadata};
 use std::path::{Path, PathBuf};
 use std::process::exit;
+
+extern crate datetime;
+use datetime::local::LocalDateTime;
+
+extern crate zoneinfo_parse;
+use zoneinfo_parse::{Line, TableBuilder, Table, Structure, Child};
 
 
 fn main() {
@@ -144,7 +147,7 @@ impl DataCrate {
         }
 
         try!(writeln!(base_w, "\n\n"));
-        try!(writeln!(base_w, "pub fn lookup(input: &str) -> Option<Zone> {{"));
+        try!(writeln!(base_w, "pub fn lookup(input: &str) -> Option<TimeZone> {{"));
         for name in &keys {
             try!(writeln!(base_w, "    if input == {:?} {{", name));
             try!(writeln!(base_w, "        return Some({});", sanitise_name(name).replace("/", "::")));
@@ -164,27 +167,29 @@ impl DataCrate {
             try!(writeln!(w, "{}", WARNING_HEADER));
             try!(writeln!(w, "{}", ZONEINFO_HEADER));
 
-            try!(writeln!(w, "pub const ZONE: Zone<'static> = Zone {{"));
+            try!(writeln!(w, "pub const ZONE: TimeZone<'static> = TimeZone {{"));
             try!(writeln!(w, "    name: {:?},", name));
-            try!(writeln!(w, "    transitions: ZoneSet {{"));
+            try!(writeln!(w, "    fixed_timespans: FixedTimespanSet {{"));
 
             let set = self.table.transitions(&*name);
 
-            try!(writeln!(w, "        first: ZoneDetails {{"));
+            try!(writeln!(w, "        first: FixedTimespan {{"));
             try!(writeln!(w, "            offset: {:?},  // UTC offset {:?}, DST offset {:?}", set.first.total_offset(), set.first.utc_offset, set.first.dst_offset));
-            try!(writeln!(w, "            name: {:?},", set.first.name));
+            try!(writeln!(w, "            is_dst: {:?},", set.first.dst_offset != 0));
+            try!(writeln!(w, "            name:   {:?},", set.first.name));
             try!(writeln!(w, "        }},"));
 
             try!(writeln!(w, "        rest: &["));
 
             for t in &set.rest {
-                try!(writeln!(w, "        ({:?}, ZoneDetails {{", t.0));
+                try!(writeln!(w, "        ({:?}, FixedTimespan {{  // {:?} UTC", t.0, LocalDateTime::at(t.0)));
 
                 // Write the total offset (the only value that gets used)
                 // and both the offsets that get added together, as a
                 // comment in the data crate.
                 try!(writeln!(w, "            offset: {:?},  // UTC offset {:?}, DST offset {:?}", t.1.total_offset(), t.1.utc_offset, t.1.dst_offset));
-                try!(writeln!(w, "            name: {:?},", t.1.name));
+                try!(writeln!(w, "            is_dst: {:?},", t.1.dst_offset != 0));
+                try!(writeln!(w, "            name:   {:?},", t.1.name));
                 try!(writeln!(w, "        }}),"));
             }
             try!(writeln!(w, "    ]}},"));
@@ -214,5 +219,5 @@ const WARNING_HEADER: &'static str = r##"
 "##;
 
 const ZONEINFO_HEADER: &'static str = r##"
-use datetime::zoned::zoneinfo::*;
+use datetime::zoned::zoned::*;
 "##;

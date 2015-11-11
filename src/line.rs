@@ -2,7 +2,7 @@ use std::ascii::AsciiExt;
 use std::str::FromStr;
 
 use datetime::local::{self, LocalDate, LocalTime, LocalDateTime};
-use datetime::zoned::zoneinfo::TimeType;
+use datetime::zoned::TimeType;
 
 use regex::{Regex, Captures};
 

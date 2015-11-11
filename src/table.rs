@@ -2,7 +2,7 @@ use std::collections::hash_map::{HashMap, Entry};
 
 use line::{self, YearSpec, MonthSpec, DaySpec, ZoneTime};
 use datetime::local::{LocalDateTime, LocalTime};
-use datetime::zoned::zoneinfo::TimeType;
+use datetime::zoned::TimeType;
 
 
 /// A table of all the data in one or more zoneinfo files.
