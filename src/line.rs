@@ -1,8 +1,8 @@
 use std::ascii::AsciiExt;
 use std::str::FromStr;
 
-use datetime::local::{self, LocalDate, LocalTime, LocalDateTime};
-use datetime::zoned::TimeType;
+use datetime::{LocalDate, LocalTime, LocalDateTime, Month, Weekday};
+use datetime::zone::TimeType;
 
 use regex::{Regex, Captures};
 
@@ -330,9 +330,9 @@ impl ZoneTime {
         use self::TimeSpec::*;
 
         match *self {
-            UntilYear(Number(y))       => LocalDateTime::new(LocalDate::ymd(y, local::Month::January, 1).unwrap(), LocalTime::midnight()),
-            UntilMonth(Number(y), m)   => LocalDateTime::new(LocalDate::ymd(y, m.0, 1).unwrap(),                   LocalTime::midnight()),
-            UntilDay(Number(y), m, d)  => LocalDateTime::new(d.to_concrete_date(y, m.0),                           LocalTime::midnight()),
+            UntilYear(Number(y))       => LocalDateTime::new(LocalDate::ymd(y, Month::January, 1).unwrap(), LocalTime::midnight()),
+            UntilMonth(Number(y), m)   => LocalDateTime::new(LocalDate::ymd(y, m.0, 1).unwrap(),            LocalTime::midnight()),
+            UntilDay(Number(y), m, d)  => LocalDateTime::new(d.to_concrete_date(y, m.0),                    LocalTime::midnight()),
 
             UntilTime(Number(y), m, d, time) => {
                 let local_time = match time.0 {
@@ -419,9 +419,9 @@ impl FromStr for YearSpec {
 
 
 /// A **month** field, which is actually just a wrapper around
-/// `datetime::local::Month`.
+/// `datetime::Month`.
 #[derive(PartialEq, Debug, Copy, Clone)]
-pub struct MonthSpec(pub local::Month);
+pub struct MonthSpec(pub Month);
 
 impl FromStr for MonthSpec {
     type Err = Error;
@@ -429,18 +429,18 @@ impl FromStr for MonthSpec {
     /// Attempts to parse the given string into a value of this type.
     fn from_str(input: &str) -> Result<MonthSpec, Self::Err> {
         Ok(match &*input.to_ascii_lowercase() {
-            "jan" | "january"    => MonthSpec(local::Month::January),
-            "feb" | "february"   => MonthSpec(local::Month::February),
-            "mar" | "march"      => MonthSpec(local::Month::March),
-            "apr" | "april"      => MonthSpec(local::Month::April),
-            "may"                => MonthSpec(local::Month::May),
-            "jun" | "june"       => MonthSpec(local::Month::June),
-            "jul" | "july"       => MonthSpec(local::Month::July),
-            "aug" | "august"     => MonthSpec(local::Month::August),
-            "sep" | "september"  => MonthSpec(local::Month::September),
-            "oct" | "october"    => MonthSpec(local::Month::October),
-            "nov" | "november"   => MonthSpec(local::Month::November),
-            "dec" | "december"   => MonthSpec(local::Month::December),
+            "jan" | "january"    => MonthSpec(Month::January),
+            "feb" | "february"   => MonthSpec(Month::February),
+            "mar" | "march"      => MonthSpec(Month::March),
+            "apr" | "april"      => MonthSpec(Month::April),
+            "may"                => MonthSpec(Month::May),
+            "jun" | "june"       => MonthSpec(Month::June),
+            "jul" | "july"       => MonthSpec(Month::July),
+            "aug" | "august"     => MonthSpec(Month::August),
+            "sep" | "september"  => MonthSpec(Month::September),
+            "oct" | "october"    => MonthSpec(Month::October),
+            "nov" | "november"   => MonthSpec(Month::November),
+            "dec" | "december"   => MonthSpec(Month::December),
                   _              => return Err(Error::Fail),
         })
     }
@@ -448,9 +448,9 @@ impl FromStr for MonthSpec {
 
 
 /// A **weekday** field, which is actually just a wrapper around
-/// `datetime::local::Weekday`.
+/// `datetime::Weekday`.
 #[derive(PartialEq, Debug, Copy, Clone)]
-pub struct WeekdaySpec(pub local::Weekday);
+pub struct WeekdaySpec(pub Weekday);
 
 impl FromStr for WeekdaySpec {
     type Err = Error;
@@ -458,13 +458,13 @@ impl FromStr for WeekdaySpec {
     fn from_str(input: &str) -> Result<WeekdaySpec, Self::Err> {
 
         Ok(match &*input.to_ascii_lowercase() {
-            "mon" | "monday"     => WeekdaySpec(local::Weekday::Monday),
-            "tue" | "tuesday"    => WeekdaySpec(local::Weekday::Tuesday),
-            "wed" | "wednesday"  => WeekdaySpec(local::Weekday::Wednesday),
-            "thu" | "thursday"   => WeekdaySpec(local::Weekday::Thursday),
-            "fri" | "friday"     => WeekdaySpec(local::Weekday::Friday),
-            "sat" | "saturday"   => WeekdaySpec(local::Weekday::Saturday),
-            "sun" | "sunday"     => WeekdaySpec(local::Weekday::Sunday),
+            "mon" | "monday"     => WeekdaySpec(Weekday::Monday),
+            "tue" | "tuesday"    => WeekdaySpec(Weekday::Tuesday),
+            "wed" | "wednesday"  => WeekdaySpec(Weekday::Wednesday),
+            "thu" | "thursday"   => WeekdaySpec(Weekday::Thursday),
+            "fri" | "friday"     => WeekdaySpec(Weekday::Friday),
+            "sat" | "saturday"   => WeekdaySpec(Weekday::Saturday),
+            "sun" | "sunday"     => WeekdaySpec(Weekday::Sunday),
                   _              => return Err(Error::Fail),
         })
     }
@@ -501,8 +501,9 @@ impl DaySpec {
 
     /// Converts this day specification to a concrete date, given the year and
     /// month it should occur in.
-    pub fn to_concrete_date(&self, year: i64, month: local::Month) -> LocalDate {
-        use datetime::local::{LocalDate, Year, DatePiece};
+    pub fn to_concrete_date(&self, year: i64, month: Month) -> LocalDate {
+        use datetime::{LocalDate, DatePiece};
+        use datetime::iter::Year;
 
         match *self {
             DaySpec::Ordinal(day)           => LocalDate::ymd(year, month, day).unwrap(),
@@ -516,7 +517,7 @@ impl DaySpec {
     /// Panics if it can't find one. It should find one!
     fn find_weekday<I>(weekday: WeekdaySpec, mut iterator: I) -> LocalDate
     where I: Iterator<Item=LocalDate> {
-        use datetime::local::DatePiece;
+        use datetime::DatePiece;
 
         iterator.find(|date| date.weekday() == weekday.0)
                 .expect("Failed to find weekday")
@@ -738,14 +739,14 @@ mod test {
 
     mod rules {
         use super::*;
-        use datetime::zoned::zoneinfo::TimeType;
+        use datetime::zone::TimeType;
 
         test!(rule_1: "Rule  US    1967  1973  ‐     Apr  lastSun  2:00  1:00  D" => Ok(Line::Rule(Rule {
             name:         "US",
             from_year:    YearSpec::Number(1967),
             to_year:      Some(YearSpec::Number(1973)),
-            month:        MonthSpec(local::Month::April),
-            day:          DaySpec::Last(WeekdaySpec(local::Weekday::Sunday)),
+            month:        MonthSpec(Month::April),
+            day:          DaySpec::Last(WeekdaySpec(Weekday::Sunday)),
             time:         TimeSpec::HoursMinutes(2, 0).with_type(TimeType::Wall),
             time_to_add:  TimeSpec::HoursMinutes(1, 0),
             letters:      Some("D"),
@@ -766,8 +767,8 @@ mod test {
             name:        "EU",
             from_year:    YearSpec::Number(1977),
             to_year:      Some(YearSpec::Number(1980)),
-            month:        MonthSpec(local::Month::April),
-            day:          DaySpec::FirstOnOrAfter(WeekdaySpec(local::Weekday::Sunday), 1),
+            month:        MonthSpec(Month::April),
+            day:          DaySpec::FirstOnOrAfter(WeekdaySpec(Weekday::Sunday), 1),
             time:         TimeSpec::HoursMinutes(1, 0).with_type(TimeType::UTC),
             time_to_add:  TimeSpec::HoursMinutes(1, 0),
             letters:      Some("S"),
@@ -779,7 +780,7 @@ mod test {
 
     mod zones {
         use super::*;
-        use datetime::zoned::zoneinfo::TimeType;
+        use datetime::zone::TimeType;
 
         test!(zone: "Zone  Australia/Adelaide  9:30    Aus         AC%sT   1971 Oct 31  2:00:00" => Ok(Line::Zone(Zone {
             name: "Australia/Adelaide",

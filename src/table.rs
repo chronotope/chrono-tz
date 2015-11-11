@@ -1,8 +1,8 @@
 use std::collections::hash_map::{HashMap, Entry};
 
 use line::{self, YearSpec, MonthSpec, DaySpec, ZoneTime};
-use datetime::local::{LocalDateTime, LocalTime};
-use datetime::zoned::TimeType;
+use datetime::{LocalDateTime, LocalTime};
+use datetime::zone::TimeType;
 
 
 /// A table of all the data in one or more zoneinfo files.
@@ -106,7 +106,7 @@ impl Table {
                 },
 
                 Saving::Multiple(ref rules) => {
-                    use datetime::local::DatePiece;
+                    use datetime::DatePiece;
 
                     for year in 1800..2100 {
                         if use_until && year > LocalDateTime::at(timespan.end_time.unwrap().to_timestamp()).year() {
@@ -288,7 +288,7 @@ impl RuleInfo {
     }
 
     fn absolute_datetime(&self, year: i64, utc_offset: i64, dst_offset: i64) -> LocalDateTime {
-        use datetime::duration::Duration;
+        use datetime::Duration;
 
         let offset = match self.time_type {
             TimeType::UTC       => 0,
@@ -502,9 +502,9 @@ mod test {
     #![allow(unused_results)]
 
     use super::{Transition, Saving, ZoneInfo, RuleInfo, Ruleset, Table, Zoneset, Format, optimise};
-    use datetime::local::Weekday::*;
-    use datetime::local::Month::*;
-    use datetime::zoned::zoneinfo::TimeType;
+    use datetime::Weekday::*;
+    use datetime::Month::*;
+    use datetime::zone::TimeType;
     use line::DaySpec;
     use line::WeekdaySpec;
     use line::MonthSpec;

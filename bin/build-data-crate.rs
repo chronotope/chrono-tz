@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::exit;
 
 extern crate datetime;
-use datetime::local::LocalDateTime;
+use datetime::LocalDateTime;
 
 extern crate zoneinfo_parse;
 use zoneinfo_parse::{Line, TableBuilder, Table, Structure, Child};
@@ -105,7 +105,7 @@ impl DataCrate {
         let base_mod_path = self.base_path.join("mod.rs");
         let mut base_w = try!(OpenOptions::new().write(true).create(true).truncate(true).open(base_mod_path));
         try!(writeln!(base_w, "{}", WARNING_HEADER));
-        try!(writeln!(base_w, "{}", ZONEINFO_HEADER));
+        try!(writeln!(base_w, "{}", MOD_HEADER));
 
         for entry in self.table.structure() {
             if !entry.name.contains('/') {
@@ -219,5 +219,9 @@ const WARNING_HEADER: &'static str = r##"
 "##;
 
 const ZONEINFO_HEADER: &'static str = r##"
-use datetime::zoned::zoned::*;
+use datetime::zone::{TimeZone, FixedTimespanSet, FixedTimespan};
+"##;
+
+const MOD_HEADER: &'static str = r##"
+use datetime::zone::TimeZone;
 "##;
