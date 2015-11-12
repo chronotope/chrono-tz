@@ -1,7 +1,5 @@
 //! Parsing Olson DB formats.
 
-#![feature(iter_cmp)]
-
 #![warn(missing_copy_implementations)]
 #![warn(missing_debug_implementations)]
 //#![warn(missing_docs)]
@@ -17,7 +15,7 @@ mod line;
 pub use line::Line;
 
 mod table;
-pub use table::{Table, TableBuilder, Saving, ZoneSet, ZoneDetails};
+pub use table::{Table, TableBuilder, Saving, FixedTimespanSet, FixedTimespan};
 
 mod structure;
 pub use structure::*;

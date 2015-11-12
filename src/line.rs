@@ -724,7 +724,7 @@ impl<'line> Line<'line> {
 mod test {
     pub use std::str::FromStr;
     pub use super::*;
-    pub use datetime::local;
+    pub use datetime::{Weekday, Month};
 
     macro_rules! test {
         ($name:ident: $input:expr => $result:expr) => {
@@ -757,7 +757,7 @@ mod test {
             name:         "Greece",
             from_year:    YearSpec::Number(1976),
             to_year:      None,
-            month:        MonthSpec(local::Month::October),
+            month:        MonthSpec(Month::October),
             day:          DaySpec::Ordinal(10),
             time:         TimeSpec::HoursMinutes(2, 0).with_type(TimeType::Standard),
             time_to_add:  TimeSpec::Hours(0),
@@ -789,7 +789,7 @@ mod test {
                 utc_offset:  TimeSpec::HoursMinutes(9, 30),
                 saving:      Saving::Multiple("Aus"),
                 format:      "AC%sT",
-                time:        Some(ZoneTime::UntilTime(YearSpec::Number(1971), MonthSpec(local::Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0).with_type(TimeType::Wall))),
+                time:        Some(ZoneTime::UntilTime(YearSpec::Number(1971), MonthSpec(Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0).with_type(TimeType::Wall))),
             },
         })));
 
@@ -797,14 +797,14 @@ mod test {
             utc_offset:  TimeSpec::HoursMinutes(9, 30),
             saving:      Saving::Multiple("Aus"),
             format:      "AC%sT",
-            time:        Some(ZoneTime::UntilTime(YearSpec::Number(1971), MonthSpec(local::Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0).with_type(TimeType::Wall))),
+            time:        Some(ZoneTime::UntilTime(YearSpec::Number(1971), MonthSpec(Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0).with_type(TimeType::Wall))),
         })));
 
         test!(continuation_2: "			1:00	C-Eur	CE%sT	1943 Oct 25" => Ok(Line::Continuation(ZoneInfo {
             utc_offset:  TimeSpec::HoursMinutes(1, 00),
             saving:      Saving::Multiple("C-Eur"),
             format:      "CE%sT",
-            time:        Some(ZoneTime::UntilDay(YearSpec::Number(1943), MonthSpec(local::Month::October), DaySpec::Ordinal(25))),
+            time:        Some(ZoneTime::UntilDay(YearSpec::Number(1943), MonthSpec(Month::October), DaySpec::Ordinal(25))),
         })));
 
         test!(zone_hyphen: "Zone Asia/Ust-Nera\t 9:32:54 -\tLMT\t1919" => Ok(Line::Zone(Zone {
@@ -825,8 +825,8 @@ mod test {
 
     #[test]
     fn month() {
-        assert_eq!(MonthSpec::from_str("Aug"), Ok(MonthSpec(local::Month::August)));
-        assert_eq!(MonthSpec::from_str("December"), Ok(MonthSpec(local::Month::December)));
+        assert_eq!(MonthSpec::from_str("Aug"), Ok(MonthSpec(Month::August)));
+        assert_eq!(MonthSpec::from_str("December"), Ok(MonthSpec(Month::December)));
     }
 
     test!(golb: "GOLB" => Err(Error::Fail));

@@ -23,26 +23,26 @@ pub struct Table {
 pub struct Ruleset(pub Vec<RuleInfo>);
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct ZoneSet {
-    pub first: ZoneDetails,
-    pub rest: Vec<(i64, ZoneDetails)>,
+pub struct FixedTimespanSet {
+    pub first: FixedTimespan,
+    pub rest: Vec<(i64, FixedTimespan)>,
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct ZoneDetails {
+pub struct FixedTimespan {
     pub utc_offset: i64,
     pub dst_offset: i64,
     pub name:       String,
 }
 
-impl ZoneDetails {
+impl FixedTimespan {
     pub fn total_offset(&self) -> i64 {
         self.utc_offset + self.dst_offset
     }
 }
 
 impl Table {
-    pub fn transitions(&self, zone_name: &str) -> ZoneSet {
+    pub fn timespans(&self, zone_name: &str) -> FixedTimespanSet {
         let mut transitions = Vec::new();
         let mut start_time = None;
         let mut until_time = None;
@@ -66,7 +66,7 @@ impl Table {
                     start_zone_id = Some(timespan.format.format_constant());
 
                     if insert_start_transition {
-                        let t = (start_time.unwrap(), ZoneDetails {
+                        let t = (start_time.unwrap(), FixedTimespan {
                             utc_offset: utc_offset,
                             dst_offset: dst_offset,
                             name:       start_zone_id.clone().unwrap_or("".to_string()),
@@ -75,7 +75,7 @@ impl Table {
                         insert_start_transition = false;
                     }
                     else {
-                        first_transition = Some(ZoneDetails {
+                        first_transition = Some(FixedTimespan {
                             utc_offset: utc_offset,
                             dst_offset: dst_offset,
                             name:       start_zone_id.clone().unwrap_or("".to_string()),
@@ -88,7 +88,7 @@ impl Table {
                     start_zone_id = Some(timespan.format.format_constant());
 
                     if insert_start_transition {
-                        let t = (start_time.unwrap(), ZoneDetails {
+                        let t = (start_time.unwrap(), FixedTimespan {
                             utc_offset: utc_offset,
                             dst_offset: dst_offset,
                             name:       start_zone_id.clone().unwrap_or("".to_string()),
@@ -97,7 +97,7 @@ impl Table {
                         insert_start_transition = false;
                     }
                     else {
-                        first_transition = Some(ZoneDetails {
+                        first_transition = Some(FixedTimespan {
                             utc_offset: utc_offset,
                             dst_offset: dst_offset,
                             name:       start_zone_id.clone().unwrap_or("".to_string()),
@@ -122,13 +122,18 @@ impl Table {
                                 until_time = Some(timespan.end_time.unwrap().to_timestamp() - utc_offset - dst_offset);
                             }
 
+                            // Find the minimum rule based on the current UTC and DST offsets.
+                            // (this can be replaced with min_by when it stabilises):
+                            //.min_by(|r| r.1.absolute_datetime(year, utc_offset, dst_offset));
                             let pos = {
                                 let earliest = activated_rules.iter().enumerate()
-                                    .min_by(|r| r.1.absolute_datetime(year, utc_offset, dst_offset));
+                                    .map(|(i, r)| (r.absolute_datetime(year, utc_offset, dst_offset), i))
+                                    .min()
+                                    .map(|(_, i)| i);
 
                                 match earliest {
-                                    Some((p, _)) => p,
-                                    None         => break,
+                                    Some(p) => p,
+                                    None    => break,
                                 }
                             };
 
@@ -158,7 +163,7 @@ impl Table {
                                 }
                             }
 
-                            let t = (earliest_at, ZoneDetails {
+                            let t = (earliest_at, FixedTimespan {
                                 utc_offset: timespan.offset,
                                 dst_offset: earliest_rule.time_to_add,
                                 name:       timespan.format.format(earliest_rule.time_to_add, earliest_rule.letters.as_ref()),
@@ -169,17 +174,17 @@ impl Table {
                 }
             }
 
-            if insert_start_transition {
-                let t = (start_time.unwrap(), ZoneDetails {
+            if insert_start_transition && start_zone_id.is_some() {
+                let t = (start_time.expect("Start time"), FixedTimespan {
                     utc_offset: start_utc_offset,
                     dst_offset: start_dst_offset,
-                    name:       start_zone_id.clone().unwrap(),
+                    name:       start_zone_id.clone().expect("Start zone ID"),
                 });
                 transitions.push(t);
             }
 
             if use_until {
-                start_time = Some(timespan.end_time.unwrap().to_timestamp() - utc_offset - dst_offset);
+                start_time = Some(timespan.end_time.expect("End time").to_timestamp() - utc_offset - dst_offset);
             }
         }
 
@@ -190,7 +195,7 @@ impl Table {
             None     => transitions.iter().find(|t| t.1.dst_offset == 0).unwrap().1.clone(),
         };
 
-        let mut zoneset = ZoneSet {
+        let mut zoneset = FixedTimespanSet {
             first: first,
             rest:  transitions,
         };
@@ -200,7 +205,7 @@ impl Table {
 }
 
 #[allow(unused_results)]  // for remove
-fn optimise(transitions: &mut ZoneSet) {
+fn optimise(transitions: &mut FixedTimespanSet) {
     let mut from_i = 0;
     let mut to_i = 0;
 
@@ -501,7 +506,7 @@ mod test {
     // to be correct, otherwise the tests would fail!
     #![allow(unused_results)]
 
-    use super::{Transition, Saving, ZoneInfo, RuleInfo, Ruleset, Table, Zoneset, Format, optimise};
+    use super::{FixedTimespan, FixedTimespanSet, Saving, ZoneInfo, RuleInfo, Ruleset, Table, Zoneset, Format, optimise};
     use datetime::Weekday::*;
     use datetime::Month::*;
     use datetime::zone::TimeType;
@@ -524,14 +529,10 @@ mod test {
         let mut table = Table::default();
         table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ zone ]));
 
-        assert_eq!(table.transitions("Test/Zone"), vec![
-            Transition {
-                occurs_at:  None,
-                utc_offset: 1234,
-                dst_offset: 0,
-                name:       "TEST".to_owned(),
-            }
-        ]);
+        assert_eq!(table.timespans("Test/Zone"), FixedTimespanSet {
+            first: FixedTimespan { utc_offset: 1234, dst_offset: 0, name: "TEST".to_owned() },
+            rest:  vec![],
+        });
     }
 
     #[test]
@@ -553,20 +554,14 @@ mod test {
         let mut table = Table::default();
         table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ zone_1, zone_2 ]));
 
-        assert_eq!(table.transitions("Test/Zone"), vec![
-            Transition {
-                occurs_at: None,
-                utc_offset: 1234,
-                dst_offset: 0,
-                name:       "TEST".to_owned(),
-            },
-            Transition {
-                occurs_at: Some(122222),
-                utc_offset: 5678,
-                dst_offset: 0,
-                name:       "TSET".to_owned(),
-            },
-        ]);
+        let expected = FixedTimespanSet {
+            first:       FixedTimespan { utc_offset: 1234, dst_offset: 0, name: "TEST".to_owned() },
+            rest: vec![
+                (122222, FixedTimespan { utc_offset: 5678, dst_offset: 0, name: "TSET".to_owned() }),
+            ],
+        };
+
+        assert_eq!(table.timespans("Test/Zone"), expected);
     }
 
 
@@ -596,26 +591,23 @@ mod test {
         let mut table = Table::default();
         table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ zone_1, zone_2, zone_3 ]));
 
-        assert_eq!(table.transitions("Test/Zone"), vec![
-            Transition {
-                occurs_at: None,
-                utc_offset: 1234,
-                dst_offset: 0,
-                name: "TEST".to_owned(),
-            },
-            Transition {
-                occurs_at: Some(122222),
-                utc_offset: 3456,
-                dst_offset: 0,
-                name: "TSET".to_owned(),
-            },
-            Transition {
-                occurs_at: Some(231111),
-                utc_offset: 5678,
-                dst_offset: 0,
-                name: "ESTE".to_owned(),
-            },
-        ]);
+        let expected = FixedTimespanSet {
+            first: FixedTimespan { utc_offset: 1234, dst_offset: 0, name: "TEST".to_owned(), },
+            rest: vec![
+                (122222, FixedTimespan {
+                    utc_offset: 3456,
+                    dst_offset: 0,
+                    name: "TSET".to_owned(),
+                }),
+                (231111, FixedTimespan {
+                    utc_offset: 5678,
+                    dst_offset: 0,
+                    name: "ESTE".to_owned(),
+                }),
+            ],
+        };
+
+        assert_eq!(table.timespans("Test/Zone"), expected);
     }
 
     #[test]
@@ -633,6 +625,13 @@ mod test {
             }
         ]);
 
+        let lmt = ZoneInfo {
+            offset: 0,
+            format: Format::new("LMT"),
+            saving: Saving::NoSaving,
+            end_time: Some(ZoneTime::UntilYear(YearSpec::Number(1980))),
+        };
+
         let zone = ZoneInfo {
             offset: 2000,
             format: Format::new("TEST"),
@@ -641,17 +640,15 @@ mod test {
         };
 
         let mut table = Table::default();
-        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ zone ]));
+        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ lmt, zone ]));
         table.rulesets.insert("Dwayne".to_owned(), ruleset);
 
-        assert_eq!(table.transitions("Test/Zone"), vec![
-            Transition {
-                occurs_at:  Some(318_470_400),
-                utc_offset: 2000,
-                dst_offset: 1000,
-                name:       "TEST".to_owned(),
-            },
-        ]);
+        assert_eq!(table.timespans("Test/Zone"), FixedTimespanSet {
+            first: FixedTimespan { utc_offset: 0, dst_offset: 0, name: "LMT".to_owned() },
+            rest:  vec![
+                (318_470_400, FixedTimespan { utc_offset: 2000, dst_offset: 1000, name: "TEST".to_owned() })
+            ],
+        });
     }
 
     #[test]
@@ -679,6 +676,13 @@ mod test {
             },
         ]);
 
+        let lmt = ZoneInfo {
+            offset: 0,
+            format: Format::new("LMT"),
+            saving: Saving::NoSaving,
+            end_time: Some(ZoneTime::UntilYear(YearSpec::Number(1980))),
+        };
+
         let zone = ZoneInfo {
             offset: 2000,
             format: Format::new("TEST"),
@@ -687,45 +691,38 @@ mod test {
         };
 
         let mut table = Table::default();
-        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ zone ]));
+        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ lmt, zone ]));
         table.rulesets.insert("Dwayne".to_owned(), ruleset);
 
-        assert_eq!(table.transitions("Test/Zone"), vec![
-            Transition {
-                occurs_at:  Some(318_470_400),
-                utc_offset: 2000,
-                dst_offset: 1000,
-                name:       "TEST".to_owned(),
-            },
-            Transition {
-                occurs_at:  Some(600_566_400),
-                utc_offset: 2000,
-                dst_offset: 1500,
-                name:       "TEST".to_owned(),
-            },
-        ]);
+        assert_eq!(table.timespans("Test/Zone"), FixedTimespanSet {
+            first: FixedTimespan { utc_offset: 0, dst_offset: 0, name: "LMT".to_owned() },
+            rest: vec![
+                (318_470_400, FixedTimespan { utc_offset: 2000, dst_offset: 1000, name: "TEST".to_owned() }),
+                (600_566_400, FixedTimespan { utc_offset: 2000, dst_offset: 1500, name: "TEST".to_owned() }),
+            ],
+        });
     }
 
     #[test]
     fn tripoli() {
         let libya = Ruleset(vec![
-            RuleInfo { from_year: YearSpec::Number(1951), to_year: None,               month: MonthSpec(October),   day: DaySpec::Ordinal(14),               time: 7200, time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
-            RuleInfo { from_year: YearSpec::Number(1952), to_year: None,               month: MonthSpec(January),   day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
-            RuleInfo { from_year: YearSpec::Number(1953), to_year: None,               month: MonthSpec(October),   day: DaySpec::Ordinal(9),                time: 7200, time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
-            RuleInfo { from_year: YearSpec::Number(1954), to_year: None,               month: MonthSpec(January),   day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
-            RuleInfo { from_year: YearSpec::Number(1955), to_year: None,               month: MonthSpec(September), day: DaySpec::Ordinal(30),               time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
-            RuleInfo { from_year: YearSpec::Number(1956), to_year: None,               month: MonthSpec(January),   day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
+            RuleInfo { from_year: YearSpec::Number(1951), to_year: None,                         month: MonthSpec(October),   day: DaySpec::Ordinal(14),               time: 7200, time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(1952), to_year: None,                         month: MonthSpec(January),   day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
+            RuleInfo { from_year: YearSpec::Number(1953), to_year: None,                         month: MonthSpec(October),   day: DaySpec::Ordinal(9),                time: 7200, time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(1954), to_year: None,                         month: MonthSpec(January),   day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
+            RuleInfo { from_year: YearSpec::Number(1955), to_year: None,                         month: MonthSpec(September), day: DaySpec::Ordinal(30),               time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(1956), to_year: None,                         month: MonthSpec(January),   day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
             RuleInfo { from_year: YearSpec::Number(1982), to_year: Some(YearSpec::Number(1984)), month: MonthSpec(April),     day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
             RuleInfo { from_year: YearSpec::Number(1982), to_year: Some(YearSpec::Number(1985)), month: MonthSpec(October),   day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
-            RuleInfo { from_year: YearSpec::Number(1985), to_year: None,               month: MonthSpec(April),     day: DaySpec::Ordinal(6),                time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
-            RuleInfo { from_year: YearSpec::Number(1986), to_year: None,               month: MonthSpec(April),     day: DaySpec::Ordinal(4),                time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
-            RuleInfo { from_year: YearSpec::Number(1986), to_year: None,               month: MonthSpec(October),   day: DaySpec::Ordinal(3),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
+            RuleInfo { from_year: YearSpec::Number(1985), to_year: None,                         month: MonthSpec(April),     day: DaySpec::Ordinal(6),                time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(1986), to_year: None,                         month: MonthSpec(April),     day: DaySpec::Ordinal(4),                time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(1986), to_year: None,                         month: MonthSpec(October),   day: DaySpec::Ordinal(3),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
             RuleInfo { from_year: YearSpec::Number(1987), to_year: Some(YearSpec::Number(1989)), month: MonthSpec(April),     day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
             RuleInfo { from_year: YearSpec::Number(1987), to_year: Some(YearSpec::Number(1989)), month: MonthSpec(October),   day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
-            RuleInfo { from_year: YearSpec::Number(1997), to_year: None,               month: MonthSpec(April),     day: DaySpec::Ordinal(4),                time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
-            RuleInfo { from_year: YearSpec::Number(1997), to_year: None,               month: MonthSpec(October),   day: DaySpec::Ordinal(4),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
-            RuleInfo { from_year: YearSpec::Number(2013), to_year: None,               month: MonthSpec(March),     day: DaySpec::Last(WeekdaySpec(Friday)), time: 3600, time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
-            RuleInfo { from_year: YearSpec::Number(2013), to_year: None,               month: MonthSpec(October),   day: DaySpec::Last(WeekdaySpec(Friday)), time: 7200, time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
+            RuleInfo { from_year: YearSpec::Number(1997), to_year: None,                         month: MonthSpec(April),     day: DaySpec::Ordinal(4),                time: 0,    time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(1997), to_year: None,                         month: MonthSpec(October),   day: DaySpec::Ordinal(4),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
+            RuleInfo { from_year: YearSpec::Number(2013), to_year: None,                         month: MonthSpec(March),     day: DaySpec::Last(WeekdaySpec(Friday)), time: 3600, time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
+            RuleInfo { from_year: YearSpec::Number(2013), to_year: None,                         month: MonthSpec(October),   day: DaySpec::Last(WeekdaySpec(Friday)), time: 7200, time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
         ]);
 
         let zone = vec![
@@ -744,64 +741,68 @@ mod test {
         table.zonesets.insert("Test/Zone".to_owned(), Zoneset(zone));
         table.rulesets.insert("Libya".to_owned(), libya);
 
-        assert_eq!(table.transitions("Test/Zone"), vec![
-            Transition { utc_offset: 3164, dst_offset: 0,    occurs_at: None,                 name:  "LMT".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(-1_577_926_364), name:  "CET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(  -574_902_000), name: "CEST".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(  -568_087_200), name:  "CET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(  -512_175_600), name: "CEST".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(  -504_928_800), name:  "CET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(  -449_888_400), name: "CEST".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(  -441_856_800), name:  "CET".to_owned() },
-            Transition { utc_offset: 7200, dst_offset: 0,    occurs_at: Some(  -347_158_800), name:  "EET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   378_684_000), name:  "CET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   386_463_600), name: "CEST".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   402_271_200), name:  "CET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   417_999_600), name: "CEST".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   433_807_200), name:  "CET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   449_622_000), name: "CEST".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   465_429_600), name:  "CET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   481_590_000), name: "CEST".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   496_965_600), name:  "CET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   512_953_200), name: "CEST".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   528_674_400), name:  "CET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   544_230_000), name: "CEST".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   560_037_600), name:  "CET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   575_852_400), name: "CEST".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   591_660_000), name:  "CET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   607_388_400), name: "CEST".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   623_196_000), name:  "CET".to_owned() },
-            Transition { utc_offset: 7200, dst_offset: 0,    occurs_at: Some(   641_775_600), name:  "EET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some(   844_034_400), name:  "CET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some(   860_108_400), name: "CEST".to_owned() },
-            Transition { utc_offset: 7200, dst_offset: 0,    occurs_at: Some(   875_916_000), name:  "EET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 0,    occurs_at: Some( 1_352_505_600), name:  "CET".to_owned() },
-            Transition { utc_offset: 3600, dst_offset: 3600, occurs_at: Some( 1_364_515_200), name: "CEST".to_owned() },
-            Transition { utc_offset: 7200, dst_offset: 0,    occurs_at: Some( 1_382_659_200), name:  "EET".to_owned() },
-        ]);
+        assert_eq!(table.timespans("Test/Zone"), FixedTimespanSet {
+            first: FixedTimespan { utc_offset: 3164,  dst_offset:    0,  name:  "LMT".to_owned() },
+            rest: vec![
+                (-1_577_926_364, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                (  -574_902_000, FixedTimespan { utc_offset: 3600,  dst_offset: 3600,  name: "CEST".to_owned() }),
+                (  -568_087_200, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                (  -512_175_600, FixedTimespan { utc_offset: 3600,  dst_offset: 3600,  name: "CEST".to_owned() }),
+                (  -504_928_800, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                (  -449_888_400, FixedTimespan { utc_offset: 3600,  dst_offset: 3600,  name: "CEST".to_owned() }),
+                (  -441_856_800, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                (  -347_158_800, FixedTimespan { utc_offset: 7200,  dst_offset:    0,  name:  "EET".to_owned() }),
+                (   378_684_000, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                (   386_463_600, FixedTimespan { utc_offset: 3600,  dst_offset: 3600,  name: "CEST".to_owned() }),
+                (   402_271_200, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                (   417_999_600, FixedTimespan { utc_offset: 3600,  dst_offset: 3600,  name: "CEST".to_owned() }),
+                (   433_807_200, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                (   449_622_000, FixedTimespan { utc_offset: 3600,  dst_offset: 3600,  name: "CEST".to_owned() }),
+                (   465_429_600, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                (   481_590_000, FixedTimespan { utc_offset: 3600,  dst_offset: 3600,  name: "CEST".to_owned() }),
+                (   496_965_600, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                (   512_953_200, FixedTimespan { utc_offset: 3600,  dst_offset: 3600,  name: "CEST".to_owned() }),
+                (   528_674_400, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                (   544_230_000, FixedTimespan { utc_offset: 3600,  dst_offset: 3600,  name: "CEST".to_owned() }),
+                (   560_037_600, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                (   575_852_400, FixedTimespan { utc_offset: 3600,  dst_offset: 3600,  name: "CEST".to_owned() }),
+                (   591_660_000, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                (   607_388_400, FixedTimespan { utc_offset: 3600,  dst_offset: 3600,  name: "CEST".to_owned() }),
+                (   623_196_000, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                (   641_775_600, FixedTimespan { utc_offset: 7200,  dst_offset:    0,  name:  "EET".to_owned() }),
+                (   844_034_400, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                (   860_108_400, FixedTimespan { utc_offset: 3600,  dst_offset: 3600,  name: "CEST".to_owned() }),
+                (   875_916_000, FixedTimespan { utc_offset: 7200,  dst_offset:    0,  name:  "EET".to_owned() }),
+                ( 1_352_505_600, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
+                ( 1_364_515_200, FixedTimespan { utc_offset: 3600,  dst_offset: 3600,  name: "CEST".to_owned() }),
+                ( 1_382_659_200, FixedTimespan { utc_offset: 7200,  dst_offset:    0,  name:  "EET".to_owned() }),
+            ],
+        });
     }
 
     #[test]
     fn optimise_macquarie() {
-        let mut transitions = vec![
-            Transition { occurs_at: None,              utc_offset:     0, dst_offset:    0, name:  "zzz".to_owned() },
-            Transition { occurs_at: Some(-2214259200), utc_offset: 36000, dst_offset:    0, name: "AEST".to_owned() },
-            Transition { occurs_at: Some(-1680508800), utc_offset: 36000, dst_offset: 3600, name: "AEDT".to_owned() },
-            Transition { occurs_at: Some(-1669892400), utc_offset: 36000, dst_offset: 3600, name: "AEDT".to_owned() },  // gets removed
-            Transition { occurs_at: Some(-1665392400), utc_offset: 36000, dst_offset:    0, name: "AEST".to_owned() },
-            Transition { occurs_at: Some(-1601719200), utc_offset:     0, dst_offset:    0, name:  "zzz".to_owned() },
-            Transition { occurs_at: Some(-687052800),  utc_offset: 36000, dst_offset:    0, name: "AEST".to_owned() },
-            Transition { occurs_at: Some(-94730400),   utc_offset: 36000, dst_offset:    0, name: "AEST".to_owned() },  // also gets removed
-            Transition { occurs_at: Some(-71136000),   utc_offset: 36000, dst_offset: 3600, name: "AEDT".to_owned() },
-            Transition { occurs_at: Some(-55411200),   utc_offset: 36000, dst_offset:    0, name: "AEST".to_owned() },
-            Transition { occurs_at: Some(-37267200),   utc_offset: 36000, dst_offset: 3600, name: "AEDT".to_owned() },
-            Transition { occurs_at: Some(-25776000),   utc_offset: 36000, dst_offset:    0, name: "AEST".to_owned() },
-            Transition { occurs_at: Some(-5817600),    utc_offset: 36000, dst_offset: 3600, name: "AEDT".to_owned() },
-        ];
+        let mut transitions = FixedTimespanSet {
+            first: FixedTimespan { utc_offset:     0, dst_offset:    0, name:  "zzz".to_owned() },
+            rest: vec![
+                (-2_214_259_200, FixedTimespan { utc_offset: 36000,  dst_offset:    0,  name: "AEST".to_owned() }),
+                (-1_680_508_800, FixedTimespan { utc_offset: 36000,  dst_offset: 3600,  name: "AEDT".to_owned() }),
+                (-1_669_892_400, FixedTimespan { utc_offset: 36000,  dst_offset: 3600,  name: "AEDT".to_owned() }),  // gets removed
+                (-1_665_392_400, FixedTimespan { utc_offset: 36000,  dst_offset:    0,  name: "AEST".to_owned() }),
+                (-1_601_719_200, FixedTimespan { utc_offset:     0,  dst_offset:    0,  name:  "zzz".to_owned() }),
+                (  -687_052_800, FixedTimespan { utc_offset: 36000,  dst_offset:    0,  name: "AEST".to_owned() }),
+                (   -94_730_400, FixedTimespan { utc_offset: 36000,  dst_offset:    0,  name: "AEST".to_owned() }),  // also gets removed
+                (   -71_136_000, FixedTimespan { utc_offset: 36000,  dst_offset: 3600,  name: "AEDT".to_owned() }),
+                (   -55_411_200, FixedTimespan { utc_offset: 36000,  dst_offset:    0,  name: "AEST".to_owned() }),
+                (   -37_267_200, FixedTimespan { utc_offset: 36000,  dst_offset: 3600,  name: "AEDT".to_owned() }),
+                (   -25_776_000, FixedTimespan { utc_offset: 36000,  dst_offset:    0,  name: "AEST".to_owned() }),
+                (    -5_817_600, FixedTimespan { utc_offset: 36000,  dst_offset: 3600,  name: "AEDT".to_owned() }),
+            ],
+        };
 
         let mut result = transitions.clone();
-        result.remove(7);
-        result.remove(3);
+        result.rest.remove(6);
+        result.rest.remove(2);
 
         optimise(&mut transitions);
         assert_eq!(transitions, result);
