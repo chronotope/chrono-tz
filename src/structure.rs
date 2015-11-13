@@ -46,7 +46,7 @@ impl Structure for Table {
     fn structure(&self) -> TableStructure {
         let mut mappings = BTreeMap::new();
 
-        for key in self.zonesets.keys() {
+        for key in self.zonesets.keys().chain(self.links.keys()) {
 
             // Extract the name from the *last* slash. So
             // `America/Kentucky/Louisville` is split into

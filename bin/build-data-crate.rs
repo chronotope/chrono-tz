@@ -61,7 +61,7 @@ impl DataCrate {
 
                 let result = match Line::from_str(line_portion) {
 
-                    // If there's an error, then display which line failed to parse.
+                    // If there’s an error, then display which line failed to parse.
                     Err(_) => {
                         println!("Failed to parse line: {:?}", line_portion);
                         errors += 1;
@@ -136,7 +136,7 @@ impl DataCrate {
             }
         }
 
-        let mut keys: Vec<_> = self.table.zonesets.keys().collect();
+        let mut keys: Vec<_> = self.table.zonesets.keys().chain(self.table.links.keys()).collect();
         keys.sort();
 
         try!(writeln!(base_w, "\n\n"));
@@ -160,7 +160,7 @@ impl DataCrate {
     }
 
     fn write_zonesets(&self) -> IoResult<()> {
-        for name in self.table.zonesets.keys() {
+        for name in self.table.zonesets.keys().chain(self.table.links.keys()) {
             let components: PathBuf = name.split('/').map(sanitise_name).collect();
             let zoneset_path = self.base_path.join(components).with_extension("rs");
             let mut w = try!(OpenOptions::new().write(true).create(true).truncate(true).open(zoneset_path));

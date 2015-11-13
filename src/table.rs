@@ -88,7 +88,22 @@ impl FixedTimespan {
 
 impl Table {
 
-    /// Compute a fixed timespan set for the timezone with the given name.
+    /// Tries to find the zoneset with the given name by looking it up in
+    /// either the zonesets map or the links map.
+    pub fn get_zoneset(&self, zone_name: &str) -> &[ZoneInfo] {
+        if self.zonesets.contains_key(zone_name) {
+            &*self.zonesets[zone_name]
+        }
+        else if self.links.contains_key(zone_name) {
+            let target = &self.links[zone_name];
+            &*self.zonesets[&*target]
+        }
+        else {
+            panic!("No such zone: {:?}", zone_name);
+        }
+    }
+
+    /// Computes a fixed timespan set for the timezone with the given name.
     pub fn timespans(&self, zone_name: &str) -> FixedTimespanSet {
         let mut transitions = Vec::new();
         let mut start_time = None;
@@ -96,10 +111,10 @@ impl Table {
 
         let mut first_transition = None;
 
-        let timespans = &self.zonesets[zone_name];
-        for (i, timespan) in timespans.iter().enumerate() {
+        let zoneset = self.get_zoneset(zone_name);
+        for (i, timespan) in zoneset.iter().enumerate() {
             let mut dst_offset = 0;
-            let use_until      = i != timespans.len() - 1;
+            let use_until      = i != zoneset.len() - 1;
             let utc_offset     = timespan.offset;
 
             let mut insert_start_transition = i > 0;
