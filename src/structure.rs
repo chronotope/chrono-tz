@@ -1,34 +1,34 @@
-/// Determining the structure of a set of ruleset names.
-///
-/// The names of time zones in the zoneinfo database are of the form
-/// `Area/Location`, or more rarely, `Area/Location/Sublocation`. This means
-/// they form a hierarchy, with each level either serving as a time zone
-/// itself (usually a location) or as a parent of multiple other entries
-/// (usually an area).
-///
-/// When generating Rust code containing the timezone data, we need to
-/// generate the entire tree structure, not just the leaves of actual timezone
-/// data. This module determines that structure, allowing it to be created
-/// before any actual timezone data is written.
-///
-/// For example, say we have the following subset of time zone entries:
-///
-/// - America/Antigua
-/// - America/Araguaina
-/// - America/Argentina/Buenos_Aires
-/// - America/Argentina/Catamarca
-/// - America/Argentina/Cordoba
-/// - America/Aruba
-///
-/// On top of the six actual time zone files, we would need to create the following:
-///
-/// - An America module that has three private submodules (Antigua, Araguaína,
-///   and Aruba) and one public submodule (Argentina);
-/// - An America/Argentina submodule that has there private submodules (Buenos
-///   Aires, Catamarca, Cordoba).
-///
-/// This module contains an iterator that finds all parent zonesets, and
-/// sorts them so they're output in a correct order.
+//! Determining the structure of a set of ruleset names.
+//!
+//! The names of time zones in the zoneinfo database are of the form
+//! `Area/Location`, or more rarely, `Area/Location/Sublocation`. This means
+//! they form a hierarchy, with each level either serving as a time zone
+//! itself (usually a location) or as a parent of multiple other entries
+//! (usually an area).
+//!
+//! When generating Rust code containing the timezone data, we need to
+//! generate the entire tree structure, not just the leaves of actual timezone
+//! data. This module determines that structure, allowing it to be created
+//! before any actual timezone data is written.
+//!
+//! For example, say we have the following subset of time zone entries:
+//!
+//! - America/Antigua
+//! - America/Araguaina
+//! - America/Argentina/Buenos_Aires
+//! - America/Argentina/Catamarca
+//! - America/Argentina/Cordoba
+//! - America/Aruba
+//!
+//! On top of the six actual time zone files, we would need to create the following:
+//!
+//! - An America module that has three private submodules (Antigua, Araguaína,
+//!   and Aruba) and one public submodule (Argentina);
+//! - An America/Argentina submodule that has there private submodules (Buenos
+//!   Aires, Catamarca, Cordoba).
+//!
+//! This module contains an iterator that finds all parent zonesets, and
+//! sorts them so they’re output in a correct order.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -60,7 +60,7 @@ impl Structure for Table {
             let parent = &key[.. last_slash];
             {
                 let set = mappings.entry(parent).or_insert_with(BTreeSet::new);
-                set.insert(Child::Ruleset(&key[last_slash + 1 ..]));
+                set.insert(Child::TimeZone(&key[last_slash + 1 ..]));
             }
 
             // If the *parent* name still has a slash in it, then this is
@@ -91,9 +91,9 @@ impl<'table> IntoIterator for TableStructure<'table> {
 
     fn into_iter(self) -> Self::IntoIter {
 
-        // It's necessary to sort the keys before producing them, to
-        // ensure that (for example) America is produced before
-        // America/Kentucky.
+        // It’s necessary to sort the keys before producing them, to
+        // ensure that (for example) `America` is produced before
+        // `America/Kentucky`.
         let mut keys: Vec<_> = self.mappings.keys().cloned().collect();
         keys.sort_by(|a, b| b.cmp(a));
 
@@ -138,17 +138,26 @@ impl<'table> Iterator for Iter<'table> {
 #[derive(PartialEq, Debug)]
 pub struct TableStructureEntry<'table> {
 
-    /// This entry's name, which **can** still include slashes.
+    /// This entry’s name, which *can* still include slashes.
     pub name: &'table str,
 
     /// A vector of sorted child names, which should have no slashes in.
     pub children: Vec<Child<'table>>,
 }
 
+/// A child module that needs to be created.
+///
+/// The order here is important for `PartialOrd`: submodules need to be
+/// created before actual time zones, as directories need to be created
+/// before the files in them can be written.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone)]
 pub enum Child<'table> {
+
+    /// A module containing **only** submodules, no time zones.
     Submodule(&'table str),
-    Ruleset(&'table str),
+
+    /// A module containing **only** the details of a time zone.
+    TimeZone(&'table str),
 }
 
 
@@ -182,7 +191,7 @@ mod test {
         table.zonesets.insert("a/b".to_owned(), Zoneset::default());
 
         let mut structure = table.structure().into_iter();
-        assert_eq!(structure.next(), Some(TableStructureEntry { name: &"a".to_owned(), children: vec![ Child::Ruleset("b") ] }));
+        assert_eq!(structure.next(), Some(TableStructureEntry { name: &"a".to_owned(), children: vec![ Child::TimeZone("b") ] }));
         assert_eq!(structure.next(), None);
     }
 
@@ -194,8 +203,8 @@ mod test {
         table.zonesets.insert("a/e".to_owned(),   Zoneset::default());
 
         let mut structure = table.structure().into_iter();
-        assert_eq!(structure.next(), Some(TableStructureEntry { name: &"a".to_owned(),   children: vec![ Child::Submodule("b"), Child::Ruleset("e") ] }));
-        assert_eq!(structure.next(), Some(TableStructureEntry { name: &"a/b".to_owned(), children: vec![ Child::Ruleset("c"),   Child::Ruleset("d") ] }));
+        assert_eq!(structure.next(), Some(TableStructureEntry { name: &"a".to_owned(),   children: vec![ Child::Submodule("b"), Child::TimeZone("e") ] }));
+        assert_eq!(structure.next(), Some(TableStructureEntry { name: &"a/b".to_owned(), children: vec![ Child::TimeZone("c"),  Child::TimeZone("d") ] }));
         assert_eq!(structure.next(), None);
     }
 }

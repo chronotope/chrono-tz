@@ -123,7 +123,7 @@ impl DataCrate {
             let mut w = try!(OpenOptions::new().write(true).create(true).truncate(true).open(mod_path));
             for child in &entry.children {
                 match *child {
-                    Child::Ruleset(ref name) => {
+                    Child::TimeZone(ref name) => {
                         let sanichild = sanitise_name(name);
                         try!(writeln!(w, "mod {};", sanichild));
                         try!(writeln!(w, "pub use self::{}::ZONE as {};\n", sanichild, sanichild));

@@ -1,3 +1,13 @@
+//! Parsing zoneinfo data files, line-by-line.
+//!
+//! This module provides functions that take a line of input from a zoneinfo
+//! data file and attempts to parse it, returning the details of the line if
+//! it gets parsed successfully. It classifies them as `Rule`, `Link`,
+//! `Zone`, or `Continuation` lines.
+//!
+//! The actual *interpretation* of what the details mean is done by the
+//! `table` module.
+
 use std::ascii::AsciiExt;
 use std::str::FromStr;
 
@@ -46,7 +56,7 @@ lazy_static! {
         ( ?P<flag> [wsugz] )?
     $ "##).unwrap();
 
-    // ^ those two could be done with the same regex, but... they aren't.
+    // ^ those two could be done with the same regex, but... they aren‘t.
 
     /// Format of a Zone line, with one capturing group per field.
     static ref ZONE_LINE: Regex = Regex::new(r##"(?x) ^
@@ -104,7 +114,7 @@ pub struct Rule<'line> {
     /// The first year in which the rule applies.
     pub from_year: YearSpec,
 
-    /// The final year, or `None` if's 'only'.
+    /// The final year, or `None` if’s ‘only’.
     pub to_year: Option<YearSpec>,
 
     /// The month in which the rule takes effect.
@@ -132,17 +142,17 @@ impl<'line> Rule<'line> {
             let name      = caps.name("name").unwrap();
             let from_year = try!(caps.name("from").unwrap().parse());
 
-            // The end year can be 'only' to indicate that this rule only
+            // The end year can be ‘only’ to indicate that this rule only
             // takes place on that year.
             let to_year = match caps.name("to").unwrap() {
                 "only"  => None,
                 to      => Some(try!(to.parse())),
             };
 
-            // According to the spec, the only value inside the 'type' column
-            // should be "-", so throw an error if it isn't. (It only exists
+            // According to the spec, the only value inside the ‘type’ column
+            // should be “-”, so throw an error if it isn’t. (It only exists
             // for compatibility with old versions that used to contain year
-            // types.) Sometimes "‐", a Unicode hyphen, is used as well.
+            // types.) Sometimes “‐”, a Unicode hyphen, is used as well.
             let t = caps.name("type").unwrap();
             if t != "-" && t != "\u{2010}"  {
                 return Err(Error::Fail);
@@ -174,6 +184,7 @@ impl<'line> Rule<'line> {
     }
 }
 
+
 /// A **zone** definition line.
 ///
 /// According to the `zic(8)` man page, a zone line has this form, along with
@@ -185,7 +196,7 @@ impl<'line> Rule<'line> {
 /// ```
 ///
 /// The opening `Zone` identifier is ignored, and the last four columns are
-/// all optional, with their variants consolidated into a `ZoneTime`.
+/// all optional, with their variants consolidated into a `ChangeTime`.
 ///
 /// The `Rules/Save` column, if it contains a value, *either* contains the
 /// name of the rules to use for this zone, *or* contains a one-off period of
@@ -225,8 +236,8 @@ impl<'line> Zone<'line> {
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct ZoneInfo<'line> {
 
-    /// The amount of time to be added to Universal TimeSpec, to get standard time
-    /// in this zone.
+    /// The amount of time that needs to be added to UTC to get the standard
+    /// time in this zone.
     pub utc_offset: TimeSpec,
 
     /// The name of all the rules that should apply in the time zone, or the
@@ -236,8 +247,9 @@ pub struct ZoneInfo<'line> {
     /// The format for time zone abbreviations, with `%s` as the string marker.
     pub format: &'line str,
 
-    /// The time at which the rules change for this location, or `None` if these rules
-    pub time: Option<ZoneTime>,
+    /// The time at which the rules change for this location, or `None` if
+    /// these rules are in effect until the end of time (!).
+    pub time: Option<ChangeTime>,
 }
 
 impl<'line> ZoneInfo<'line> {
@@ -250,10 +262,10 @@ impl<'line> ZoneInfo<'line> {
         // that it should be impossible to, say, have a defined month but not
         // a defined year.
         let time = match (caps.name("year"), caps.name("month"), caps.name("day"), caps.name("time")) {
-            (Some(y), Some(m), Some(d), Some(t)) => Some(ZoneTime::UntilTime  (try!(y.parse()), try!(m.parse()), try!(d.parse()), try!(t.parse()))),
-            (Some(y), Some(m), Some(d), _      ) => Some(ZoneTime::UntilDay   (try!(y.parse()), try!(m.parse()), try!(d.parse()))),
-            (Some(y), Some(m), _      , _      ) => Some(ZoneTime::UntilMonth (try!(y.parse()), try!(m.parse()))),
-            (Some(y), _      , _      , _      ) => Some(ZoneTime::UntilYear  (try!(y.parse()))),
+            (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime  (try!(y.parse()), try!(m.parse()), try!(d.parse()), try!(t.parse()))),
+            (Some(y), Some(m), Some(d), _      ) => Some(ChangeTime::UntilDay   (try!(y.parse()), try!(m.parse()), try!(d.parse()))),
+            (Some(y), Some(m), _      , _      ) => Some(ChangeTime::UntilMonth (try!(y.parse()), try!(m.parse()))),
+            (Some(y), _      , _      , _      ) => Some(ChangeTime::UntilYear  (try!(y.parse()))),
             (None   , None   , None   , None   ) => None,
             _                                    => unreachable!("Out-of-order capturing groups!"),
         };
@@ -306,9 +318,14 @@ impl<'line> Saving<'line> {
 }
 
 
-/// The time at which the rules change for a location, with varying degrees of precision.
+/// The time at which the rules change for a location.
+///
+/// This is described with as few units as possible: a change that occurs at
+/// the beginning of the year lists only the year, a change that occurs on a
+/// particular day has to list the year, month, and day, and one that occurs
+/// at a particular second has to list everything.
 #[derive(PartialEq, Debug, Copy, Clone)]
-pub enum ZoneTime {
+pub enum ChangeTime {
 
     /// The earliest point in a particular **year**.
     UntilYear(YearSpec),
@@ -319,16 +336,17 @@ pub enum ZoneTime {
     /// The earliest point in a particular **day**.
     UntilDay(YearSpec, MonthSpec, DaySpec),
 
-    /// The earliest point in a particular hour, minute, or second, or one of
-    /// those small time units, anyway.
+    /// The earliest point in a particular **hour, minute, or second**.
     UntilTime(YearSpec, MonthSpec, DaySpec, TimeSpecAndType),
 }
 
-impl ZoneTime {
+impl ChangeTime {
+
+    /// Convert this change time to an absolute timestamp, as the number of
+    /// seconds since the Unix epoch that the change occurs at.
     pub fn to_timestamp(&self) -> i64 {
-        use self::ZoneTime::*;
+        use self::ChangeTime::*;
         use self::YearSpec::Number;
-        use self::TimeSpec::*;
 
         match *self {
             UntilYear(Number(y))       => LocalDateTime::new(LocalDate::ymd(y, Month::January, 1).unwrap(), LocalTime::midnight()),
@@ -337,10 +355,10 @@ impl ZoneTime {
 
             UntilTime(Number(y), m, d, time) => {
                 let local_time = match time.0 {
-                    Zero                          => LocalTime::midnight(),
-                    Hours(h)                      => LocalTime::hms(h, 0, 0).unwrap(),
-                    HoursMinutes(h, mm)           => LocalTime::hms(h, mm, 0).unwrap(),
-                    HoursMinutesSeconds(h, mm, s) => LocalTime::hms(h, mm, s).unwrap(),
+                    TimeSpec::Zero                          => LocalTime::midnight(),
+                    TimeSpec::Hours(h)                      => LocalTime::hms(h, 0, 0).unwrap(),
+                    TimeSpec::HoursMinutes(h, mm)           => LocalTime::hms(h, mm, 0).unwrap(),
+                    TimeSpec::HoursMinutesSeconds(h, mm, s) => LocalTime::hms(h, mm, s).unwrap(),
                 };
 
                 LocalDateTime::new(d.to_concrete_date(y, m.0), local_time)
@@ -474,11 +492,11 @@ impl FromStr for WeekdaySpec {
 
 /// A **day** definition field.
 ///
-/// This can be given in either absolute terms (such as "the fifth day of the
-/// month"), or relative terms (such as "the last Sunday of the month", or
-/// "the last Friday before or including the 13th").
+/// This can be given in either absolute terms (such as “the fifth day of the
+/// month”), or relative terms (such as “the last Sunday of the month”, or
+/// “the last Friday before or including the 13th”).
 ///
-/// Note that in the last example, it's allowed for that particular Friday to
+/// Note that in the last example, it’s allowed for that particular Friday to
 /// *be* the 13th in question.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum DaySpec {
@@ -515,7 +533,7 @@ impl DaySpec {
     }
 
     /// Find the first-occurring day with the given weekday in the iterator.
-    /// Panics if it can't find one. It should find one!
+    /// Panics if it can’t find one. It should find one!
     fn find_weekday<I>(weekday: WeekdaySpec, mut iterator: I) -> LocalDate
     where I: Iterator<Item=LocalDate> {
         use datetime::DatePiece;
@@ -535,14 +553,14 @@ impl FromStr for DaySpec {
             Ok(DaySpec::Ordinal(input.parse().unwrap()))
         }
 
-        // Check if it stars with 'last', and trim off the first four bytes if
-        // it does. (Luckily, the file is ASCII.)
+        // Check if it stars with ‘last’, and trim off the first four bytes if
+        // it does. (Luckily, the file is ASCII, so ‘last’ is four bytes)
         else if input.starts_with("last") {
             let weekday = try!(input[4..].parse());
             Ok(DaySpec::Last(weekday))
         }
 
-        // Check if it's a relative expression with the regex.
+        // Check if it’s a relative expression with the regex.
         else if let Some(caps) = DAY_FIELD.captures(input) {
             let weekday = caps.name("weekday").unwrap().parse().unwrap();
             let day     = caps.name("day").unwrap().parse().unwrap();
@@ -565,7 +583,7 @@ impl FromStr for DaySpec {
 /// A **time** definition field.
 ///
 /// A time must have an hours component, with optional minutes and seconds
-/// components. It can also be negative with a starting '-'.
+/// components. It can also be negative with a starting ‘-’.
 ///
 /// Hour 0 is midnight at the start of the day, and Hour 24 is midnight at the
 /// end of the day.
@@ -593,6 +611,7 @@ pub struct TimeSpecAndType(pub TimeSpec, pub TimeType);
 
 impl TimeSpec {
 
+    /// Shorthand `TimeSpecAndType` constructor for testing.
     #[cfg(test)]
     pub fn with_type(self, time_type: TimeType) -> TimeSpecAndType {
         TimeSpecAndType(self, time_type)
@@ -655,6 +674,7 @@ impl FromStr for TimeSpec {
     }
 }
 
+/// Select which time type to use based on a timestamp’s suffix.
 fn parse_time_type(c: &str) -> Option<TimeType> {
     Some(match c {
         "w"             => TimeType::Wall,
@@ -696,7 +716,8 @@ pub enum Line<'line> {
 
 impl<'line> Line<'line> {
 
-    /// Attempts to parse the given string into a value of this type.
+    /// Attempt to parse this line, returning a `Line` depending on what
+    /// type of line it was, or an `Error` if it couldn't be parsed.
     pub fn from_str(input: &str) -> Result<Line, Error> {
         if input.is_empty() || input.chars().all(char::is_whitespace) {
             Ok(Line::Space)
@@ -789,7 +810,7 @@ mod test {
                 utc_offset:  TimeSpec::HoursMinutes(9, 30),
                 saving:      Saving::Multiple("Aus"),
                 format:      "AC%sT",
-                time:        Some(ZoneTime::UntilTime(YearSpec::Number(1971), MonthSpec(Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0).with_type(TimeType::Wall))),
+                time:        Some(ChangeTime::UntilTime(YearSpec::Number(1971), MonthSpec(Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0).with_type(TimeType::Wall))),
             },
         })));
 
@@ -797,14 +818,14 @@ mod test {
             utc_offset:  TimeSpec::HoursMinutes(9, 30),
             saving:      Saving::Multiple("Aus"),
             format:      "AC%sT",
-            time:        Some(ZoneTime::UntilTime(YearSpec::Number(1971), MonthSpec(Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0).with_type(TimeType::Wall))),
+            time:        Some(ChangeTime::UntilTime(YearSpec::Number(1971), MonthSpec(Month::October), DaySpec::Ordinal(31), TimeSpec::HoursMinutesSeconds(2, 0, 0).with_type(TimeType::Wall))),
         })));
 
         test!(continuation_2: "			1:00	C-Eur	CE%sT	1943 Oct 25" => Ok(Line::Continuation(ZoneInfo {
             utc_offset:  TimeSpec::HoursMinutes(1, 00),
             saving:      Saving::Multiple("C-Eur"),
             format:      "CE%sT",
-            time:        Some(ZoneTime::UntilDay(YearSpec::Number(1943), MonthSpec(Month::October), DaySpec::Ordinal(25))),
+            time:        Some(ChangeTime::UntilDay(YearSpec::Number(1943), MonthSpec(Month::October), DaySpec::Ordinal(25))),
         })));
 
         test!(zone_hyphen: "Zone Asia/Ust-Nera\t 9:32:54 -\tLMT\t1919" => Ok(Line::Zone(Zone {
@@ -813,7 +834,7 @@ mod test {
                 utc_offset:  TimeSpec::HoursMinutesSeconds(9, 32, 54),
                 saving:      Saving::NoSaving,
                 format:      "LMT",
-                time:        Some(ZoneTime::UntilYear(YearSpec::Number(1919))),
+                time:        Some(ChangeTime::UntilYear(YearSpec::Number(1919))),
             },
         })));
     }

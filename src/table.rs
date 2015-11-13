@@ -1,11 +1,28 @@
+//! Collecting parsed zoneinfo data lines into a set of time zone data.
+//!
+//! This module provides the `Table` struct, which is able to take parsed
+//! lines of input from the `line` module and put them together, producing a
+//! list of time zone transitions that can be written to files.
+//!
+//! It’s not as simple as it seems, because:
+//!
+//! 1. The zoneinfo data lines refer to each other through strings, such as
+//!    “link zone A to B”; lines of that form could be *parsed* successfully
+//!    but still fail to be interpreted if “B” doesn’t exist. So it has to
+//!    check every step of the way. Nothing wrong with this, it’s just a
+//!    consequence of reading data from a text file.
+//! 2. We output the list of time zones as a set of timespans and
+//!    transitions. The logic for doing this is really complicated (see
+//!    ‘zic.c’, which has the same logic, only in C).
+
 use std::collections::hash_map::{HashMap, Entry};
 
-use line::{self, YearSpec, MonthSpec, DaySpec, ZoneTime};
+use line::{self, YearSpec, MonthSpec, DaySpec, ChangeTime};
 use datetime::{LocalDateTime, LocalTime};
 use datetime::zone::TimeType;
 
 
-/// A table of all the data in one or more zoneinfo files.
+/// A **table** of all the data in one or more zoneinfo files.
 #[derive(PartialEq, Debug, Default)]
 pub struct Table {
 
@@ -22,26 +39,61 @@ pub struct Table {
 #[derive(PartialEq, Debug, Default)]
 pub struct Ruleset(pub Vec<RuleInfo>);
 
+#[derive(PartialEq, Debug, Default)]
+pub struct Zoneset(pub Vec<ZoneInfo>);
+
+
+/// A set of timespans, separated by the instances at which the timespans
+/// change over. There will always be one more timespan than transitions.
+///
+/// This mimics the `FixedTimespanSet` struct in `datetime::cal::zone`,
+/// except it uses owned `Vec`s instead of slices.
 #[derive(PartialEq, Debug, Clone)]
 pub struct FixedTimespanSet {
+
+    /// The first timespan, which is assumed to have been in effect up until
+    /// the initial transition instant (if any). Each set has to have at
+    /// least one timespan.
     pub first: FixedTimespan,
+
+    /// The rest of the timespans, as a vector of tuples, each containing:
+    ///
+    /// 1. A transition instant at which the previous timespan ends and the
+    ///    next one begins, stored as a Unix timestamp;
+    /// 2. The actual timespan to transition into.
     pub rest: Vec<(i64, FixedTimespan)>,
 }
 
+
+/// An individual timespan with a fixed offset.
+///
+/// This mimics the `FixedTimespan` struct in `datetime::cal::zone`, except
+/// instead of “total offset” and “is DST” fields, it has separate UTC and
+/// DST fields. Also, the name is an owned `String` here instead of a slice.
 #[derive(PartialEq, Debug, Clone)]
 pub struct FixedTimespan {
+
+    /// The number of seconds offset from UTC during this timespan.
     pub utc_offset: i64,
+
+    /// The number of *extra* daylight-saving seconds during this timespan.
     pub dst_offset: i64,
-    pub name:       String,
+
+    /// The abbreviation in use during this timespan.
+    pub name: String,
 }
 
 impl FixedTimespan {
+
+    /// The total offset in effect during this timespan.
     pub fn total_offset(&self) -> i64 {
         self.utc_offset + self.dst_offset
     }
 }
 
 impl Table {
+
+    /// Compute a fixed timespan set for the timezone with the given name.
     pub fn timespans(&self, zone_name: &str) -> FixedTimespanSet {
         let mut transitions = Vec::new();
         let mut start_time = None;
@@ -260,7 +312,7 @@ pub struct RuleInfo {
     /// The amount of time to save.
     time_to_add: i64,
 
-    /// Any extra letters that should be added to this time zone's
+    /// Any extra letters that should be added to this time zone’s
     /// abbreviation, in place of `%s`.
     letters: Option<String>,
 }
@@ -307,29 +359,12 @@ impl RuleInfo {
     }
 }
 
-#[derive(PartialEq, Debug, Default)]
-pub struct Zoneset(pub Vec<ZoneInfo>);
-
 #[derive(PartialEq, Debug)]
 pub struct ZoneInfo {
     pub offset:    i64,
     pub format:    Format,
     pub saving:    Saving,
-    pub end_time:  Option<ZoneTime>,
-}
-
-#[derive(PartialEq, Debug)]
-pub enum Saving {
-    NoSaving,
-    OneOff(i64),
-    Multiple(String),
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub enum Format {
-    Constant(String),
-    Alternate { standard: String, dst: String },
-    Placeholder(String),
+    pub end_time:  Option<ChangeTime>,
 }
 
 impl<'_> From<line::ZoneInfo<'_>> for ZoneInfo {
@@ -347,7 +382,52 @@ impl<'_> From<line::ZoneInfo<'_>> for ZoneInfo {
     }
 }
 
+
+/// The amount of daylight saving time (DST) to apply to this timespan. This
+/// is a special type for a certain field in a zone line, which can hold
+/// different types of value.
+///
+/// This is the owned version of the `Saving` type in the `line` module.
+#[derive(PartialEq, Debug)]
+pub enum Saving {
+
+    /// Just stick to the base offset.
+    NoSaving,
+
+    /// This amount of time should be saved while this timespan is in effect.
+    /// (This is the equivalent to there being a single one-off rule with the
+    /// given amount of time to save).
+    OneOff(i64),
+
+    /// All rules with the given name should apply while this timespan is in
+    /// effect.
+    Multiple(String),
+}
+
+
+/// The format string to generate a time zone abbreviation from.
+#[derive(PartialEq, Debug, Clone)]
+pub enum Format {
+
+    /// A constant format, which remains the same throughout both standard
+    /// and DST timespans.
+    Constant(String),
+
+    /// An alternate format, such as “PST/PDT”, which changes between
+    /// standard and DST timespans (the first option is standard, the second
+    /// is DST).
+    Alternate { standard: String, dst: String },
+
+    /// A format with a placeholder `%s`, which uses the `letters` field in
+    /// a `RuleInfo` to generate the time zone abbreviation.
+    Placeholder(String),
+}
+
 impl Format {
+
+    /// Convert the template into one of the `Format` variants. This can’t
+    /// fail, as any syntax that doesn’t match one of the two formats will
+    /// just be a ‘constant’ format.
     fn new(template: &str) -> Format {
         if let Some(pos) = template.find('/') {
             Format::Alternate {
@@ -392,7 +472,7 @@ impl Format {
 #[derive(PartialEq, Debug)]
 pub struct TableBuilder {
 
-    /// The table that's being built up.
+    /// The table that’s being built up.
     table: Table,
 
     /// If the last line was a zone definition, then this holds its name.
@@ -413,8 +493,8 @@ impl TableBuilder {
 
     /// Adds a new line describing a zone definition.
     ///
-    /// Returns an error if there's already a zone with the same name, or the
-    /// zone refers to a ruleset that hasn't been defined yet.
+    /// Returns an error if there’s already a zone with the same name, or the
+    /// zone refers to a ruleset that hasn’t been defined yet.
     pub fn add_zone_line<'line>(&mut self, zone_line: line::Zone<'line>) -> Result<(), Error<'line>> {
         if let line::Saving::Multiple(ruleset_name) = zone_line.info.saving {
             if !self.table.rulesets.contains_key(ruleset_name) {
@@ -434,8 +514,8 @@ impl TableBuilder {
 
     /// Adds a new line describing the *continuation* of a zone definition.
     ///
-    /// Returns an error if the builder wasn't expecting a continuation line
-    /// (meaning, the previous line wasn't a zone line)
+    /// Returns an error if the builder wasn’t expecting a continuation line
+    /// (meaning, the previous line wasn’t a zone line)
     pub fn add_continuation_line(&mut self, continuation_line: line::ZoneInfo) -> Result<(), Error> {
         let mut zoneset = match self.current_zoneset_name {
             Some(ref name) => self.table.zonesets.get_mut(name).unwrap(),
@@ -447,7 +527,7 @@ impl TableBuilder {
     }
 
     /// Adds a new line describing one entry in a ruleset, creating that set
-    /// if it didn't exist already.
+    /// if it didn’t exist already.
     pub fn add_rule_line(&mut self, rule_line: line::Rule) -> Result<(), Error> {
         let ruleset = self.table.rulesets
                                 .entry(rule_line.name.to_owned())
@@ -472,7 +552,7 @@ impl TableBuilder {
         }
     }
 
-    /// Returns the table after it's finished being built.
+    /// Returns the table after it’s finished being built.
     pub fn build(self) -> Table {
         self.table
     }
@@ -482,17 +562,17 @@ impl TableBuilder {
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Error<'line> {
 
-    /// A continuation line was passed in, but the previous line wasn't a zone
+    /// A continuation line was passed in, but the previous line wasn’t a zone
     /// definition line.
     SurpriseContinuationLine,
 
-    /// A zone definition referred to a ruleset that hadn't been defined.
+    /// A zone definition referred to a ruleset that hadn’t been defined.
     UnknownRuleset(&'line str),
 
-    /// A link line was passed in, but there's already a link with that name.
+    /// A link line was passed in, but there’s already a link with that name.
     DuplicateLink(&'line str),
 
-    /// A zone line was passed in, but there's already a zone with that name.
+    /// A zone line was passed in, but there’s already a zone with that name.
     DuplicateZone,
 }
 
@@ -500,9 +580,9 @@ pub enum Error<'line> {
 #[cfg(test)]
 mod test {
 
-    // Allow unused results in test code, because the only 'results' that
+    // Allow unused results in test code, because the only ‘results’ that
     // we need to ignore are the ones from inserting and removing from
-    // tables and vectors. And as we set them up ourselves, they're bound
+    // tables and vectors. And as we set them up ourselves, they’re bound
     // to be correct, otherwise the tests would fail!
     #![allow(unused_results)]
 
@@ -515,7 +595,7 @@ mod test {
     use line::MonthSpec;
     use line::YearSpec;
     use line::TimeSpec;
-    use line::ZoneTime;
+    use line::ChangeTime;
 
     #[test]
     fn no_transitions() {
@@ -541,7 +621,7 @@ mod test {
             offset: 1234,
             format: Format::new("TEST"),
             saving: Saving::NoSaving,
-            end_time: Some(ZoneTime::UntilTime(YearSpec::Number(1970), MonthSpec(January), DaySpec::Ordinal(2), TimeSpec::HoursMinutesSeconds(10, 17, 36).with_type(TimeType::UTC))),
+            end_time: Some(ChangeTime::UntilTime(YearSpec::Number(1970), MonthSpec(January), DaySpec::Ordinal(2), TimeSpec::HoursMinutesSeconds(10, 17, 36).with_type(TimeType::UTC))),
         };
 
         let zone_2 = ZoneInfo {
@@ -571,14 +651,14 @@ mod test {
             offset: 1234,
             format: Format::new("TEST"),
             saving: Saving::NoSaving,
-            end_time: Some(ZoneTime::UntilTime(YearSpec::Number(1970), MonthSpec(January), DaySpec::Ordinal(2), TimeSpec::HoursMinutesSeconds(10, 17, 36).with_type(TimeType::Standard))),
+            end_time: Some(ChangeTime::UntilTime(YearSpec::Number(1970), MonthSpec(January), DaySpec::Ordinal(2), TimeSpec::HoursMinutesSeconds(10, 17, 36).with_type(TimeType::Standard))),
         };
 
         let zone_2 = ZoneInfo {
             offset: 3456,
             format: Format::new("TSET"),
             saving: Saving::NoSaving,
-            end_time: Some(ZoneTime::UntilTime(YearSpec::Number(1970), MonthSpec(January), DaySpec::Ordinal(3), TimeSpec::HoursMinutesSeconds(17, 09, 27).with_type(TimeType::Standard))),
+            end_time: Some(ChangeTime::UntilTime(YearSpec::Number(1970), MonthSpec(January), DaySpec::Ordinal(3), TimeSpec::HoursMinutesSeconds(17, 09, 27).with_type(TimeType::Standard))),
         };
 
         let zone_3 = ZoneInfo {
@@ -629,7 +709,7 @@ mod test {
             offset: 0,
             format: Format::new("LMT"),
             saving: Saving::NoSaving,
-            end_time: Some(ZoneTime::UntilYear(YearSpec::Number(1980))),
+            end_time: Some(ChangeTime::UntilYear(YearSpec::Number(1980))),
         };
 
         let zone = ZoneInfo {
@@ -680,7 +760,7 @@ mod test {
             offset: 0,
             format: Format::new("LMT"),
             saving: Saving::NoSaving,
-            end_time: Some(ZoneTime::UntilYear(YearSpec::Number(1980))),
+            end_time: Some(ChangeTime::UntilYear(YearSpec::Number(1980))),
         };
 
         let zone = ZoneInfo {
@@ -726,14 +806,14 @@ mod test {
         ]);
 
         let zone = vec![
-            ZoneInfo { offset: 3164, format: Format::new("LMT"),   saving: Saving::NoSaving,                     end_time: Some(ZoneTime::UntilYear(YearSpec::Number(1920))) },
-            ZoneInfo { offset: 3600, format: Format::new("CE%sT"), saving: Saving::Multiple("Libya".to_owned()), end_time: Some(ZoneTime::UntilYear(YearSpec::Number(1959)))  },
-            ZoneInfo { offset: 7200, format: Format::new("EET"),   saving: Saving::NoSaving,                     end_time: Some(ZoneTime::UntilYear(YearSpec::Number(1982)))   },
-            ZoneInfo { offset: 3600, format: Format::new("CE%sT"), saving: Saving::Multiple("Libya".to_owned()), end_time: Some(ZoneTime::UntilDay (YearSpec::Number(1990), MonthSpec(May),       DaySpec::Ordinal( 4)))   },
-            ZoneInfo { offset: 7200, format: Format::new("EET"),   saving: Saving::NoSaving,                     end_time: Some(ZoneTime::UntilDay (YearSpec::Number(1996), MonthSpec(September), DaySpec::Ordinal(30)))   },
-            ZoneInfo { offset: 3600, format: Format::new("CE%sT"), saving: Saving::Multiple("Libya".to_owned()), end_time: Some(ZoneTime::UntilDay (YearSpec::Number(1997), MonthSpec(October),   DaySpec::Ordinal( 4)))   },
-            ZoneInfo { offset: 7200, format: Format::new("EET"),   saving: Saving::NoSaving,                     end_time: Some(ZoneTime::UntilTime(YearSpec::Number(2012), MonthSpec(November),  DaySpec::Ordinal(10), TimeSpec::HoursMinutes(2, 0).with_type(TimeType::Wall)))  },
-            ZoneInfo { offset: 3600, format: Format::new("CE%sT"), saving: Saving::Multiple("Libya".to_owned()), end_time: Some(ZoneTime::UntilTime(YearSpec::Number(2013), MonthSpec(October),   DaySpec::Ordinal(25), TimeSpec::HoursMinutes(2, 0).with_type(TimeType::Wall)))  },
+            ZoneInfo { offset: 3164, format: Format::new("LMT"),   saving: Saving::NoSaving,                     end_time: Some(ChangeTime::UntilYear(YearSpec::Number(1920))) },
+            ZoneInfo { offset: 3600, format: Format::new("CE%sT"), saving: Saving::Multiple("Libya".to_owned()), end_time: Some(ChangeTime::UntilYear(YearSpec::Number(1959)))  },
+            ZoneInfo { offset: 7200, format: Format::new("EET"),   saving: Saving::NoSaving,                     end_time: Some(ChangeTime::UntilYear(YearSpec::Number(1982)))   },
+            ZoneInfo { offset: 3600, format: Format::new("CE%sT"), saving: Saving::Multiple("Libya".to_owned()), end_time: Some(ChangeTime::UntilDay (YearSpec::Number(1990), MonthSpec(May),       DaySpec::Ordinal( 4)))   },
+            ZoneInfo { offset: 7200, format: Format::new("EET"),   saving: Saving::NoSaving,                     end_time: Some(ChangeTime::UntilDay (YearSpec::Number(1996), MonthSpec(September), DaySpec::Ordinal(30)))   },
+            ZoneInfo { offset: 3600, format: Format::new("CE%sT"), saving: Saving::Multiple("Libya".to_owned()), end_time: Some(ChangeTime::UntilDay (YearSpec::Number(1997), MonthSpec(October),   DaySpec::Ordinal( 4)))   },
+            ZoneInfo { offset: 7200, format: Format::new("EET"),   saving: Saving::NoSaving,                     end_time: Some(ChangeTime::UntilTime(YearSpec::Number(2012), MonthSpec(November),  DaySpec::Ordinal(10), TimeSpec::HoursMinutes(2, 0).with_type(TimeType::Wall)))  },
+            ZoneInfo { offset: 3600, format: Format::new("CE%sT"), saving: Saving::Multiple("Libya".to_owned()), end_time: Some(ChangeTime::UntilTime(YearSpec::Number(2013), MonthSpec(October),   DaySpec::Ordinal(25), TimeSpec::HoursMinutes(2, 0).with_type(TimeType::Wall)))  },
             ZoneInfo { offset: 7200, format: Format::new("EET"),   saving: Saving::NoSaving,                     end_time: None              },
         ];
 
