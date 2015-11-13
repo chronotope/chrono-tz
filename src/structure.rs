@@ -165,7 +165,7 @@ pub enum Child<'table> {
 #[allow(unused_results)]
 mod test {
     use super::*;
-    use table::{Table, Zoneset};
+    use table::Table;
 
     #[test]
     fn empty() {
@@ -177,9 +177,9 @@ mod test {
     #[test]
     fn separate() {
         let mut table = Table::default();
-        table.zonesets.insert("a".to_owned(), Zoneset::default());
-        table.zonesets.insert("b".to_owned(), Zoneset::default());
-        table.zonesets.insert("c".to_owned(), Zoneset::default());
+        table.zonesets.insert("a".to_owned(), Vec::new());
+        table.zonesets.insert("b".to_owned(), Vec::new());
+        table.zonesets.insert("c".to_owned(), Vec::new());
 
         let mut structure = table.structure().into_iter();
         assert_eq!(structure.next(), None);
@@ -188,7 +188,7 @@ mod test {
     #[test]
     fn child() {
         let mut table = Table::default();
-        table.zonesets.insert("a/b".to_owned(), Zoneset::default());
+        table.zonesets.insert("a/b".to_owned(), Vec::new());
 
         let mut structure = table.structure().into_iter();
         assert_eq!(structure.next(), Some(TableStructureEntry { name: &"a".to_owned(), children: vec![ Child::TimeZone("b") ] }));
@@ -198,9 +198,9 @@ mod test {
     #[test]
     fn hierarchy() {
         let mut table = Table::default();
-        table.zonesets.insert("a/b/c".to_owned(), Zoneset::default());
-        table.zonesets.insert("a/b/d".to_owned(), Zoneset::default());
-        table.zonesets.insert("a/e".to_owned(),   Zoneset::default());
+        table.zonesets.insert("a/b/c".to_owned(), Vec::new());
+        table.zonesets.insert("a/b/d".to_owned(), Vec::new());
+        table.zonesets.insert("a/e".to_owned(),   Vec::new());
 
         let mut structure = table.structure().into_iter();
         assert_eq!(structure.next(), Some(TableStructureEntry { name: &"a".to_owned(),   children: vec![ Child::Submodule("b"), Child::TimeZone("e") ] }));

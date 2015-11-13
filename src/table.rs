@@ -27,20 +27,14 @@ use datetime::zone::TimeType;
 pub struct Table {
 
     /// Mapping of ruleset names to rulesets.
-    pub rulesets: HashMap<String, Ruleset>,
+    pub rulesets: HashMap<String, Vec<RuleInfo>>,
 
     /// Mapping of zoneset names to zonesets.
-    pub zonesets: HashMap<String, Zoneset>,
+    pub zonesets: HashMap<String, Vec<ZoneInfo>>,
 
     /// Mapping of link timezone names, to the names they link to.
     pub links: HashMap<String, String>,
 }
-
-#[derive(PartialEq, Debug, Default)]
-pub struct Ruleset(pub Vec<RuleInfo>);
-
-#[derive(PartialEq, Debug, Default)]
-pub struct Zoneset(pub Vec<ZoneInfo>);
 
 
 /// A set of timespans, separated by the instances at which the timespans
@@ -91,6 +85,7 @@ impl FixedTimespan {
     }
 }
 
+
 impl Table {
 
     /// Compute a fixed timespan set for the timezone with the given name.
@@ -102,9 +97,9 @@ impl Table {
         let mut first_transition = None;
 
         let timespans = &self.zonesets[zone_name];
-        for (i, timespan) in timespans.0.iter().enumerate() {
+        for (i, timespan) in timespans.iter().enumerate() {
             let mut dst_offset = 0;
-            let use_until      = i != timespans.0.len() - 1;
+            let use_until      = i != timespans.len() - 1;
             let utc_offset     = timespan.offset;
 
             let mut insert_start_transition = i > 0;
@@ -165,7 +160,7 @@ impl Table {
                             break;
                         }
 
-                        let mut activated_rules = self.rulesets[&*rules].0.iter()
+                        let mut activated_rules = self.rulesets[&*rules].iter()
                                                       .filter(|r| r.applies_to_year(year))
                                                       .collect::<Vec<_>>();
 
@@ -504,10 +499,10 @@ impl TableBuilder {
 
         let mut zoneset = match self.table.zonesets.entry(zone_line.name.to_owned()) {
             Entry::Occupied(_)  => return Err(Error::DuplicateZone),
-            Entry::Vacant(e)    => e.insert(Zoneset(Vec::new())),
+            Entry::Vacant(e)    => e.insert(Vec::new()),
         };
 
-        let _ = zoneset.0.push(zone_line.info.into());
+        let _ = zoneset.push(zone_line.info.into());
         self.current_zoneset_name = Some(zone_line.name.to_owned());
         Ok(())
     }
@@ -522,7 +517,7 @@ impl TableBuilder {
             None => return Err(Error::SurpriseContinuationLine),
         };
 
-        let _ = zoneset.0.push(continuation_line.into());
+        let _ = zoneset.push(continuation_line.into());
         Ok(())
     }
 
@@ -531,9 +526,9 @@ impl TableBuilder {
     pub fn add_rule_line(&mut self, rule_line: line::Rule) -> Result<(), Error> {
         let ruleset = self.table.rulesets
                                 .entry(rule_line.name.to_owned())
-                                .or_insert_with(|| Ruleset(Vec::new()));
+                                .or_insert_with(|| Vec::new());
 
-        ruleset.0.push(rule_line.into());
+        ruleset.push(rule_line.into());
         self.current_zoneset_name = None;
         Ok(())
     }
@@ -586,7 +581,7 @@ mod test {
     // to be correct, otherwise the tests would fail!
     #![allow(unused_results)]
 
-    use super::{FixedTimespan, FixedTimespanSet, Saving, ZoneInfo, RuleInfo, Ruleset, Table, Zoneset, Format, optimise};
+    use super::{FixedTimespan, FixedTimespanSet, Saving, ZoneInfo, RuleInfo, Table, Format, optimise};
     use datetime::Weekday::*;
     use datetime::Month::*;
     use datetime::zone::TimeType;
@@ -607,7 +602,7 @@ mod test {
         };
 
         let mut table = Table::default();
-        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ zone ]));
+        table.zonesets.insert("Test/Zone".to_owned(), vec![ zone ]);
 
         assert_eq!(table.timespans("Test/Zone"), FixedTimespanSet {
             first: FixedTimespan { utc_offset: 1234, dst_offset: 0, name: "TEST".to_owned() },
@@ -632,7 +627,7 @@ mod test {
         };
 
         let mut table = Table::default();
-        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ zone_1, zone_2 ]));
+        table.zonesets.insert("Test/Zone".to_owned(), vec![ zone_1, zone_2 ]);
 
         let expected = FixedTimespanSet {
             first:       FixedTimespan { utc_offset: 1234, dst_offset: 0, name: "TEST".to_owned() },
@@ -669,7 +664,7 @@ mod test {
         };
 
         let mut table = Table::default();
-        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ zone_1, zone_2, zone_3 ]));
+        table.zonesets.insert("Test/Zone".to_owned(), vec![ zone_1, zone_2, zone_3 ]);
 
         let expected = FixedTimespanSet {
             first: FixedTimespan { utc_offset: 1234, dst_offset: 0, name: "TEST".to_owned(), },
@@ -692,7 +687,7 @@ mod test {
 
     #[test]
     fn one_rule() {
-        let ruleset = Ruleset(vec![
+        let ruleset = vec![
             RuleInfo {
                 from_year:   YearSpec::Number(1980),
                 to_year:     None,
@@ -703,7 +698,7 @@ mod test {
                 time_to_add: 1000,
                 letters:     None,
             }
-        ]);
+        ];
 
         let lmt = ZoneInfo {
             offset: 0,
@@ -720,7 +715,7 @@ mod test {
         };
 
         let mut table = Table::default();
-        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ lmt, zone ]));
+        table.zonesets.insert("Test/Zone".to_owned(), vec![ lmt, zone ]);
         table.rulesets.insert("Dwayne".to_owned(), ruleset);
 
         assert_eq!(table.timespans("Test/Zone"), FixedTimespanSet {
@@ -733,7 +728,7 @@ mod test {
 
     #[test]
     fn two_rules() {
-        let ruleset = Ruleset(vec![
+        let ruleset = vec![
             RuleInfo {
                 from_year:   YearSpec::Number(1980),
                 to_year:     None,
@@ -754,7 +749,7 @@ mod test {
                 time_to_add: 1500,
                 letters:     None,
             },
-        ]);
+        ];
 
         let lmt = ZoneInfo {
             offset: 0,
@@ -771,7 +766,7 @@ mod test {
         };
 
         let mut table = Table::default();
-        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(vec![ lmt, zone ]));
+        table.zonesets.insert("Test/Zone".to_owned(), vec![ lmt, zone ]);
         table.rulesets.insert("Dwayne".to_owned(), ruleset);
 
         assert_eq!(table.timespans("Test/Zone"), FixedTimespanSet {
@@ -785,7 +780,7 @@ mod test {
 
     #[test]
     fn tripoli() {
-        let libya = Ruleset(vec![
+        let libya = vec![
             RuleInfo { from_year: YearSpec::Number(1951), to_year: None,                         month: MonthSpec(October),   day: DaySpec::Ordinal(14),               time: 7200, time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
             RuleInfo { from_year: YearSpec::Number(1952), to_year: None,                         month: MonthSpec(January),   day: DaySpec::Ordinal(1),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
             RuleInfo { from_year: YearSpec::Number(1953), to_year: None,                         month: MonthSpec(October),   day: DaySpec::Ordinal(9),                time: 7200, time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
@@ -803,7 +798,7 @@ mod test {
             RuleInfo { from_year: YearSpec::Number(1997), to_year: None,                         month: MonthSpec(October),   day: DaySpec::Ordinal(4),                time: 0,    time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
             RuleInfo { from_year: YearSpec::Number(2013), to_year: None,                         month: MonthSpec(March),     day: DaySpec::Last(WeekdaySpec(Friday)), time: 3600, time_type: TimeType::Wall, time_to_add: 3600, letters: Some("S".to_owned()) },
             RuleInfo { from_year: YearSpec::Number(2013), to_year: None,                         month: MonthSpec(October),   day: DaySpec::Last(WeekdaySpec(Friday)), time: 7200, time_type: TimeType::Wall, time_to_add: 0,    letters: None                 },
-        ]);
+        ];
 
         let zone = vec![
             ZoneInfo { offset: 3164, format: Format::new("LMT"),   saving: Saving::NoSaving,                     end_time: Some(ChangeTime::UntilYear(YearSpec::Number(1920))) },
@@ -818,7 +813,7 @@ mod test {
         ];
 
         let mut table = Table::default();
-        table.zonesets.insert("Test/Zone".to_owned(), Zoneset(zone));
+        table.zonesets.insert("Test/Zone".to_owned(), zone);
         table.rulesets.insert("Libya".to_owned(), libya);
 
         assert_eq!(table.timespans("Test/Zone"), FixedTimespanSet {
