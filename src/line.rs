@@ -526,9 +526,9 @@ impl DaySpec {
 
         match *self {
             DaySpec::Ordinal(day)           => LocalDate::ymd(year, month, day).unwrap(),
-            DaySpec::Last(w)                => DaySpec::find_weekday(w, Year(year).days_for_month(month).rev()),
-            DaySpec::LastOnOrBefore(w, day) => DaySpec::find_weekday(w, Year(year).days_for_month(month).rev().filter(|d| d.day() < day)),
-            DaySpec::FirstOnOrAfter(w, day) => DaySpec::find_weekday(w, Year(year).days_for_month(month).skip(day as usize - 1)),
+            DaySpec::Last(w)                => DaySpec::find_weekday(w, Year(year).month(month).days(..).rev()),
+            DaySpec::LastOnOrBefore(w, day) => DaySpec::find_weekday(w, Year(year).month(month).days(..).rev().filter(|d| d.day() < day)),
+            DaySpec::FirstOnOrAfter(w, day) => DaySpec::find_weekday(w, Year(year).month(month).days(..).skip(day as usize - 1)),
         }
     }
 
