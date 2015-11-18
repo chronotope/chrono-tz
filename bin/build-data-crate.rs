@@ -147,10 +147,10 @@ impl DataCrate {
         }
 
         try!(writeln!(base_w, "\n\n"));
-        try!(writeln!(base_w, "pub fn lookup(input: &str) -> Option<TimeZone<'static>> {{"));
+        try!(writeln!(base_w, "pub fn lookup(input: &str) -> Option<&'static StaticTimeZone<'static>> {{"));
         for name in &keys {
             try!(writeln!(base_w, "    if input == {:?} {{", name));
-            try!(writeln!(base_w, "        return Some({});", sanitise_name(name).replace("/", "::")));
+            try!(writeln!(base_w, "        return Some(&{});", sanitise_name(name).replace("/", "::")));
             try!(writeln!(base_w, "    }}"));
         }
         try!(writeln!(base_w, "    return None;"));
@@ -167,7 +167,7 @@ impl DataCrate {
             try!(writeln!(w, "{}", WARNING_HEADER));
             try!(writeln!(w, "{}", ZONEINFO_HEADER));
 
-            try!(writeln!(w, "pub const ZONE: TimeZone<'static> = TimeZone {{"));
+            try!(writeln!(w, "pub static ZONE: StaticTimeZone<'static> = StaticTimeZone {{"));
             try!(writeln!(w, "    name: {:?},", name));
             try!(writeln!(w, "    fixed_timespans: FixedTimespanSet {{"));
 
@@ -176,7 +176,7 @@ impl DataCrate {
             try!(writeln!(w, "        first: FixedTimespan {{"));
             try!(writeln!(w, "            offset: {:?},  // UTC offset {:?}, DST offset {:?}", set.first.total_offset(), set.first.utc_offset, set.first.dst_offset));
             try!(writeln!(w, "            is_dst: {:?},", set.first.dst_offset != 0));
-            try!(writeln!(w, "            name:   {:?},", set.first.name));
+            try!(writeln!(w, "            name:   Cow::Borrowed({:?}),", set.first.name));
             try!(writeln!(w, "        }},"));
 
             try!(writeln!(w, "        rest: &["));
@@ -189,7 +189,7 @@ impl DataCrate {
                 // comment in the data crate.
                 try!(writeln!(w, "            offset: {:?},  // UTC offset {:?}, DST offset {:?}", t.1.total_offset(), t.1.utc_offset, t.1.dst_offset));
                 try!(writeln!(w, "            is_dst: {:?},", t.1.dst_offset != 0));
-                try!(writeln!(w, "            name:   {:?},", t.1.name));
+                try!(writeln!(w, "            name:   Cow::Borrowed({:?}),", t.1.name));
                 try!(writeln!(w, "        }}),"));
             }
             try!(writeln!(w, "    ]}},"));
@@ -219,9 +219,10 @@ const WARNING_HEADER: &'static str = r##"
 "##;
 
 const ZONEINFO_HEADER: &'static str = r##"
-use datetime::zone::{TimeZone, FixedTimespanSet, FixedTimespan};
+use std::borrow::Cow;
+use datetime::zone::{StaticTimeZone, FixedTimespanSet, FixedTimespan};
 "##;
 
 const MOD_HEADER: &'static str = r##"
-use datetime::zone::TimeZone;
+use datetime::zone::StaticTimeZone;
 "##;
