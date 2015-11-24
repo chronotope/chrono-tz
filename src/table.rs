@@ -131,7 +131,7 @@ impl Table {
                         let t = (start_time.unwrap(), FixedTimespan {
                             utc_offset: utc_offset,
                             dst_offset: dst_offset,
-                            name:       start_zone_id.clone().unwrap_or("".to_string()),
+                            name:       start_zone_id.clone().unwrap_or("".to_owned()),
                         });
                         transitions.push(t);
                         insert_start_transition = false;
@@ -140,7 +140,7 @@ impl Table {
                         first_transition = Some(FixedTimespan {
                             utc_offset: utc_offset,
                             dst_offset: dst_offset,
-                            name:       start_zone_id.clone().unwrap_or("".to_string()),
+                            name:       start_zone_id.clone().unwrap_or("".to_owned()),
                         });
                     }
                 },
@@ -153,7 +153,7 @@ impl Table {
                         let t = (start_time.unwrap(), FixedTimespan {
                             utc_offset: utc_offset,
                             dst_offset: dst_offset,
-                            name:       start_zone_id.clone().unwrap_or("".to_string()),
+                            name:       start_zone_id.clone().unwrap_or("".to_owned()),
                         });
                         transitions.push(t);
                         insert_start_transition = false;
@@ -162,7 +162,7 @@ impl Table {
                         first_transition = Some(FixedTimespan {
                             utc_offset: utc_offset,
                             dst_offset: dst_offset,
-                            name:       start_zone_id.clone().unwrap_or("".to_string()),
+                            name:       start_zone_id.clone().unwrap_or("".to_owned()),
                         });
                     }
                 },
@@ -517,7 +517,7 @@ impl TableBuilder {
             Entry::Vacant(e)    => e.insert(Vec::new()),
         };
 
-        let _ = zoneset.push(zone_line.info.into());
+        zoneset.push(zone_line.info.into());
         self.current_zoneset_name = Some(zone_line.name.to_owned());
         Ok(())
     }
@@ -532,7 +532,7 @@ impl TableBuilder {
             None => return Err(Error::SurpriseContinuationLine),
         };
 
-        let _ = zoneset.push(continuation_line.into());
+        zoneset.push(continuation_line.into());
         Ok(())
     }
 
@@ -541,7 +541,7 @@ impl TableBuilder {
     pub fn add_rule_line(&mut self, rule_line: line::Rule) -> Result<(), Error> {
         let ruleset = self.table.rulesets
                                 .entry(rule_line.name.to_owned())
-                                .or_insert_with(|| Vec::new());
+                                .or_insert_with(Vec::new);
 
         ruleset.push(rule_line.into());
         self.current_zoneset_name = None;

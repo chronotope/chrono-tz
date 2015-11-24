@@ -122,9 +122,7 @@ impl<'table> Iterator for Iter<'table> {
             };
 
             // Move the strings out into an (automatically-sorted) vector.
-            let values = self.structure.mappings[key].iter()
-                                                     .map(|&s| s)
-                                                     .collect();
+            let values = self.structure.mappings[key].iter().cloned().collect();
 
             return Some(TableStructureEntry {
                 name: key,
