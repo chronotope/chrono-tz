@@ -16,6 +16,8 @@
 //!    ‘zic.c’, which has the same logic, only in C).
 
 use std::collections::hash_map::{HashMap, Entry};
+use std::error::Error as ErrorTrait;
+use std::fmt;
 
 use line::{self, YearSpec, MonthSpec, DaySpec, ChangeTime};
 use datetime::{LocalDateTime, LocalTime};
@@ -584,6 +586,22 @@ pub enum Error<'line> {
 
     /// A zone line was passed in, but there’s already a zone with that name.
     DuplicateZone,
+}
+
+impl<'line> fmt::Display for Error<'line> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.description())
+    }
+}
+
+impl<'line> ErrorTrait for Error<'line> {
+    fn description(&self) -> &str {
+        "interpretation error"
+    }
+
+    fn cause(&self) -> Option<&ErrorTrait> {
+        None
+    }
 }
 
 

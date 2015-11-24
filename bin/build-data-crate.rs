@@ -1,7 +1,8 @@
 use std::env::args;
+use std::error::Error as ErrorTrait;
 use std::io::prelude::*;
 use std::io::BufReader;
-use std::io::Result as IoResult;
+use std::io::Result as IOResult;
 use std::fs::{File, OpenOptions, create_dir, metadata};
 use std::path::{Path, PathBuf};
 use std::process::exit;
@@ -18,7 +19,11 @@ fn main() {
 
     let data_crate = match DataCrate::new(&args[0], &args[1..]) {
         Ok(dc) => dc,
-        Err(_) => {
+        Err(errs) => {
+            for err in errs {
+                println!("{}:{}: {}", err.filename, err.line, err.error);
+            }
+
             println!("Errors occurred - not going any further.");
             exit(1);
         },
@@ -40,17 +45,17 @@ struct DataCrate {
 
 impl DataCrate {
 
-    fn new<P>(base_path: P, input_file_paths: &[String]) -> Result<DataCrate, u32>
+    fn new<P>(base_path: P, input_file_paths: &[String]) -> Result<DataCrate, Vec<Error>>
     where P: Into<PathBuf> {
 
         let mut builder = TableBuilder::new();
-        let mut errors = 0;
+        let mut errors = Vec::new();
 
         for arg in input_file_paths {
             let f = File::open(arg).unwrap();
             let reader = BufReader::new(f);
 
-            for line in reader.lines() {
+            for (line_number, line) in reader.lines().enumerate() {
                 let line = line.unwrap();
 
                 // Strip out the comment portion from the line, if any.
@@ -62,9 +67,14 @@ impl DataCrate {
                 let result = match Line::from_str(line_portion) {
 
                     // If there’s an error, then display which line failed to parse.
-                    Err(_) => {
-                        println!("Failed to parse line: {:?}", line_portion);
-                        errors += 1;
+                    Err(e) => {
+                        let error = Error {
+                            filename: arg.clone(),
+                            line: line_number + 1,
+                            error: e.description().to_owned(),
+                        };
+
+                        errors.push(error);
                         continue;
                     },
 
@@ -78,13 +88,18 @@ impl DataCrate {
                 };
 
                 if let Err(e) = result {
-                    errors += 1;
-                    println!("Error: {:?}", e);
+                    let error = Error {
+                        filename: arg.clone(),
+                        line: line_number + 1,
+                        error: e.description().to_owned(),
+                    };
+
+                    errors.push(error);
                 }
             }
         }
 
-        if errors == 0 {
+        if errors.is_empty() {
             Ok(DataCrate {
                 base_path: base_path.into(),
                 table: builder.build()
@@ -95,13 +110,13 @@ impl DataCrate {
         }
     }
 
-    fn run(&self) -> IoResult<()> {
+    fn run(&self) -> IOResult<()> {
         try!(self.create_structure_directories());
         try!(self.write_zonesets());
         Ok(())
     }
 
-    fn create_structure_directories(&self) -> IoResult<()> {
+    fn create_structure_directories(&self) -> IOResult<()> {
         let base_mod_path = self.base_path.join("mod.rs");
         let mut base_w = try!(OpenOptions::new().write(true).create(true).truncate(true).open(base_mod_path));
         try!(writeln!(base_w, "{}", WARNING_HEADER));
@@ -159,7 +174,7 @@ impl DataCrate {
         Ok(())
     }
 
-    fn write_zonesets(&self) -> IoResult<()> {
+    fn write_zonesets(&self) -> IOResult<()> {
         for name in self.table.zonesets.keys().chain(self.table.links.keys()) {
             let components: PathBuf = name.split('/').map(sanitise_name).collect();
             let zoneset_path = self.base_path.join(components).with_extension("rs");
@@ -209,6 +224,12 @@ fn is_directory(path: &Path) -> bool {
 
 fn sanitise_name(name: &str) -> String {
     name.replace("-", "_")
+}
+
+struct Error {
+    filename: String,
+    line: usize,
+    error: String,
 }
 
 const WARNING_HEADER: &'static str = r##"
