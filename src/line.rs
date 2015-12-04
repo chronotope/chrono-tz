@@ -523,8 +523,7 @@ impl DaySpec {
     /// Converts this day specification to a concrete date, given the year and
     /// month it should occur in.
     pub fn to_concrete_date(&self, year: i64, month: Month) -> LocalDate {
-        use datetime::{LocalDate, DatePiece};
-        use datetime::iter::Year;
+        use datetime::{LocalDate, DatePiece, Year};
 
         match *self {
             DaySpec::Ordinal(day)           => LocalDate::ymd(year, month, day).unwrap(),
@@ -614,7 +613,6 @@ pub struct TimeSpecAndType(pub TimeSpec, pub TimeType);
 impl TimeSpec {
 
     /// Shorthand `TimeSpecAndType` constructor for testing.
-    #[cfg(test)]
     pub fn with_type(self, time_type: TimeType) -> TimeSpecAndType {
         TimeSpecAndType(self, time_type)
     }

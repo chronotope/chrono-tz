@@ -11,7 +11,10 @@ extern crate datetime;
 use datetime::LocalDateTime;
 
 extern crate zoneinfo_parse;
-use zoneinfo_parse::{Line, TableBuilder, Table, Structure, Child};
+use zoneinfo_parse::line::{Line};
+use zoneinfo_parse::table::{Table, TableBuilder};
+use zoneinfo_parse::structure::{Structure, Child};
+use zoneinfo_parse::transitions::{TableTransitions};
 
 
 fn main() {
