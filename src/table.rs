@@ -1,19 +1,17 @@
 //! Collecting parsed zoneinfo data lines into a set of time zone data.
 //!
 //! This module provides the `Table` struct, which is able to take parsed
-//! lines of input from the `line` module and put them together, producing a
-//! list of time zone transitions that can be written to files.
+//! lines of input from the `line` module and coalesce them into a single
+//! set of data.
 //!
-//! It’s not as simple as it seems, because:
+//! It’s not as simple as it seems, because the zoneinfo data lines refer to
+//! each other through strings: lines of the form "link zone A to B" could be
+//! *parsed* successfully but still fail to be *interpreted* successfully if
+//! "B" doesn't exist. So it has to check every step of the way—nothing wrong
+//! with this, it's just a consequence of reading data from a text file.
 //!
-//! 1. The zoneinfo data lines refer to each other through strings, such as
-//!    “link zone A to B”; lines of that form could be *parsed* successfully
-//!    but still fail to be interpreted if “B” doesn’t exist. So it has to
-//!    check every step of the way. Nothing wrong with this, it’s just a
-//!    consequence of reading data from a text file.
-//! 2. We output the list of time zones as a set of timespans and
-//!    transitions. The logic for doing this is really complicated (see
-//!    ‘zic.c’, which has the same logic, only in C).
+//! This module only deals with constructing a table from data: any analysis
+//! of the data is done elsewhere.
 
 use std::collections::hash_map::{HashMap, Entry};
 use std::error::Error as ErrorTrait;
@@ -58,6 +56,11 @@ impl Table {
 }
 
 
+/// An owned rule definition line.
+///
+/// This mimics the `Rule` struct in the `line` module, only its uses owned
+/// Strings instead of string slices, and has had some pre-processing
+/// applied to it.
 #[derive(PartialEq, Debug)]
 pub struct RuleInfo {
 
@@ -104,6 +107,8 @@ impl<'_> From<line::Rule<'_>> for RuleInfo {
 }
 
 impl RuleInfo {
+
+    /// Returns whether this rule is in effect during the given year.
     pub fn applies_to_year(&self, year: i64) -> bool {
         use line::YearSpec::*;
 
@@ -115,6 +120,7 @@ impl RuleInfo {
         }
     }
 
+    /// Calculates a
     pub fn absolute_datetime(&self, year: i64, utc_offset: i64, dst_offset: i64) -> LocalDateTime {
         use datetime::Duration;
 
@@ -130,12 +136,31 @@ impl RuleInfo {
     }
 }
 
+
+/// An owned zone definition line.
+///
+/// This struct mimics the `ZoneInfo` struct in the `line` module, *not* the
+/// `Zone` struct, which is the key name in the map—this is just the value.
+///
+/// As with `RuleInfo`, this struct uses owned Strings rather than string
+/// slices.
 #[derive(PartialEq, Debug)]
 pub struct ZoneInfo {
-    pub offset:    i64,
-    pub format:    Format,
-    pub saving:    Saving,
-    pub end_time:  Option<ChangeTime>,
+
+    /// The number of seconds that need to be added to UTC to get the
+    /// standard time in this zone.
+    pub offset: i64,
+
+    /// The name of all the rules that should apply in the time zone, or the
+    /// amount of daylight-saving time to add.
+    pub saving: Saving,
+
+    /// The format for time zone abbreviations.
+    pub format: Format,
+
+    /// The time at which the rules change for this time zone, or `None` if
+    /// these rules are in effect until the end of time (!).
+    pub end_time: Option<ChangeTime>,
 }
 
 impl<'_> From<line::ZoneInfo<'_>> for ZoneInfo {
@@ -185,9 +210,15 @@ pub enum Format {
     Constant(String),
 
     /// An alternate format, such as “PST/PDT”, which changes between
-    /// standard and DST timespans (the first option is standard, the second
-    /// is DST).
-    Alternate { standard: String, dst: String },
+    /// standard and DST timespans.
+    Alternate {
+
+        /// Abbreviation to use during Standard Time.
+        standard: String,
+
+        /// Abbreviation to use during Summer Time.
+        dst: String,
+    },
 
     /// A format with a placeholder `%s`, which uses the `letters` field in
     /// a `RuleInfo` to generate the time zone abbreviation.
@@ -330,6 +361,7 @@ impl TableBuilder {
 }
 
 
+/// Something that can go wrong while constructing a `Table`.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Error<'line> {
 

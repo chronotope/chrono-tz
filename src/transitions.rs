@@ -1,3 +1,106 @@
+//! Generating timespan sets from a built Table.
+//!
+//! Once a table has been fully built, it needs to be turned into several
+//! *fixed timespan sets*: a series of spans of time where the local time
+//! offset remains the same throughout. One set is generated for each named
+//! time zone. These timespan sets can then be iterated over to produce
+//! *transitions*: when the local time changes from one offset to another.
+//!
+//! These sets are returned as `FixedTimespanSet` values, rather than
+//! iterators, because the generation logic does not output the timespans
+//! in any particular order, meaning they need to be sorted before they’re
+//! returned—so we may as well just return the vector, rather than an
+//! iterator over the vector.
+//!
+//! Similarly, there is a fixed set of years that is iterated over
+//! (currently 1800..2100), rather than having an iterator that produces
+//! timespans indefinitely. Not only do we need a complete set of timespans
+//! for sorting, but it is not necessarily advisable to rely on offset
+//! changes so far into the future!
+//!
+//! ### Example
+//!
+//! The complete definition of the `Indian/Mauritius` time zone, as
+//! specified in the `africa` file in my version of the tz database, has
+//! two Zone definitions, one of which refers to four Rule definitions:
+//!
+//! ```tz
+//! # Rule      NAME    FROM    TO      TYPE    IN      ON      AT      SAVE    LETTER/S
+//! Rule Mauritius      1982    only    -       Oct     10      0:00    1:00    S
+//! Rule Mauritius      1983    only    -       Mar     21      0:00    0       -
+//! Rule Mauritius      2008    only    -       Oct     lastSun 2:00    1:00    S
+//! Rule Mauritius      2009    only    -       Mar     lastSun 2:00    0       -
+//!
+//! # Zone      NAME            GMTOFF  RULES   FORMAT  [UNTIL]
+//! Zone Indian/Mauritius       3:50:00 -       LMT     1907   # Port Louis
+//!                             4:00 Mauritius  MU%sT          # Mauritius Time
+//! ```
+//!
+//! To generate a fixed timespan set for this timezone, we examine each of the
+//! Zone definitions, generating at least one timespan for each definition.
+//!
+//! * The first timespan describes the *local mean time* (LMT) in Mauritius,
+//!   calculated by the geographical position of Port Louis, its capital.
+//!   Although it’s common to have a timespan set begin with a city’s local mean
+//!   time, it is by no means necessary. This timespan has a fixed offset of
+//!   three hours and fifty minutes ahead of UTC, and lasts until the beginning
+//!   of 1907, at which point the second timespan kicks in.
+//! * The second timespan has no ‘until’ date, so it’s in effect indefinitely.
+//!   Instead of having a fixed offset, it refers to the set of rules under the
+//!   name “Mauritius”, which we’ll have to consult to compute the timespans.
+//!     * The first two rules refer to a summer time transition that began on
+//!       the 10th of October 1982, and lasted until the 21st of March 1983. But
+//!       before we get onto that, we need to add a timespan beginning at the
+//!       time the last one ended (1907), up until the point Summer Time kicks
+//!       in (1982), reflecting that it was four hours ahead of UTC.
+//!     * After this, we add another timespan for Summer Time, when Mauritius
+//!       was an extra hour ahead, bringing the total offset for that time to
+//!       *five* hours.
+//!     * The next (and last) two rules refer to another summer time
+//!       transition from the last Sunday of October 2008 to the last Sunday of
+//!       March 2009, this time at 2am local time instead of midnight. But, as
+//!       before, we need to add a *standard* time timespan beginning at the
+//!       time Summer Time ended (1983) up until the point the next span of
+//!       Summer Time kicks in (2008), again reflecting that it was four hours
+//!       ahead of UTC again.
+//!     * Next, we add the Summer Time timespan, again bringing the total
+//!       offset to five hours. We need to calculate when the last Sundays of
+//!       the months are to get the dates correct.
+//!     * Finally, we add one last standard time timespan, lasting from 2009
+//!       indefinitely, as the Mauritian authorities decided not to change to
+//!       Summer Time again.
+//!
+//! All this calculation results in the following six timespans to be added:
+//!
+//! | Timespan start            | Abbreviation | UTC offset         | DST? |
+//! |:--------------------------|:-------------|:-------------------|:-----|
+//! | *no start*                | LMT          | 3 hours 50 minutes | No   |
+//! | 1906-11-31 T 20:10:00 UTC | MUT          | 4 hours            | No   |
+//! | 1982-09-09 T 20:00:00 UTC | MUST         | 5 hours            | Yes  |
+//! | 1983-02-20 T 19:00:00 UTC | MUT          | 4 hours            | No   |
+//! | 2008-09-25 T 22:00:00 UTC | MUST         | 5 hours            | Yes  |
+//! | 2009-02-28 T 21:00:00 UTC | MUT          | 4 hours            | No   |
+//!
+//! There are a few final things of note:
+//!
+//! Firstly, this library records the times that timespans *begin*, while
+//! the tz data files record the times that timespans *end*. Pay attention to
+//! this if the timestamps aren’t where you expect them to be! For example, in
+//! the data file, the first zone rule has an ‘until’ date and the second has
+//! none, whereas in the list of timespans, the last timespan has a ‘start’
+//! date and the *first* has none.
+//!
+//! Secondly, although local mean time in Mauritius lasted until 1907, the
+//! timespan is recorded as ending in 1906! Why is this? It’s because the
+//! transition occurred at midnight *at the local time*, which in this case,
+//! was three hours fifty minutes ahead of UTC. So that time has to be
+//! *subtracted* from the date, resulting in twenty hours and ten minutes on
+//! the last day of the year. Similar things happen on the rest of the
+//! transitions, being either four or five hours ahead of UTC.
+//!
+//! The logic in this file is based off of `zic.c`, which comes with the
+//! zoneinfo files and is in the public domain.
+
 use table::{Table, Saving};
 use datetime::LocalDateTime;
 
@@ -51,7 +154,10 @@ impl FixedTimespan {
 }
 
 
+/// Trait to put the `timespans` method on Tables.
 pub trait TableTransitions {
+
+    /// The
     fn timespans(&self, zone_name: &str) -> FixedTimespanSet;
 }
 
