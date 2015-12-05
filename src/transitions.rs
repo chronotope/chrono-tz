@@ -101,7 +101,7 @@
 //! The logic in this file is based off of `zic.c`, which comes with the
 //! zoneinfo files and is in the public domain.
 
-use table::{Table, Saving};
+use table::{Table, Saving, RuleInfo, ZoneInfo};
 use datetime::LocalDateTime;
 
 
@@ -157,7 +157,6 @@ impl FixedTimespan {
 /// Trait to put the `timespans` method on Tables.
 pub trait TableTransitions {
 
-    /// The
     fn timespans(&self, zone_name: &str) -> FixedTimespanSet;
 }
 
@@ -166,167 +165,178 @@ impl TableTransitions for Table {
 
     /// Computes a fixed timespan set for the timezone with the given name.
     fn timespans(&self, zone_name: &str) -> FixedTimespanSet {
-        let mut transitions = Vec::new();
-        let mut start_time = None;
-        let mut until_time = None;
-
-        let mut first_transition = None;
+        let mut builder = FixedTimespanSetBuilder::default();
 
         let zoneset = self.get_zoneset(zone_name);
-        for (i, timespan) in zoneset.iter().enumerate() {
+        for (i, zone_info) in zoneset.iter().enumerate() {
             let mut dst_offset = 0;
             let use_until      = i != zoneset.len() - 1;
-            let utc_offset     = timespan.offset;
+            let utc_offset     = zone_info.offset;
 
             let mut insert_start_transition = i > 0;
             let mut start_zone_id = None;
-            let mut start_utc_offset = timespan.offset;
+            let mut start_utc_offset = zone_info.offset;
             let mut start_dst_offset = 0;
 
-            match timespan.saving {
+            match zone_info.saving {
                 Saving::NoSaving => {
-                    dst_offset = 0;
-                    start_zone_id = Some(timespan.format.format_constant());
-
-                    if insert_start_transition {
-                        let t = (start_time.unwrap(), FixedTimespan {
-                            utc_offset: utc_offset,
-                            dst_offset: dst_offset,
-                            name:       start_zone_id.clone().unwrap_or("".to_owned()),
-                        });
-                        transitions.push(t);
-                        insert_start_transition = false;
-                    }
-                    else {
-                        first_transition = Some(FixedTimespan {
-                            utc_offset: utc_offset,
-                            dst_offset: dst_offset,
-                            name:       start_zone_id.clone().unwrap_or("".to_owned()),
-                        });
-                    }
+                    builder.add_fixed_saving(zone_info, 0, &mut dst_offset, use_until, utc_offset, &mut insert_start_transition, &mut start_zone_id, &mut start_utc_offset, &mut start_dst_offset);
                 },
 
                 Saving::OneOff(amount) => {
-                    dst_offset = amount;
-                    start_zone_id = Some(timespan.format.format_constant());
-
-                    if insert_start_transition {
-                        let t = (start_time.unwrap(), FixedTimespan {
-                            utc_offset: utc_offset,
-                            dst_offset: dst_offset,
-                            name:       start_zone_id.clone().unwrap_or("".to_owned()),
-                        });
-                        transitions.push(t);
-                        insert_start_transition = false;
-                    }
-                    else {
-                        first_transition = Some(FixedTimespan {
-                            utc_offset: utc_offset,
-                            dst_offset: dst_offset,
-                            name:       start_zone_id.clone().unwrap_or("".to_owned()),
-                        });
-                    }
+                    builder.add_fixed_saving(zone_info, amount, &mut dst_offset, use_until, utc_offset, &mut insert_start_transition, &mut start_zone_id, &mut start_utc_offset, &mut start_dst_offset);
                 },
 
                 Saving::Multiple(ref rules) => {
-                    use datetime::DatePiece;
-
-                    for year in 1800..2100 {
-                        if use_until && year > LocalDateTime::at(timespan.end_time.unwrap().to_timestamp()).year() {
-                            break;
-                        }
-
-                        let mut activated_rules = self.rulesets[&*rules].iter()
-                                                      .filter(|r| r.applies_to_year(year))
-                                                      .collect::<Vec<_>>();
-
-                        loop {
-                            if use_until {
-                                until_time = Some(timespan.end_time.unwrap().to_timestamp() - utc_offset - dst_offset);
-                            }
-
-                            // Find the minimum rule based on the current UTC and DST offsets.
-                            // (this can be replaced with min_by when it stabilises):
-                            //.min_by(|r| r.1.absolute_datetime(year, utc_offset, dst_offset));
-                            let pos = {
-                                let earliest = activated_rules.iter().enumerate()
-                                    .map(|(i, r)| (r.absolute_datetime(year, utc_offset, dst_offset), i))
-                                    .min()
-                                    .map(|(_, i)| i);
-
-                                match earliest {
-                                    Some(p) => p,
-                                    None    => break,
-                                }
-                            };
-
-                            let earliest_rule = activated_rules.remove(pos);
-                            let earliest_at = earliest_rule.absolute_datetime(year, utc_offset, dst_offset).to_instant().seconds();
-
-                            if use_until && earliest_at >= until_time.unwrap() {
-                                break;
-                            }
-
-                            dst_offset = earliest_rule.time_to_add;
-
-                            if insert_start_transition && earliest_at == start_time.unwrap() {
-                                insert_start_transition = false;
-                            }
-
-                            if insert_start_transition {
-                                if earliest_at < start_time.unwrap() {
-                                    start_utc_offset = timespan.offset;
-                                    start_dst_offset = dst_offset;
-                                    start_zone_id = Some(timespan.format.format(dst_offset, earliest_rule.letters.as_ref()));
-                                    continue;
-                                }
-
-                                if start_zone_id.is_none() && start_utc_offset + start_dst_offset == timespan.offset + dst_offset {
-                                    start_zone_id = Some(timespan.format.format(dst_offset, earliest_rule.letters.as_ref()));
-                                }
-                            }
-
-                            let t = (earliest_at, FixedTimespan {
-                                utc_offset: timespan.offset,
-                                dst_offset: earliest_rule.time_to_add,
-                                name:       timespan.format.format(earliest_rule.time_to_add, earliest_rule.letters.as_ref()),
-                            });
-                            transitions.push(t);
-                        }
-                    }
+                    let rules = &self.rulesets[&*rules];
+                    builder.add_multiple_saving(zone_info, &*rules, &mut dst_offset, use_until, utc_offset, &mut insert_start_transition, &mut start_zone_id, &mut start_utc_offset, &mut start_dst_offset);
                 }
             }
 
             if insert_start_transition && start_zone_id.is_some() {
-                let t = (start_time.expect("Start time"), FixedTimespan {
+                let t = (builder.start_time.expect("Start time"), FixedTimespan {
                     utc_offset: start_utc_offset,
                     dst_offset: start_dst_offset,
                     name:       start_zone_id.clone().expect("Start zone ID"),
                 });
-                transitions.push(t);
+                builder.rest.push(t);
             }
 
             if use_until {
-                start_time = Some(timespan.end_time.expect("End time").to_timestamp() - utc_offset - dst_offset);
+                builder.start_time = Some(zone_info.end_time.expect("End time").to_timestamp() - utc_offset - dst_offset);
             }
         }
 
-        transitions.sort_by(|a, b| a.0.cmp(&b.0));
+        builder.build()
+    }
+}
 
-        let first = match first_transition {
+#[derive(Debug, Default)]
+struct FixedTimespanSetBuilder {
+    first: Option<FixedTimespan>,
+    rest: Vec<(i64, FixedTimespan)>,
+
+    start_time: Option<i64>,
+    until_time: Option<i64>,
+}
+
+impl FixedTimespanSetBuilder {
+    fn add_fixed_saving(&mut self, timespan: &ZoneInfo, amount: i64,
+            dst_offset: &mut i64, use_until: bool, utc_offset: i64, insert_start_transition: &mut bool,
+            start_zone_id: &mut Option<String>, start_utc_offset: &mut i64, start_dst_offset: &mut i64)
+    {
+        *dst_offset = amount;
+        *start_zone_id = Some(timespan.format.format_constant());
+
+        if *insert_start_transition {
+            let time = self.start_time.unwrap();
+            let timespan = FixedTimespan {
+                utc_offset: timespan.offset,
+                dst_offset: *dst_offset,
+                name:       start_zone_id.clone().unwrap_or("".to_owned()),
+            };
+
+            self.rest.push((time, timespan));
+            *insert_start_transition = false;
+        }
+        else {
+            self.first = Some(FixedTimespan {
+                utc_offset: utc_offset,
+                dst_offset: *dst_offset,
+                name:       start_zone_id.clone().unwrap_or("".to_owned()),
+            });
+        }
+    }
+
+    fn add_multiple_saving(&mut self, timespan: &ZoneInfo, rules: &[RuleInfo],
+            dst_offset: &mut i64, use_until: bool, utc_offset: i64, insert_start_transition: &mut bool,
+            start_zone_id: &mut Option<String>, start_utc_offset: &mut i64, start_dst_offset: &mut i64)
+    {
+        use std::mem::replace;
+        use datetime::DatePiece;
+
+        for year in 1800..2100 {
+            if use_until && year > LocalDateTime::at(timespan.end_time.unwrap().to_timestamp()).year() {
+                break;
+            }
+
+            let mut activated_rules = rules.iter()
+                                           .filter(|r| r.applies_to_year(year))
+                                           .collect::<Vec<_>>();
+
+            loop {
+                if use_until {
+                    self.until_time = Some(timespan.end_time.unwrap().to_timestamp() - utc_offset - *dst_offset);
+                }
+
+                // Find the minimum rule based on the current UTC and DST offsets.
+                // (this can be replaced with min_by when it stabilises):
+                //.min_by(|r| r.1.absolute_datetime(year, utc_offset, dst_offset));
+                let pos = {
+                    let earliest = activated_rules.iter().enumerate()
+                        .map(|(i, r)| (r.absolute_datetime(year, utc_offset, *dst_offset), i))
+                        .min()
+                        .map(|(_, i)| i);
+
+                    match earliest {
+                        Some(p) => p,
+                        None    => break,
+                    }
+                };
+
+                let earliest_rule = activated_rules.remove(pos);
+                let earliest_at = earliest_rule.absolute_datetime(year, utc_offset, *dst_offset).to_instant().seconds();
+
+                if use_until && earliest_at >= self.until_time.unwrap() {
+                    break;
+                }
+
+                *dst_offset = earliest_rule.time_to_add;
+
+                if *insert_start_transition && earliest_at == self.start_time.unwrap() {
+                    *insert_start_transition = false;
+                }
+
+                if *insert_start_transition {
+                    if earliest_at < self.start_time.unwrap() {
+                        replace(start_utc_offset, timespan.offset);
+                        replace(start_dst_offset, *dst_offset);
+                        replace(start_zone_id, Some(timespan.format.format(*dst_offset, earliest_rule.letters.as_ref())));
+                        continue;
+                    }
+
+                    if start_zone_id.is_none() && *start_utc_offset + *start_dst_offset == timespan.offset + *dst_offset {
+                        replace(start_zone_id, Some(timespan.format.format(*dst_offset, earliest_rule.letters.as_ref())));
+                    }
+                }
+
+                let t = (earliest_at, FixedTimespan {
+                    utc_offset: timespan.offset,
+                    dst_offset: earliest_rule.time_to_add,
+                    name:       timespan.format.format(earliest_rule.time_to_add, earliest_rule.letters.as_ref()),
+                });
+                self.rest.push(t);
+            }
+        }
+
+    }
+
+    fn build(mut self) -> FixedTimespanSet {
+        self.rest.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let first = match self.first {
             Some(ft) => ft,
-            None     => transitions.iter().find(|t| t.1.dst_offset == 0).unwrap().1.clone(),
+            None     => self.rest.iter().find(|t| t.1.dst_offset == 0).unwrap().1.clone(),
         };
 
         let mut zoneset = FixedTimespanSet {
             first: first,
-            rest:  transitions,
+            rest:  self.rest,
         };
         optimise(&mut zoneset);
         zoneset
     }
 }
-
 
 #[allow(unused_results)]  // for remove
 fn optimise(transitions: &mut FixedTimespanSet) {
@@ -358,7 +368,6 @@ fn optimise(transitions: &mut FixedTimespanSet) {
         transitions.rest.remove(0);
     }
 }
-
 
 
 #[cfg(test)]
