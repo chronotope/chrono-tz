@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::exit;
 
 extern crate datetime;
-use datetime::LocalDateTime;
+use datetime::{LocalDateTime, ISO};
 
 extern crate zoneinfo_parse;
 use zoneinfo_parse::line::{Line};
@@ -200,7 +200,7 @@ impl DataCrate {
             try!(writeln!(w, "        rest: &["));
 
             for t in &set.rest {
-                try!(writeln!(w, "        ({:?}, FixedTimespan {{  // {:?} UTC", t.0, LocalDateTime::at(t.0)));
+                try!(writeln!(w, "        ({:?}, FixedTimespan {{  // {} UTC", t.0, LocalDateTime::at(t.0).iso()));
 
                 // Write the total offset (the only value that gets used)
                 // and both the offsets that get added together, as a
