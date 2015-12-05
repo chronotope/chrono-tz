@@ -180,11 +180,11 @@ impl TableTransitions for Table {
 
             match zone_info.saving {
                 Saving::NoSaving => {
-                    builder.add_fixed_saving(zone_info, 0, &mut dst_offset, use_until, utc_offset, &mut insert_start_transition, &mut start_zone_id, &mut start_utc_offset, &mut start_dst_offset);
+                    builder.add_fixed_saving(zone_info, 0, &mut dst_offset, utc_offset, &mut insert_start_transition, &mut start_zone_id);
                 },
 
                 Saving::OneOff(amount) => {
-                    builder.add_fixed_saving(zone_info, amount, &mut dst_offset, use_until, utc_offset, &mut insert_start_transition, &mut start_zone_id, &mut start_utc_offset, &mut start_dst_offset);
+                    builder.add_fixed_saving(zone_info, amount, &mut dst_offset, utc_offset, &mut insert_start_transition, &mut start_zone_id);
                 },
 
                 Saving::Multiple(ref rules) => {
@@ -222,8 +222,8 @@ struct FixedTimespanSetBuilder {
 
 impl FixedTimespanSetBuilder {
     fn add_fixed_saving(&mut self, timespan: &ZoneInfo, amount: i64,
-            dst_offset: &mut i64, use_until: bool, utc_offset: i64, insert_start_transition: &mut bool,
-            start_zone_id: &mut Option<String>, start_utc_offset: &mut i64, start_dst_offset: &mut i64)
+            dst_offset: &mut i64, utc_offset: i64, insert_start_transition: &mut bool,
+            start_zone_id: &mut Option<String>)
     {
         *dst_offset = amount;
         *start_zone_id = Some(timespan.format.format_constant());
