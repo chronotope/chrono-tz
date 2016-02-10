@@ -38,7 +38,7 @@ use table::Table;
 /// Trait to put the `structure` method on Tables.
 pub trait Structure {
 
-    /// The **Structure** of the zonesets.
+    /// Returns an iterator over the structure of this table.
     fn structure(&self) -> TableStructure;
 }
 

@@ -9,6 +9,8 @@
 //! `table` module.
 
 use std::ascii::AsciiExt;
+use std::error::Error as ErrorTrait;
+use std::fmt;
 use std::str::FromStr;
 
 use datetime::{LocalDate, LocalTime, LocalDateTime, Month, Weekday};
@@ -521,8 +523,7 @@ impl DaySpec {
     /// Converts this day specification to a concrete date, given the year and
     /// month it should occur in.
     pub fn to_concrete_date(&self, year: i64, month: Month) -> LocalDate {
-        use datetime::{LocalDate, DatePiece};
-        use datetime::iter::Year;
+        use datetime::{LocalDate, DatePiece, Year};
 
         match *self {
             DaySpec::Ordinal(day)           => LocalDate::ymd(year, month, day).unwrap(),
@@ -612,7 +613,6 @@ pub struct TimeSpecAndType(pub TimeSpec, pub TimeType);
 impl TimeSpec {
 
     /// Shorthand `TimeSpecAndType` constructor for testing.
-    #[cfg(test)]
     pub fn with_type(self, time_type: TimeType) -> TimeSpecAndType {
         TimeSpecAndType(self, time_type)
     }
@@ -693,6 +693,21 @@ pub enum Error {
     Fail
 }
 
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.description())
+    }
+}
+
+impl ErrorTrait for Error {
+    fn description(&self) -> &str {
+        "parse error"
+    }
+
+    fn cause(&self) -> Option<&ErrorTrait> {
+        None
+    }
+}
 
 /// A type of valid line that has been parsed.
 #[derive(PartialEq, Debug, Copy, Clone)]
