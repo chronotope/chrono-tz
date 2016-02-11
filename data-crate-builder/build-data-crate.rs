@@ -7,6 +7,8 @@ use std::fs::{File, OpenOptions, create_dir, metadata};
 use std::path::{Path, PathBuf};
 use std::process::exit;
 
+extern crate getopts;
+
 extern crate datetime;
 use datetime::{LocalDateTime, ISO};
 
@@ -18,9 +20,19 @@ use zoneinfo_parse::transitions::{TableTransitions};
 
 
 fn main() {
-    let args: Vec<_> = args().skip(1).collect();
+    let mut opts = getopts::Options::new();
+    opts.reqopt("o", "output", "directory to write the crate into", "DIR");
 
-    let data_crate = match DataCrate::new(&args[0], &args[1..]) {
+    let args: Vec<_> = args().skip(1).collect();
+    let matches = match opts.parse(&args) {
+        Ok(m)  => m,
+        Err(e) => {
+            println!("Error parsing options: {}", e);
+            exit(1);
+        },
+    };
+
+    let data_crate = match DataCrate::new(matches.opt_str("output").unwrap(), &matches.free) {
         Ok(dc) => dc,
         Err(errs) => {
             for err in errs {
