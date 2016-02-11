@@ -1,4 +1,4 @@
-use std::env::args;
+use std::env::args_os;
 use std::error::Error as ErrorTrait;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -23,8 +23,7 @@ fn main() {
     let mut opts = getopts::Options::new();
     opts.reqopt("o", "output", "directory to write the crate into", "DIR");
 
-    let args: Vec<_> = args().skip(1).collect();
-    let matches = match opts.parse(&args) {
+    let matches = match opts.parse(args_os().skip(1)) {
         Ok(m)  => m,
         Err(e) => {
             println!("Error parsing options: {}", e);
