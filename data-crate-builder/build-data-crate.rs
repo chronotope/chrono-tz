@@ -34,7 +34,7 @@ fn main() {
     }
 }
 
-fn build_data_crate() -> Result<(), SomeError> {
+fn build_data_crate() -> Result<(), Error> {
     let mut opts = getopts::Options::new();
     opts.reqopt("o", "output", "directory to write the crate into", "DIR");
 
@@ -54,7 +54,7 @@ struct DataCrate {
 
 quick_error! {
     #[derive(Debug)]
-    enum SomeError {
+    enum Error {
         IO(err: IOError) {
             from()
             display(x) -> ("IO error: {}", err)
@@ -75,14 +75,14 @@ quick_error! {
 
 impl DataCrate {
 
-    fn new<P>(base_path: P, input_file_paths: &[String]) -> Result<DataCrate, Errors>
+    fn new<P>(base_path: P, input_file_paths: &[String]) -> Result<DataCrate, Error>
     where P: Into<PathBuf> {
 
         let mut builder = TableBuilder::new();
         let mut errors = Vec::new();
 
         for arg in input_file_paths {
-            let f = File::open(arg).unwrap();
+            let f = try!(File::open(arg));
             let reader = BufReader::new(f);
 
             for (line_number, line) in reader.lines().enumerate() {
@@ -136,7 +136,7 @@ impl DataCrate {
             })
         }
         else {
-            Err(Errors(errors))
+            Err(Errors(errors).into())
         }
     }
 
