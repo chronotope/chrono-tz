@@ -5,8 +5,77 @@
 //! it gets parsed successfully. It classifies them as `Rule`, `Link`,
 //! `Zone`, or `Continuation` lines.
 //!
-//! The actual *interpretation* of what the details mean is done by the
-//! `table` module.
+//! `Line` is the type that parses and holds zoneinfo line data. To try to
+//! parse a string, use the `Line::from_str` constructor. (This isn’t the
+//! `FromStr` trait, so you can’t use `parse` on a string. Sorry!)
+//!
+//! ## Examples
+//!
+//! Parsing a `Rule` line:
+//!
+//! ```
+//! # extern crate datetime;
+//! # extern crate zoneinfo_parse;
+//! # fn main() {
+//! use zoneinfo_parse::line::*;
+//! use datetime::{Month, Weekday};
+//! use datetime::zone::TimeType;
+//!
+//! let line = Line::from_str("Rule  EU  1977    1980    -   Apr Sun>=1   1:00u  1:00    S");
+//!
+//! assert_eq!(line, Ok(Line::Rule(Rule {
+//!     name:         "EU",
+//!     from_year:    YearSpec::Number(1977),
+//!     to_year:      Some(YearSpec::Number(1980)),
+//!     month:        MonthSpec(Month::April),
+//!     day:          DaySpec::FirstOnOrAfter(WeekdaySpec(Weekday::Sunday), 1),
+//!     time:         TimeSpec::HoursMinutes(1, 0).with_type(TimeType::UTC),
+//!     time_to_add:  TimeSpec::HoursMinutes(1, 0),
+//!     letters:      Some("S"),
+//! })));
+//! # }
+//! ```
+//!
+//! Parsing a `Zone` line:
+//!
+//! ```
+//! # extern crate datetime;
+//! # extern crate zoneinfo_parse;
+//! # fn main() {
+//! use zoneinfo_parse::line::*;
+//! use datetime::{Month, Weekday};
+//! use datetime::zone::TimeType;
+//!
+//! let line = Line::from_str("Zone  Australia/Adelaide  9:30  Aus  AC%sT  1971 Oct 31  2:00:00");
+//!
+//! assert_eq!(line, Ok(Line::Zone(Zone {
+//!     name: "Australia/Adelaide",
+//!     info: ZoneInfo {
+//!         utc_offset:  TimeSpec::HoursMinutes(9, 30),
+//!         saving:      Saving::Multiple("Aus"),
+//!         format:      "AC%sT",
+//!         time:        Some(ChangeTime::UntilTime(
+//!                         YearSpec::Number(1971),
+//!                         MonthSpec(Month::October),
+//!                         DaySpec::Ordinal(31),
+//!                         TimeSpec::HoursMinutesSeconds(2, 0, 0).with_type(TimeType::Wall))
+//!                      ),
+//!     },
+//! })));
+//! # }
+//! ```
+//!
+//! Parsing a `Link` line:
+//!
+//! ```
+//! use zoneinfo_parse::line::*;
+//!
+//! let line = Line::from_str("Link  Europe/Istanbul  Asia/Istanbul");
+//! assert_eq!(line, Ok(Line::Link(Link {
+//!     existing:  "Europe/Istanbul",
+//!     new:       "Asia/Istanbul",
+//! })));
+//! ```
 
 use std::ascii::AsciiExt;
 use std::error::Error as ErrorTrait;
@@ -801,7 +870,7 @@ mod test {
         })));
 
         test!(rule_3: "Rule	EU	1977	1980	-	Apr	Sun>=1	 1:00u	1:00	S" => Ok(Line::Rule(Rule {
-            name:        "EU",
+            name:         "EU",
             from_year:    YearSpec::Number(1977),
             to_year:      Some(YearSpec::Number(1980)),
             month:        MonthSpec(Month::April),
