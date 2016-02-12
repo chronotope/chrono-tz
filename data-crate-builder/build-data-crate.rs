@@ -1,8 +1,10 @@
 use std::env::args_os;
 use std::error::Error as ErrorTrait;
+use std::fmt;
 use std::io::{Read, BufRead, BufReader};
 use std::io::{Write, stderr};
 use std::io::Result as IOResult;
+use std::io::Error as IOError;
 use std::fs::{File, OpenOptions, create_dir, metadata};
 use std::path::{Path, PathBuf};
 use std::process::exit;
@@ -19,46 +21,28 @@ use zoneinfo_parse::structure::{Structure, Child};
 use zoneinfo_parse::transitions::{TableTransitions};
 
 #[macro_use]
+extern crate quick_error;
+
+#[macro_use]
 mod util;
 
+
 fn main() {
-    if let Err(()) = build_data_crate() {
+    if let Err(e) = build_data_crate() {
+        println_stderr!("{}", e);
         exit(1);
     }
 }
 
-fn build_data_crate() -> Result<(), ()> {
+fn build_data_crate() -> Result<(), SomeError> {
     let mut opts = getopts::Options::new();
     opts.reqopt("o", "output", "directory to write the crate into", "DIR");
 
-    let matches = match opts.parse(args_os().skip(1)) {
-        Ok(m)  => m,
-        Err(e) => {
-            println_stderr!("Error parsing options: {}", e);
-            return Err(());
-        },
-    };
+    let matches = try!(opts.parse(args_os().skip(1)));
+    let data_crate = try!(DataCrate::new(matches.opt_str("output").unwrap(), &matches.free));
+    try!(data_crate.run());
 
-    let data_crate = match DataCrate::new(matches.opt_str("output").unwrap(), &matches.free) {
-        Ok(dc) => dc,
-        Err(errs) => {
-            for err in errs {
-                println_stderr!("{}:{}: {}", err.filename, err.line, err.error);
-            }
-
-            println_stderr!("Errors occurred - not going any further.");
-            return Err(());
-        },
-    };
-
-    match data_crate.run() {
-        Ok(()) => println!("All done."),
-        Err(e) => {
-            println_stderr!("IO error: {}", e);
-            return Err(());
-        },
-    }
-
+    println!("All done.");
     Ok(())
 }
 
@@ -67,9 +51,31 @@ struct DataCrate {
     table: Table,
 }
 
+
+quick_error! {
+    #[derive(Debug)]
+    enum SomeError {
+        IO(err: IOError) {
+            from()
+            display(x) -> ("IO error: {}", err)
+        }
+
+        Errors(errs: Errors) {
+            from()
+            display(x) -> ("{}", errs)
+        }
+
+        Getopts(err: getopts::Fail) {
+            from()
+            display(x) -> ("Error parsing options: {}", err)
+        }
+    }
+}
+
+
 impl DataCrate {
 
-    fn new<P>(base_path: P, input_file_paths: &[String]) -> Result<DataCrate, Vec<Error>>
+    fn new<P>(base_path: P, input_file_paths: &[String]) -> Result<DataCrate, Errors>
     where P: Into<PathBuf> {
 
         let mut builder = TableBuilder::new();
@@ -92,7 +98,7 @@ impl DataCrate {
 
                     // If there’s an error, then display which line failed to parse.
                     Err(e) => {
-                        let error = Error {
+                        let error = ParseError {
                             filename: arg.clone(),
                             line: line_number + 1,
                             error: e.description().to_owned(),
@@ -112,7 +118,7 @@ impl DataCrate {
                 };
 
                 if let Err(e) = result {
-                    let error = Error {
+                    let error = ParseError {
                         filename: arg.clone(),
                         line: line_number + 1,
                         error: e.description().to_owned(),
@@ -130,7 +136,7 @@ impl DataCrate {
             })
         }
         else {
-            Err(errors)
+            Err(Errors(errors))
         }
     }
 
@@ -250,10 +256,23 @@ fn sanitise_name(name: &str) -> String {
     name.replace("-", "_")
 }
 
-struct Error {
+#[derive(Debug)]
+struct ParseError {
     filename: String,
     line: usize,
     error: String,
+}
+
+#[derive(Debug)]
+struct Errors(Vec<ParseError>);
+
+impl fmt::Display for Errors {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        for err in &self.0 {
+            try!(write!(f, "{}:{}: {}\n", err.filename, err.line, err.error));
+        }
+        Ok(())
+    }
 }
 
 const WARNING_HEADER: &'static str = r##"

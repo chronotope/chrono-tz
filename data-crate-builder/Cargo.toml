@@ -9,6 +9,7 @@ path = "build-data-crate.rs"
 
 [dependencies]
 getopts = "0.2"
+quick-error = "0.2"
 
 [dependencies.zoneinfo_parse]
 path = ".."
