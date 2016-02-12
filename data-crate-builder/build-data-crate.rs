@@ -1,7 +1,7 @@
 use std::env::args_os;
 use std::error::Error as ErrorTrait;
-use std::io::prelude::*;
-use std::io::BufReader;
+use std::io::{Read, BufRead, BufReader};
+use std::io::{Write, stderr};
 use std::io::Result as IOResult;
 use std::fs::{File, OpenOptions, create_dir, metadata};
 use std::path::{Path, PathBuf};
@@ -18,6 +18,8 @@ use zoneinfo_parse::table::{Table, TableBuilder};
 use zoneinfo_parse::structure::{Structure, Child};
 use zoneinfo_parse::transitions::{TableTransitions};
 
+#[macro_use]
+mod util;
 
 fn main() {
     let mut opts = getopts::Options::new();
@@ -26,7 +28,7 @@ fn main() {
     let matches = match opts.parse(args_os().skip(1)) {
         Ok(m)  => m,
         Err(e) => {
-            println!("Error parsing options: {}", e);
+            println_stderr!("Error parsing options: {}", e);
             exit(1);
         },
     };
@@ -38,7 +40,7 @@ fn main() {
                 println!("{}:{}: {}", err.filename, err.line, err.error);
             }
 
-            println!("Errors occurred - not going any further.");
+            println_stderr!("Errors occurred - not going any further.");
             exit(1);
         },
     };
@@ -46,7 +48,7 @@ fn main() {
     match data_crate.run() {
         Ok(()) => println!("All done."),
         Err(e) => {
-            println!("IO error: {}", e);
+            println_stderr!("IO error: {}", e);
             exit(1);
         },
     }
