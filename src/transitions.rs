@@ -157,17 +157,22 @@ impl FixedTimespan {
 /// Trait to put the `timespans` method on Tables.
 pub trait TableTransitions {
 
-    fn timespans(&self, zone_name: &str) -> FixedTimespanSet;
+    /// Computes a fixed timespan set for the timezone with the given name.
+    /// Returns `None` if the table doesn’t contain a time zone with that name.
+    fn timespans(&self, zone_name: &str) -> Option<FixedTimespanSet>;
 }
 
 
 impl TableTransitions for Table {
 
-    /// Computes a fixed timespan set for the timezone with the given name.
-    fn timespans(&self, zone_name: &str) -> FixedTimespanSet {
+    fn timespans(&self, zone_name: &str) -> Option<FixedTimespanSet> {
         let mut builder = FixedTimespanSetBuilder::default();
 
-        let zoneset = self.get_zoneset(zone_name);
+        let zoneset = match self.get_zoneset(zone_name) {
+            Some(zones) => zones,
+            None => return None,
+        };
+
         for (i, zone_info) in zoneset.iter().enumerate() {
             let mut dst_offset = 0;
             let use_until      = i != zoneset.len() - 1;
@@ -207,7 +212,7 @@ impl TableTransitions for Table {
             }
         }
 
-        builder.build()
+        Some(builder.build())
     }
 }
 

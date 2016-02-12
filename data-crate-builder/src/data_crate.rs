@@ -189,7 +189,7 @@ impl DataCrate {
             try!(writeln!(w, "    name: {:?},", name));
             try!(writeln!(w, "    fixed_timespans: FixedTimespanSet {{"));
 
-            let set = self.table.timespans(&*name);
+            let set = self.table.timespans(&*name).unwrap();
 
             try!(writeln!(w, "        first: FixedTimespan {{"));
             try!(writeln!(w, "            offset: {:?},  // UTC offset {:?}, DST offset {:?}", set.first.total_offset(), set.first.utc_offset, set.first.dst_offset));

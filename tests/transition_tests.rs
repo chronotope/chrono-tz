@@ -20,10 +20,10 @@ fn no_transitions() {
     let mut table = Table::default();
     table.zonesets.insert("Test/Zone".to_owned(), vec![ zone ]);
 
-    assert_eq!(table.timespans("Test/Zone"), FixedTimespanSet {
+    assert_eq!(table.timespans("Test/Zone"), Some(FixedTimespanSet {
         first: FixedTimespan { utc_offset: 1234, dst_offset: 0, name: "TEST".to_owned() },
         rest:  vec![],
-    });
+    }));
 }
 
 #[test]
@@ -52,7 +52,7 @@ fn one_transition() {
         ],
     };
 
-    assert_eq!(table.timespans("Test/Zone"), expected);
+    assert_eq!(table.timespans("Test/Zone"), Some(expected));
 }
 
 
@@ -98,7 +98,7 @@ fn two_transitions() {
         ],
     };
 
-    assert_eq!(table.timespans("Test/Zone"), expected);
+    assert_eq!(table.timespans("Test/Zone"), Some(expected));
 }
 
 #[test]
@@ -134,12 +134,12 @@ fn one_rule() {
     table.zonesets.insert("Test/Zone".to_owned(), vec![ lmt, zone ]);
     table.rulesets.insert("Dwayne".to_owned(), ruleset);
 
-    assert_eq!(table.timespans("Test/Zone"), FixedTimespanSet {
+    assert_eq!(table.timespans("Test/Zone"), Some(FixedTimespanSet {
         first: FixedTimespan { utc_offset: 0, dst_offset: 0, name: "LMT".to_owned() },
         rest:  vec![
             (318_470_400, FixedTimespan { utc_offset: 2000, dst_offset: 1000, name: "TEST".to_owned() })
         ],
-    });
+    }));
 }
 
 #[test]
@@ -185,13 +185,13 @@ fn two_rules() {
     table.zonesets.insert("Test/Zone".to_owned(), vec![ lmt, zone ]);
     table.rulesets.insert("Dwayne".to_owned(), ruleset);
 
-    assert_eq!(table.timespans("Test/Zone"), FixedTimespanSet {
+    assert_eq!(table.timespans("Test/Zone"), Some(FixedTimespanSet {
         first: FixedTimespan { utc_offset: 0, dst_offset: 0, name: "LMT".to_owned() },
         rest: vec![
             (318_470_400, FixedTimespan { utc_offset: 2000, dst_offset: 1000, name: "TEST".to_owned() }),
             (600_566_400, FixedTimespan { utc_offset: 2000, dst_offset: 1500, name: "TEST".to_owned() }),
         ],
-    });
+    }));
 }
 
 #[test]
@@ -232,7 +232,7 @@ fn tripoli() {
     table.zonesets.insert("Test/Zone".to_owned(), zone);
     table.rulesets.insert("Libya".to_owned(), libya);
 
-    assert_eq!(table.timespans("Test/Zone"), FixedTimespanSet {
+    assert_eq!(table.timespans("Test/Zone"), Some(FixedTimespanSet {
         first: FixedTimespan { utc_offset: 3164,  dst_offset:    0,  name:  "LMT".to_owned() },
         rest: vec![
             (-1_577_926_364, FixedTimespan { utc_offset: 3600,  dst_offset:    0,  name:  "CET".to_owned() }),
@@ -268,5 +268,5 @@ fn tripoli() {
             ( 1_364_515_200, FixedTimespan { utc_offset: 3600,  dst_offset: 3600,  name: "CEST".to_owned() }),
             ( 1_382_659_200, FixedTimespan { utc_offset: 7200,  dst_offset:    0,  name:  "EET".to_owned() }),
         ],
-    });
+    }));
 }
