@@ -15,6 +15,8 @@ use zoneinfo_parse::table::{Table, TableBuilder};
 use zoneinfo_parse::structure::{Structure, Child};
 use zoneinfo_parse::transitions::{TableTransitions};
 
+use phf_codegen::Map as PHFMap;
+
 use errors::{Error, ParseError};
 
 
@@ -164,13 +166,16 @@ impl DataCrate {
         }
 
         try!(writeln!(base_w, "\n\n"));
-        try!(writeln!(base_w, "pub fn lookup(input: &str) -> Option<&'static StaticTimeZone<'static>> {{"));
+        try!(write!(base_w, "static ZONES: phf::Map<&'static str, &'static StaticTimeZone<'static>> = "));
+
+        let mut phf_map = PHFMap::new();
         for name in &keys {
-            try!(writeln!(base_w, "    if input == {:?} {{", name));
-            try!(writeln!(base_w, "        return Some(&{});", sanitise_name(name).replace("/", "::")));
-            try!(writeln!(base_w, "    }}"));
+            phf_map.entry(&***name, &format!("&{}", sanitise_name(name).replace("/", "::")));
         }
-        try!(writeln!(base_w, "    return None;"));
+        try!(phf_map.build(&mut base_w));
+
+        try!(writeln!(base_w, ";\n\npub fn lookup(input: &str) -> Option<&'static StaticTimeZone<'static>> {{"));
+        try!(writeln!(base_w, "    ZONES.get(input).cloned()"));
         try!(writeln!(base_w, "}}"));
 
         Ok(())
@@ -244,4 +249,5 @@ use datetime::zone::{StaticTimeZone, FixedTimespanSet, FixedTimespan};
 /// The imports needed for a `mod.rs` file.
 const MOD_HEADER: &'static str = r##"
 use datetime::zone::StaticTimeZone;
+use phf;
 "##;
