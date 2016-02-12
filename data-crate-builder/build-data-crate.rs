@@ -61,7 +61,7 @@ quick_error! {
         }
 
         Errors(errs: Errors) {
-            from()
+            from(es: Vec<ParseError>) -> (Errors(es))
             display(x) -> ("{}", errs)
         }
 
@@ -136,7 +136,7 @@ impl DataCrate {
             })
         }
         else {
-            Err(Errors(errors).into())
+            Err(errors.into())
         }
     }
 
