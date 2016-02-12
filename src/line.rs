@@ -208,7 +208,7 @@ pub struct Rule<'line> {
 impl<'line> Rule<'line> {
 
     /// Attempts to parse the given string into a value of this type.
-    fn from_str(input: &str) -> Result<Rule, Error> {
+    pub fn from_str(input: &str) -> Result<Rule, Error> {
         if let Some(caps) = RULE_LINE.captures(input) {
             let name      = caps.name("name").unwrap();
             let from_year = try!(caps.name("from").unwrap().parse());
@@ -286,7 +286,9 @@ pub struct Zone<'line> {
 }
 
 impl<'line> Zone<'line> {
-    fn from_str(input: &str) -> Result<Zone, Error> {
+
+    /// Attempts to parse the given string into a value of this type.
+    pub fn from_str(input: &str) -> Result<Zone, Error> {
         if let Some(caps) = ZONE_LINE.captures(input) {
             let name = caps.name("name").unwrap();
             let info = try!(ZoneInfo::from_captures(caps));
@@ -453,7 +455,9 @@ pub struct Link<'line> {
 }
 
 impl<'line> Link<'line> {
-    fn from_str(input: &str) -> Result<Link, Error> {
+
+    /// Attempts to parse the given string into a value of this type.
+    pub fn from_str(input: &str) -> Result<Link, Error> {
         if let Some(caps) = LINK_LINE.captures(input) {
             let target  = caps.name("target").unwrap();
             let name    = caps.name("name").unwrap();

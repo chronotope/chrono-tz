@@ -5,13 +5,33 @@
 //! set of data.
 //!
 //! It’s not as simple as it seems, because the zoneinfo data lines refer to
-//! each other through strings: lines of the form "link zone A to B" could be
+//! each other through strings: lines of the form “link zone A to B” could be
 //! *parsed* successfully but still fail to be *interpreted* successfully if
-//! "B" doesn't exist. So it has to check every step of the way—nothing wrong
-//! with this, it's just a consequence of reading data from a text file.
+//! “B” doesn’t exist. So it has to check every step of the way—nothing wrong
+//! with this, it’s just a consequence of reading data from a text file.
 //!
 //! This module only deals with constructing a table from data: any analysis
 //! of the data is done elsewhere.
+//!
+//!
+//! ## Example
+//!
+//! ```
+//! use zoneinfo_parse::line::{Zone, Link};
+//! use zoneinfo_parse::table::{TableBuilder};
+//!
+//! let zone = Zone::from_str("Zone  Pacific/Auckland  11:39:04  -  LMT  1868  Nov  2").unwrap();
+//! let link = Link::from_str("Link  Pacific/Auckland  Antarctica/McMurdo").unwrap();
+//!
+//! let mut builder = TableBuilder::new();
+//! builder.add_zone_line(zone).unwrap();
+//! builder.add_link_line(link).unwrap();
+//! let table = builder.build();
+//!
+//! assert!(table.get_zoneset("Pacific/Auckland").is_some());
+//! assert!(table.get_zoneset("Antarctica/McMurdo").is_some());
+//! assert!(table.get_zoneset("UTC").is_none());
+//! ```
 
 use std::collections::hash_map::{HashMap, Entry};
 use std::error::Error as ErrorTrait;
