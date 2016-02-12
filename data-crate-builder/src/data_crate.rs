@@ -1,61 +1,50 @@
-use std::env::args;
-use std::error::Error as ErrorTrait;
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::io::Result as IOResult;
-use std::fs::{File, OpenOptions, create_dir, metadata};
-use std::path::{Path, PathBuf};
-use std::process::exit;
+//! Creating the data crate from several input files, and the writing of Rust
+//! files afterwards.
 
-extern crate datetime;
+use std::error::Error as ErrorTrait;
+use std::io::{Read, BufRead, BufReader};
+use std::io::Write;
+use std::io::Result as IOResult;
+use std::fs::{File, OpenOptions, create_dir};
+use std::path::PathBuf;
+
 use datetime::{LocalDateTime, ISO};
 
-extern crate zoneinfo_parse;
 use zoneinfo_parse::line::{Line};
 use zoneinfo_parse::table::{Table, TableBuilder};
 use zoneinfo_parse::structure::{Structure, Child};
 use zoneinfo_parse::transitions::{TableTransitions};
 
+use errors::{Error, ParseError};
 
-fn main() {
-    let args: Vec<_> = args().skip(1).collect();
 
-    let data_crate = match DataCrate::new(&args[0], &args[1..]) {
-        Ok(dc) => dc,
-        Err(errs) => {
-            for err in errs {
-                println!("{}:{}: {}", err.filename, err.line, err.error);
-            }
+/// The entire contents of some zoneinfo data files.
+pub struct DataCrate {
 
-            println!("Errors occurred - not going any further.");
-            exit(1);
-        },
-    };
-
-    match data_crate.run() {
-        Ok(()) => println!("All done."),
-        Err(e) => {
-            println!("IO error: {}", e);
-            exit(1);
-        },
-    }
-}
-
-struct DataCrate {
+    /// The base path to write the Rust files to.
     base_path: PathBuf,
+
+    /// The data to write.
     table: Table,
 }
 
 impl DataCrate {
 
-    fn new<P>(base_path: P, input_file_paths: &[String]) -> Result<DataCrate, Vec<Error>>
+    /// Creates a new data crate based on the contents of several files,
+    /// returning an error if any of the files can’t be opened or any of the
+    /// lines doesn’t parse correctly. The resulting data crate value can then
+    /// be turned into many Rust files of time zone info.
+    ///
+    /// All the errors are stored and returned in one go, rather than
+    /// returning early after the first one.
+    pub fn new<P>(base_path: P, input_file_paths: &[String]) -> Result<DataCrate, Error>
     where P: Into<PathBuf> {
 
         let mut builder = TableBuilder::new();
         let mut errors = Vec::new();
 
         for arg in input_file_paths {
-            let f = File::open(arg).unwrap();
+            let f = try!(File::open(arg));
             let reader = BufReader::new(f);
 
             for (line_number, line) in reader.lines().enumerate() {
@@ -71,7 +60,7 @@ impl DataCrate {
 
                     // If there’s an error, then display which line failed to parse.
                     Err(e) => {
-                        let error = Error {
+                        let error = ParseError {
                             filename: arg.clone(),
                             line: line_number + 1,
                             error: e.description().to_owned(),
@@ -91,7 +80,7 @@ impl DataCrate {
                 };
 
                 if let Err(e) = result {
-                    let error = Error {
+                    let error = ParseError {
                         filename: arg.clone(),
                         line: line_number + 1,
                         error: e.description().to_owned(),
@@ -102,6 +91,7 @@ impl DataCrate {
             }
         }
 
+        // If there are *any* errors, then we can’t return success.
         if errors.is_empty() {
             Ok(DataCrate {
                 base_path: base_path.into(),
@@ -109,19 +99,28 @@ impl DataCrate {
             })
         }
         else {
-            Err(errors)
+            Err(errors.into())
         }
     }
 
-    fn run(&self) -> IOResult<()> {
+    /// There are two steps to writing the data: creating the directories the
+    /// data goes in (and the `mod.rs` files for those directories), and then
+    /// creating the files inside those directories.
+    pub fn run(&self) -> IOResult<()> {
         try!(self.create_structure_directories());
         try!(self.write_zonesets());
         Ok(())
     }
 
+    /// Creates the directories that the Rust files get written to later. Also
+    /// creates `mod.rs` files inside those directories.
     fn create_structure_directories(&self) -> IOResult<()> {
+        let mut open_opts = OpenOptions::new();
+        open_opts.write(true).create(true).truncate(true);
+
         let base_mod_path = self.base_path.join("mod.rs");
-        let mut base_w = try!(OpenOptions::new().write(true).create(true).truncate(true).open(base_mod_path));
+        let mut base_w = try!(open_opts.open(base_mod_path));
+
         try!(writeln!(base_w, "{}", WARNING_HEADER));
         try!(writeln!(base_w, "{}", MOD_HEADER));
 
@@ -132,13 +131,13 @@ impl DataCrate {
 
             let components: PathBuf = entry.name.split('/').collect();
             let dir_path = self.base_path.join(components);
-            if !is_directory(&dir_path) {
+            if !dir_path.is_dir() {
                 println!("Creating directory {:?}", &dir_path);
                 try!(create_dir(&dir_path));
             }
 
             let mod_path = dir_path.join("mod.rs");
-            let mut w = try!(OpenOptions::new().write(true).create(true).truncate(true).open(mod_path));
+            let mut w = try!(open_opts.open(mod_path));
             for child in &entry.children {
                 match *child {
                     Child::TimeZone(ref name) => {
@@ -177,6 +176,7 @@ impl DataCrate {
         Ok(())
     }
 
+    /// Writes each zone file as a Rust file.
     fn write_zonesets(&self) -> IOResult<()> {
         for name in self.table.zonesets.keys().chain(self.table.links.keys()) {
             let components: PathBuf = name.split('/').map(sanitise_name).collect();
@@ -218,23 +218,16 @@ impl DataCrate {
     }
 }
 
-fn is_directory(path: &Path) -> bool {
-    match metadata(path) {
-        Ok(m)  => m.is_dir(),
-        Err(_) => false,
-    }
-}
-
+/// Rust places constraints on what modules can be named, so we need to
+/// “sanitise” some of the time zone names before they can be made into
+/// modules.
 fn sanitise_name(name: &str) -> String {
     name.replace("-", "_")
 }
 
-struct Error {
-    filename: String,
-    line: usize,
-    error: String,
-}
 
+/// The comment placed at the top of all autogenerated files, so they aren’t
+/// ever changed by a human and then overwritten by this program later.
 const WARNING_HEADER: &'static str = r##"
 // ------
 // This file is autogenerated!
@@ -242,11 +235,13 @@ const WARNING_HEADER: &'static str = r##"
 // ------
 "##;
 
+/// The imports needed for a zoneinfo Rust file.
 const ZONEINFO_HEADER: &'static str = r##"
 use std::borrow::Cow;
 use datetime::zone::{StaticTimeZone, FixedTimespanSet, FixedTimespan};
 "##;
 
+/// The imports needed for a `mod.rs` file.
 const MOD_HEADER: &'static str = r##"
 use datetime::zone::StaticTimeZone;
 "##;

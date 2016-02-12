@@ -1,0 +1,18 @@
+[package]
+name = "build-data-crate"
+version = "0.1.0"
+authors = ["Ben S <ogham@bsago.me>"]
+
+[[bin]]
+name = "build-data-crate"
+path = "src/main.rs"
+
+[dependencies]
+getopts = "0.2"
+quick-error = "0.2"
+
+[dependencies.zoneinfo_parse]
+path = ".."
+
+[dependencies.datetime]
+git = "https://github.com/rust-datetime/datetime.git"
