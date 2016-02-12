@@ -3,9 +3,7 @@ use std::io::{Write, stderr};
 use std::process::exit;
 
 extern crate getopts;
-
 extern crate datetime;
-
 extern crate zoneinfo_parse;
 
 #[macro_use]
