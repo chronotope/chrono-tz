@@ -1,81 +1,28 @@
-use std::env::args_os;
 use std::error::Error as ErrorTrait;
-use std::fmt;
 use std::io::{Read, BufRead, BufReader};
-use std::io::{Write, stderr};
+use std::io::Write;
 use std::io::Result as IOResult;
-use std::io::Error as IOError;
 use std::fs::{File, OpenOptions, create_dir, metadata};
 use std::path::{Path, PathBuf};
-use std::process::exit;
 
-extern crate getopts;
-
-extern crate datetime;
 use datetime::{LocalDateTime, ISO};
 
-extern crate zoneinfo_parse;
 use zoneinfo_parse::line::{Line};
 use zoneinfo_parse::table::{Table, TableBuilder};
 use zoneinfo_parse::structure::{Structure, Child};
 use zoneinfo_parse::transitions::{TableTransitions};
 
-#[macro_use]
-extern crate quick_error;
+use errors::{Error, ParseError};
 
-#[macro_use]
-mod util;
-
-
-fn main() {
-    if let Err(e) = build_data_crate() {
-        println_stderr!("{}", e);
-        exit(1);
-    }
-}
-
-fn build_data_crate() -> Result<(), Error> {
-    let mut opts = getopts::Options::new();
-    opts.reqopt("o", "output", "directory to write the crate into", "DIR");
-
-    let matches = try!(opts.parse(args_os().skip(1)));
-    let data_crate = try!(DataCrate::new(matches.opt_str("output").unwrap(), &matches.free));
-    try!(data_crate.run());
-
-    println!("All done.");
-    Ok(())
-}
-
-struct DataCrate {
+pub struct DataCrate {
     base_path: PathBuf,
     table: Table,
 }
 
 
-quick_error! {
-    #[derive(Debug)]
-    enum Error {
-        IO(err: IOError) {
-            from()
-            display(x) -> ("IO error: {}", err)
-        }
-
-        Errors(errs: Errors) {
-            from(es: Vec<ParseError>) -> (Errors(es))
-            display(x) -> ("{}", errs)
-        }
-
-        Getopts(err: getopts::Fail) {
-            from()
-            display(x) -> ("Error parsing options: {}", err)
-        }
-    }
-}
-
-
 impl DataCrate {
 
-    fn new<P>(base_path: P, input_file_paths: &[String]) -> Result<DataCrate, Error>
+    pub fn new<P>(base_path: P, input_file_paths: &[String]) -> Result<DataCrate, Error>
     where P: Into<PathBuf> {
 
         let mut builder = TableBuilder::new();
@@ -140,7 +87,7 @@ impl DataCrate {
         }
     }
 
-    fn run(&self) -> IOResult<()> {
+    pub fn run(&self) -> IOResult<()> {
         try!(self.create_structure_directories());
         try!(self.write_zonesets());
         Ok(())
@@ -256,24 +203,6 @@ fn sanitise_name(name: &str) -> String {
     name.replace("-", "_")
 }
 
-#[derive(Debug)]
-struct ParseError {
-    filename: String,
-    line: usize,
-    error: String,
-}
-
-#[derive(Debug)]
-struct Errors(Vec<ParseError>);
-
-impl fmt::Display for Errors {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        for err in &self.0 {
-            try!(write!(f, "{}:{}: {}\n", err.filename, err.line, err.error));
-        }
-        Ok(())
-    }
-}
 
 const WARNING_HEADER: &'static str = r##"
 // ------

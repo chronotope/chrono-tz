@@ -5,7 +5,7 @@ authors = ["Ben S <ogham@bsago.me>"]
 
 [[bin]]
 name = "build-data-crate"
-path = "build-data-crate.rs"
+path = "src/main.rs"
 
 [dependencies]
 getopts = "0.2"
