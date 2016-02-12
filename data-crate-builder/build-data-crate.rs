@@ -22,6 +22,12 @@ use zoneinfo_parse::transitions::{TableTransitions};
 mod util;
 
 fn main() {
+    if let Err(()) = build_data_crate() {
+        exit(1);
+    }
+}
+
+fn build_data_crate() -> Result<(), ()> {
     let mut opts = getopts::Options::new();
     opts.reqopt("o", "output", "directory to write the crate into", "DIR");
 
@@ -29,7 +35,7 @@ fn main() {
         Ok(m)  => m,
         Err(e) => {
             println_stderr!("Error parsing options: {}", e);
-            exit(1);
+            return Err(());
         },
     };
 
@@ -37,11 +43,11 @@ fn main() {
         Ok(dc) => dc,
         Err(errs) => {
             for err in errs {
-                println!("{}:{}: {}", err.filename, err.line, err.error);
+                println_stderr!("{}:{}: {}", err.filename, err.line, err.error);
             }
 
             println_stderr!("Errors occurred - not going any further.");
-            exit(1);
+            return Err(());
         },
     };
 
@@ -49,9 +55,11 @@ fn main() {
         Ok(()) => println!("All done."),
         Err(e) => {
             println_stderr!("IO error: {}", e);
-            exit(1);
+            return Err(());
         },
     }
+
+    Ok(())
 }
 
 struct DataCrate {
