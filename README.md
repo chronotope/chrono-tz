@@ -1,15 +1,15 @@
 # zoneinfo-parse [![Build status](https://travis-ci.org/rust-datetime/zoneinfo-parse.svg)](https://travis-ci.org/rust-datetime/zoneinfo-parse) [![Coverage status](https://coveralls.io/repos/rust-datetime/zoneinfo-parse/badge.svg?branch=master&service=github)](https://coveralls.io/github/rust-datetime/zoneinfo-parse?branch=master)
 
-Rust library for reading the text files comprising the [zoneinfo database](^w), which records time zone changes and offsets across the world from multiple sources.
+Rust library for reading the text files comprising the [zoneinfo database][w], which records time zone changes and offsets across the world from multiple sources.
 
-The zoneinfo database is distributed in one of two formats: a raw text format with one file per continent, and a compiled binary format with one file per time zone. This crate deals with the former; for the latter, see the [`zoneinfo_compiled` crate](^zc) instead.
+The zoneinfo database is distributed in one of two formats: a raw text format with one file per continent, and a compiled binary format with one file per time zone. This crate deals with the former; for the latter, see the [`zoneinfo_compiled` crate][zc] instead.
 
-The database itself is maintained by IANA. For more information, see [IANA’s page on the time zone database](^iana). You can also find the text files themselves in [the tz repository](^tz).
+The database itself is maintained by IANA. For more information, see [IANA’s page on the time zone database][iana]. You can also find the text files themselves in [the tz repository][tz].
 
-[^iana]: https://www.iana.org/time-zones
-[^tz]: https://github.com/eggert/tz
-[^w]: https://en.wikipedia.org/wiki/Tz_database
-[^zc]: https://github.com/rust-datetime/zoneinfo-compiled
+[iana]: https://www.iana.org/time-zones
+[tz]: https://github.com/eggert/tz
+[w]: https://en.wikipedia.org/wiki/Tz_database
+[zc]: https://github.com/rust-datetime/zoneinfo-compiled
 
 ### [View the Rustdoc](https://datetime.rustdocs.org/zoneinfo_parse/index.html)
 
