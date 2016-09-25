@@ -1,12 +1,15 @@
 [package]
 name = "zoneinfo_parse"
+description = "Library for parsing zoneinfo time zone files"
+
 version = "0.1.2"
-authors = ["Ben S <ogham@bsago.me>"]
 documentation = "https://docs.rs/zoneinfo_parse"
+homepage = "https://github.com/rust-datetime/zoneinfo-compiled"
+license = "MIT"
+readme = "README.md"
+authors = ["Ben S <ogham@bsago.me>"]
 
 [dependencies]
+datetime = "0.4.4"
 lazy_static = "0.2.1"
 regex = "0.1.77"
-
-[dependencies.datetime]
-git = "https://github.com/rust-datetime/datetime.git"
