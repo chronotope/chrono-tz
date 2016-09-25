@@ -11,12 +11,12 @@ The database itself is maintained by IANA. For more information, see [IANA’s p
 [w]: https://en.wikipedia.org/wiki/Tz_database
 [zc]: https://github.com/rust-datetime/zoneinfo-compiled
 
-### [View the Rustdoc](https://datetime.rustdocs.org/zoneinfo_parse/index.html)
+### [View the Rustdoc](https://docs.rs/zoneinfo_parse)
 
 
 ## Format
 
-The zoneinfo files contains `Zone`, `Rule`, and `Link` information. Each type of line forms a variant in the [`line::Line`](https://datetime.rustdocs.org/zoneinfo_parse/line/enum.Line.html) enum.
+The zoneinfo files contains `Zone`, `Rule`, and `Link` information. Each type of line forms a variant in the `line::Line` enum.
 
 To get started, here are a few lines representing what time is like in the `Europe/Madrid` time zone:
 
@@ -31,7 +31,7 @@ The first line is a comment. The second starts with `Zone`, so we know
 So parsing these five lines would return the five following results:
 
 - A `line::Line::Space` for the comment, because the line doesn’t contain any information (but isn’t strictly *invalid* either).
-- A `line::Line::Zone` for the first `Zone` entry. This contains a [`Zone` struct](https://datetime.rustdocs.org/zoneinfo_parse/line/struct.Zone.html) that holds the name of the zone. All the other fields are stored in the [`ZoneInfo` struct](https://datetime.rustdocs.org/zoneinfo_parse/line/struct.ZoneInfo.html).
+- A `line::Line::Zone` for the first `Zone` entry. This contains a `Zone` struct that holds the name of the zone. All the other fields are stored in the `ZoneInfo` struct.
 - A `line::Line::Continuation` for the next entry. This is different from the line above as it doesn’t contain a name field; it only has the information in a `ZoneInfo` struct.
 - The fourth line contains the same types of data as the third.
 - As does the fifth.
@@ -44,23 +44,23 @@ Lines with rule definitions look like this:
     Rule        Spain   1918    only    -       Apr     15      23:00s  1:00    S
     Rule        Spain   1919    only    -       Apr      5      23:00s  1:00    S
 
-All these lines follow the same pattern: A `line::Line::Rule` that contains a [`Rule` struct](https://datetime.rustdocs.org/zoneinfo_parse/line/struct.Rule.html), which has a field for each column of data.
+All these lines follow the same pattern: A `line::Line::Rule` that contains a `Rule` struct, which has a field for each column of data.
 
 Finally, there are lines that link one zone to another’s name:
 
     Link   Europe/Prague   Europe/Bratislava
 
-The [`Link` struct](https://datetime.rustdocs.org/zoneinfo_parse/line/struct.Link.html) simply contains the names of both the existing and new time zones.
+The `Link` struct simply contains the names of both the existing and new time zones.
 
 
 ## Interpretation
 
 Once the input lines have been parsed, they must be *interpreted* to form a table of time zone data.
 
-The easiest way to do this is with a [`TableBuilder`](https://datetime.rustdocs.org/zoneinfo_parse/table/struct.TableBuilder.html). You can add various lines to the builder, and it will throw an error as soon as it detects that something’s wrong, such as a duplicate or a missing entry. When all the lines have been fed to the builder, you can use the `build` method to produce a [`Table`](https://datetime.rustdocs.org/zoneinfo_parse/table/struct.Table.html) containing fields for the rule, zone, and link lines.
+The easiest way to do this is with a `TableBuilder`. You can add various lines to the builder, and it will throw an error as soon as it detects that something’s wrong, such as a duplicate or a missing entry. When all the lines have been fed to the builder, you can use the `build` method to produce a `Table` containing fields for the rule, zone, and link lines.
 
 
 
 ## Example program
 
-This crate is used to produce the data for the [`zoneinfo-data` crate](https://github.com/rust-datetime/zoneinfo-data). For an example of its use, see the bundled [data crate builder](https://github.com/rust-datetime/zoneinfo-data).
+This crate is used to produce the data for the [`zoneinfo-data` crate](https://github.com/rust-datetime/zoneinfo-data). For an example of its use, see the bundled [data crate builder](https://github.com/rust-datetime/zoneinfo-parse/tree/master/data-crate-builder).

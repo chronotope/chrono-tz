@@ -14,7 +14,7 @@
 //! [iana]: https://www.iana.org/time-zones
 //! [tz]: https://github.com/eggert/tz
 //! [w]: https://en.wikipedia.org/wiki/Tz_database
-//! [zc]: https://datetime.rustdocs.org/zoneinfo_compiled/index.html
+//! [zc]: https://github.com/rust-datetime/zoneinfo-compiled
 //!
 //! ## Outline
 //!

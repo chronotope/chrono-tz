@@ -1,11 +1,12 @@
 [package]
 name = "zoneinfo_parse"
-version = "0.1.0"
+version = "0.1.2"
 authors = ["Ben S <ogham@bsago.me>"]
+documentation = "https://docs.rs/zoneinfo_parse"
 
 [dependencies]
-lazy_static = "*"
-regex = "*"
+lazy_static = "0.2.1"
+regex = "0.1.77"
 
 [dependencies.datetime]
 git = "https://github.com/rust-datetime/datetime.git"
