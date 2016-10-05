@@ -111,7 +111,7 @@ pub struct RuleInfo {
     pub letters: Option<String>,
 }
 
-impl<'_> From<line::Rule<'_>> for RuleInfo {
+impl<'line> From<line::Rule<'line>> for RuleInfo {
     fn from(info: line::Rule) -> RuleInfo {
         RuleInfo {
             from_year:    info.from_year,
@@ -183,7 +183,7 @@ pub struct ZoneInfo {
     pub end_time: Option<ChangeTime>,
 }
 
-impl<'_> From<line::ZoneInfo<'_>> for ZoneInfo {
+impl<'line> From<line::ZoneInfo<'line>> for ZoneInfo {
     fn from(info: line::ZoneInfo) -> ZoneInfo {
         ZoneInfo {
             offset: info.utc_offset.as_seconds(),
