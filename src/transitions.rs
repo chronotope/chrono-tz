@@ -253,6 +253,7 @@ impl FixedTimespanSetBuilder {
         }
     }
 
+    #[allow(unused_results)]
     fn add_multiple_saving(&mut self, timespan: &ZoneInfo, rules: &[RuleInfo],
             dst_offset: &mut i64, use_until: bool, utc_offset: i64, insert_start_transition: &mut bool,
             start_zone_id: &mut Option<String>, start_utc_offset: &mut i64, start_dst_offset: &mut i64)
