@@ -1,5 +1,6 @@
-Chrono-TZ is dual-licensed under the MIT License
-and Apache 2.0 Licence.
+Chrono-TZ is dual-licensed under the MIT License and Apache 2.0 Licence.
+The licenses do not apply to files in the tzdb folder which are in the
+public domain.
 
 Copyright (c) 2016 Djzin
 
