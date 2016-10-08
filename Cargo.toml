@@ -3,6 +3,11 @@ name = "chrono-tz"
 version = "0.1.0"
 authors = ["Djzin"]
 build = "build.rs"
+description = "TimeZone implementations for rust-chrono from the IANA database"
+keywords = ["date", "time", "timezone", "zone", "tz", "calendar"]
+repository = "https://github.com/djzin/chrono-tz"
+readme = "README.md"
+license = "MIT/Apache-2.0"
 
 [dependencies]
 chrono = "0.2"
