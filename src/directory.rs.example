@@ -1,0 +1,3 @@
+pub mod Europe {
+    pub type London = ::timezone_impl::Wrap<::timezones::Europe_London>;
+}

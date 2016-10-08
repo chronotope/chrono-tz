@@ -1,0 +1,11 @@
+[package]
+name = "chrono-tz"
+version = "0.1.0"
+authors = ["Djzin"]
+build = "build.rs"
+
+[dependencies]
+chrono = "0.2"
+
+[build-dependencies]
+zoneinfo_parse = "0.1"

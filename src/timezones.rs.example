@@ -1,0 +1,15 @@
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Europe_London;
+
+impl ::timezone_impl::Timespans for Europe_London {
+    fn this() -> Self { Europe_London }
+    fn timespans() -> ::timezone_impl::FixedTimespanSet {
+        static REST: &'static [(i64, ::timezone_impl::FixedTimespan)] =
+            &[(10000, ::timezone_impl::FixedTimespan { utc_offset: 0, dst_offset: 3600, name: "BST" }),
+              (20000, ::timezone_impl::FixedTimespan { utc_offset: 0, dst_offset: 0,    name: "GMT" })];
+        ::timezone_impl::FixedTimespanSet {
+            first: ::timezone_impl::FixedTimespan { utc_offset: 0, dst_offset: 0,    name: "GMT" },
+            rest: REST
+        }
+    }
+}
