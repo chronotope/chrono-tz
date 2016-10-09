@@ -115,11 +115,13 @@ pub use directory::*;
 
 #[cfg(test)]
 mod tests {
+    use super::America::Danmarkshavn;
     use super::Etc::UTC;
     use super::Europe::Berlin;
     use super::Europe::London;
     use super::Europe::Vilnius;
     use super::Europe::Warsaw;
+    use super::Pacific::Apia;
     use super::US::Eastern;
     use chrono::{TimeZone, Duration};
 
@@ -171,6 +173,20 @@ mod tests {
         let later = dt + Duration::days(180);
         let expected = London.ymd(2016, 9, 6).and_hms(6, 0, 0);
         assert_eq!(later, expected);
+    }
+
+    #[test]
+    fn international_date_line_change() {
+        let dt = UTC.ymd(2011, 12, 30).and_hms(9, 59, 59).with_timezone(&Apia);
+        assert_eq!(dt, Apia.ymd(2011, 12, 29).and_hms(23, 59, 59));
+        let dt = dt + Duration::seconds(1);
+        assert_eq!(dt, Apia.ymd(2011, 12, 31).and_hms(0, 0, 0));
+    }
+
+    #[test]
+    fn negative_offset_with_minutes_and_seconds() {
+        let dt = UTC.ymd(1900, 1, 1).and_hms(12, 0, 0).with_timezone(&Danmarkshavn);
+        assert_eq!(dt, Danmarkshavn.ymd(1900, 1, 1).and_hms(10, 45, 20));
     }
 
     #[test]
