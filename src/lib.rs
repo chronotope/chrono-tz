@@ -122,8 +122,10 @@ mod tests {
     use super::Asia::Dhaka;
     use super::Australia::Adelaide;
     use super::Etc::UTC;
+    use super::Europe::Amsterdam;
     use super::Europe::Berlin;
     use super::Europe::London;
+    use super::Europe::Moscow;
     use super::Europe::Vilnius;
     use super::Europe::Warsaw;
     use super::Pacific::Apia;
@@ -261,6 +263,13 @@ mod tests {
     }
 
     #[test]
+    fn second_offsets() {
+        let dt = UTC.ymd(1914, 1, 1).and_hms(13, 40, 28).with_timezone(&Amsterdam);
+        assert_eq!(dt.to_string(), "1914-01-01 14:00:00 AMT");
+        assert_eq!(dt.to_rfc3339(), "1914-01-01 14:00:00+00:20");
+    }
+
+    #[test]
     #[should_panic]
     fn nonexistent_time() {
         let _ = London.ymd(2016, 3, 27).and_hms(1, 30, 0);
@@ -290,7 +299,24 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn ambiguous_time_3() {
+        let _ = Moscow.ymd(2014, 10, 26).and_hms(1, 30, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn ambiguous_time_4() {
+        let _ = Moscow.ymd(2014, 10, 26).and_hms(1, 0, 0);
+    }
+
+    #[test]
     fn unambiguous_time() {
-        let _ = London.ymd(2016, 10, 30);//.and_hms(2, 0, 0);
+        let _ = London.ymd(2016, 10, 30).and_hms(2, 0, 0);
+    }
+
+    #[test]
+    fn unambiguous_time_2() {
+        let _ = Moscow.ymd(2014, 10, 26).and_hms(2, 0, 0);
     }
 }
