@@ -117,13 +117,15 @@ lazy_static! {
 
     /// Format of an hour and a minute specification.
     static ref HM_FIELD: Regex = Regex::new(r##"(?x) ^
-        ( ?P<hour> -? \d{1,2} ) : ( ?P<minute> \d{2} )
+        ( ?P<sign> -? )
+        ( ?P<hour> \d{1,2} ) : ( ?P<minute> \d{2} )
         ( ?P<flag> [wsugz] )?
     $ "##).unwrap();
 
     /// Format of an hour, a minute, and a second specification.
     static ref HMS_FIELD: Regex = Regex::new(r##"(?x) ^
-        ( ?P<hour> -? \d{1,2} ) : ( ?P<minute> \d{2} ) : ( ?P<second> \d{2} )
+        ( ?P<sign> -? )
+        ( ?P<hour> \d{1,2} ) : ( ?P<minute> \d{2} ) : ( ?P<second> \d{2} )
         ( ?P<flag> [wsugz] )?
     $ "##).unwrap();
 
@@ -713,21 +715,23 @@ impl FromStr for TimeSpecAndType {
             Ok(TimeSpecAndType(TimeSpec::Hours(input.parse().unwrap()), TimeType::Wall))
         }
         else if let Some(caps) = HM_FIELD.captures(input) {
-            let hour   = caps.name("hour").unwrap().parse().unwrap();
-            let minute = caps.name("minute").unwrap().parse().unwrap();
-            let flag   = caps.name("flag").and_then(|c| parse_time_type(&c[0..1]))
+            let sign   : i8 = if caps.name("sign").unwrap() == "-" { -1 } else { 1 };
+            let hour   : i8 = caps.name("hour").unwrap().parse().unwrap();
+            let minute : i8 = caps.name("minute").unwrap().parse().unwrap();
+            let flag        = caps.name("flag").and_then(|c| parse_time_type(&c[0..1]))
                                           .unwrap_or(TimeType::Wall);
 
-            Ok(TimeSpecAndType(TimeSpec::HoursMinutes(hour, minute), flag))
+            Ok(TimeSpecAndType(TimeSpec::HoursMinutes(hour * sign, minute * sign), flag))
         }
         else if let Some(caps) = HMS_FIELD.captures(input) {
-            let hour   = caps.name("hour").unwrap().parse().unwrap();
-            let minute = caps.name("minute").unwrap().parse().unwrap();
-            let second = caps.name("second").unwrap().parse().unwrap();
-            let flag   = caps.name("flag").and_then(|c| parse_time_type(&c[0..1]))
+            let sign   : i8 = if caps.name("sign").unwrap() == "-" { -1 } else { 1 };
+            let hour   : i8 = caps.name("hour").unwrap().parse().unwrap();
+            let minute : i8 = caps.name("minute").unwrap().parse().unwrap();
+            let second : i8 = caps.name("second").unwrap().parse().unwrap();
+            let flag        = caps.name("flag").and_then(|c| parse_time_type(&c[0..1]))
                                           .unwrap_or(TimeType::Wall);
 
-            Ok(TimeSpecAndType(TimeSpec::HoursMinutesSeconds(hour, minute, second), flag))
+            Ok(TimeSpecAndType(TimeSpec::HoursMinutesSeconds(hour * sign, minute * sign, second * sign), flag))
         }
         else {
             Err(Error::Fail)
@@ -925,6 +929,27 @@ mod test {
                 time:        Some(ChangeTime::UntilYear(YearSpec::Number(1919))),
             },
         })));
+
+        #[test]
+        fn negative_offsets() {
+            static LINE: &'static str = "Zone    Europe/London   -0:01:15 -  LMT 1847 Dec  1  0:00s";
+            let zone = Zone::from_str(LINE).unwrap();
+            assert_eq!(zone.info.utc_offset, TimeSpec::HoursMinutesSeconds(0, -1, -15));
+        }
+
+        #[test]
+        fn negative_offsets_2() {
+            static LINE: &'static str = "Zone        Europe/Madrid   -0:14:44 -      LMT     1901 Jan  1  0:00s";
+            let zone = Zone::from_str(LINE).unwrap();
+            assert_eq!(zone.info.utc_offset, TimeSpec::HoursMinutesSeconds(0, -14, -44));
+        }
+
+        #[test]
+        fn negative_offsets_3() {
+            static LINE: &'static str = "Zone America/Danmarkshavn -1:14:40 -    LMT 1916 Jul 28";
+            let zone = Zone::from_str(LINE).unwrap();
+            assert_eq!(zone.info.utc_offset, TimeSpec::HoursMinutesSeconds(-1, -14, -40));
+        }
     }
 
     test!(link: "Link  Europe/Istanbul  Asia/Istanbul" => Ok(Line::Link(Link {
