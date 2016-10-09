@@ -10,7 +10,7 @@ use std::env;
 use std::path::Path;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 // This function is needed until zoneinfo_parse handles comments correctly.
 // Technically a '#' symbol could occur between double quotes and should be
@@ -58,15 +58,22 @@ fn convert_bad_chars(name: &str) -> String {
 // database. The `Wrap` wrapper in the `timezone_impl` module then implements
 // TimeZone for any contained struct that implements `Timespans`.
 fn write_timezone_file(timezone_file: &mut File, table: &Table) {
-    let zones = table.zonesets.keys().chain(table.links.keys()).collect::<HashSet<_>>();
-    write!(timezone_file, "use ::timezone_impl::{{Timespans, FixedTimespanSet, FixedTimespan}};\n\n",).unwrap();
+    let zones = table.zonesets.keys().chain(table.links.keys()).collect::<BTreeSet<_>>();
+    write!(timezone_file, "use ::timezone_impl::{{Timespans, FixedTimespanSet, FixedTimespan}};\n",).unwrap();
+    write!(timezone_file, "use std::fmt::{{Debug, Formatter, Error}};\n\n",).unwrap();
     for zone in zones {
         let timespans = table.timespans(&zone).unwrap();
         let zone_name = convert_bad_chars(zone);
         write!(
             timezone_file,
-"#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+"#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct {zone};
+
+impl Debug for {zone} {{
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {{
+        write!(f, \"{raw_zone_name}\")
+    }}
+}}
 
 impl Timespans for {zone} {{
     fn this() -> Self {{ {zone} }}
@@ -83,6 +90,7 @@ impl Timespans for {zone} {{
     }}
 }}\n\n",
             zone = zone_name,
+            raw_zone_name = zone,
             rest = format_rest(timespans.rest),
             utc = timespans.first.utc_offset,
             dst = timespans.first.dst_offset,

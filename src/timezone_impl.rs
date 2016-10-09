@@ -1,5 +1,5 @@
 use chrono::{Offset, TimeZone, NaiveDate, NaiveDateTime, LocalResult, Duration};
-use std::fmt::{Display, Formatter, Error};
+use std::fmt::{Debug, Display, Formatter, Error};
 use std::cmp::Ordering;
 use binary_search::binary_search;
 
@@ -113,8 +113,20 @@ pub trait Timespans {
     fn timespans() -> FixedTimespanSet;
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Wrap<T>(pub T);
+
+impl<T: Debug> Debug for Wrap<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        self.0.fmt(f)
+    }
+}
+
+impl<T: Debug> Display for Wrap<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        self.0.fmt(f)
+    }
+}
 
 impl<T: Timespans + Clone> TimeZone for Wrap<T> {
     type Offset = FixedTimespan;
