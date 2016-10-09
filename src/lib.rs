@@ -253,12 +253,11 @@ mod tests {
 
     #[test]
     fn tahiti() {
-        let dt = UTC.ymd(1912, 10, 1).and_hms(9, 58, 15).with_timezone(&Tahiti);
-        assert_eq!(dt, Tahiti.ymd(1912, 9, 30).and_hms(23, 59, 59));
-        let dt = dt - Duration::hours(1);
-        assert_eq!(dt, Tahiti.ymd(1912, 9, 30).and_hms(22, 59, 59));
-        let dt = dt + Duration::hours(2);
-        assert_eq!(dt, Tahiti.ymd(1912, 10, 1).and_hms(0, 58, 15));
+        let dt = UTC.ymd(1912, 10, 1).and_hms(9, 58, 16).with_timezone(&Tahiti);
+        let before = dt - Duration::hours(1);
+        assert_eq!(before, Tahiti.ymd(1912, 9, 30).and_hms(23, 0, 0));
+        let after = dt + Duration::hours(1);
+        assert_eq!(after, Tahiti.ymd(1912, 10, 1).and_hms(0, 58, 16));
     }
 
     #[test]
