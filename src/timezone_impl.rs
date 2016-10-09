@@ -153,11 +153,11 @@ impl<T: Timespans + Clone> TimeZone for Wrap<T> {
 		// `TimeZone.ymd(ambiguous_date).hms(unambiguous_time)`.
         use chrono::LocalResult::*;
         match (earliest, latest) {
-            (None, result) => result,
-            (result, None) => result,
             (result @ Single(_), _) => result,
             (_, result @ Single(_)) => result,
-            (Ambiguous(offset, _), _) => Single(offset),
+            (Ambiguous(offset,_),_) => Single(offset),
+            (_,Ambiguous(offset,_)) => Single(offset),
+            (None, None) => None,
         }
     }
 
