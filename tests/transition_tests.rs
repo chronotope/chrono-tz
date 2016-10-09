@@ -1,8 +1,8 @@
 extern crate zoneinfo_parse;
 extern crate datetime;
 
-use zoneinfo_parse::line::{DaySpec, WeekdaySpec, MonthSpec, YearSpec, TimeSpec, ChangeTime};
-use zoneinfo_parse::table::{Saving, ZoneInfo, RuleInfo, Table, Format};
+use zoneinfo_parse::line::{Line, DaySpec, WeekdaySpec, MonthSpec, YearSpec, TimeSpec, ChangeTime};
+use zoneinfo_parse::table::{Saving, ZoneInfo, RuleInfo, Table, Format, TableBuilder};
 use zoneinfo_parse::transitions::{FixedTimespan, FixedTimespanSet, TableTransitions};
 use datetime::Weekday::*;
 use datetime::Month::*;
@@ -269,4 +269,26 @@ fn tripoli() {
             ( 1_382_659_200, FixedTimespan { utc_offset: 7200,  dst_offset:    0,  name:  "EET".to_owned() }),
         ],
     }));
+}
+
+#[test]
+fn dushanbe() {
+    static ZONEINFO : &'static str = r#"
+Zone    Asia/Dushanbe   4:35:12 -   LMT 1924 May  2
+            5:00    1:00    +05/+06 1991 Sep  9  2:00s
+"#;
+
+    let mut table = TableBuilder::new();
+    for line in ZONEINFO.lines() {
+        let line = Line::from_str(line).unwrap();
+        match line {
+            Line::Zone(zone) => table.add_zone_line(zone).unwrap(),
+            Line::Continuation(cont) => table.add_continuation_line(cont).unwrap(),
+            Line::Rule(rule) => table.add_rule_line(rule).unwrap(),
+            Line::Link(link) => table.add_link_line(link).unwrap(),
+            Line::Space => {},
+        }
+    }
+    let table = table.build();
+    let _ = table.timespans("Asia/Dushanbe").unwrap();
 }
