@@ -44,6 +44,21 @@
 //! # }
 //! ```
 //!
+//! Create a naive datetime and convert it to a timezone-aware datetime
+//!
+//! ```
+//! # extern crate chrono;
+//! # extern crate chrono_tz;
+//! use chrono::{TimeZone, NaiveDate};
+//! use chrono_tz::Africa::Johannesburg;
+//!
+//! # fn main() {
+//! let naive_dt = NaiveDate::from_ymd(2038, 1, 19).and_hms(3, 14, 08);
+//! let tz_aware = Johannesburg.from_local_datetime(&naive_dt).unwrap();
+//! assert_eq!(tz_aware.to_string(), "2038-01-19 03:14:08 SAST");
+//! # }
+//! ```
+//!
 //! London and New York change their clocks on different days in March
 //! so only have a 4-hour difference on certain days.
 //!
@@ -266,7 +281,17 @@ mod tests {
     fn second_offsets() {
         let dt = UTC.ymd(1914, 1, 1).and_hms(13, 40, 28).with_timezone(&Amsterdam);
         assert_eq!(dt.to_string(), "1914-01-01 14:00:00 AMT");
-        assert_eq!(dt.to_rfc3339(), "1914-01-01 14:00:00+00:20");
+
+        // NOTE: pytz will give a different result here. The actual offset is +00:19:32.
+        //       The implementation of RFC3339 formatting in chrono rounds down the
+        //       number of minutes, whereas pytz rounds to nearest in cases such as this.
+        //       RFC3339 specifies that precision is not required in this case, and that
+        //       to retain precision, the time should be converted to a representable
+        //       format.
+        //       In any case, the actual datetime objects themselves always retain full
+        //       precision in this implementation (unlike pytz). It is only (some) string
+        //       representations that lack precision.
+        assert_eq!(dt.to_rfc3339(), "1914-01-01T14:00:00+00:19");
     }
 
     #[test]
