@@ -30,25 +30,25 @@ struct Span {
 impl Span {
     fn contains(&self, x: i64) -> bool {
         match (self.begin, self.end) {
-			(Some(a), Some(b)) if a <= x && x < b  => true,
-			(Some(a), None   ) if a <= x           => true,
-			(None   , Some(b)) if b > x            => true,
-			(None   , None   )                     => true,
+            (Some(a), Some(b)) if a <= x && x < b  => true,
+            (Some(a), None   ) if a <= x           => true,
+            (None   , Some(b)) if b > x            => true,
+            (None   , None   )                     => true,
             _                                      => false,
         }
     }
 
     fn cmp(&self, x: i64) -> Ordering {
-		match (self.begin, self.end) {
-			(Some(a), Some(b)) if a <= x && x < b  => Ordering::Equal,
-			(Some(a), Some(b)) if a <= x && b <= x => Ordering::Less,
-			(Some(_), Some(_))                     => Ordering::Greater,
-			(Some(a), None   ) if a <= x           => Ordering::Equal,
-			(Some(_), None   )                     => Ordering::Greater,
-			(None   , Some(b)) if b <= x           => Ordering::Less,
-			(None   , Some(_))                     => Ordering::Equal,
-			(None   , None   )                     => Ordering::Equal,
-		}
+        match (self.begin, self.end) {
+            (Some(a), Some(b)) if a <= x && x < b  => Ordering::Equal,
+            (Some(a), Some(b)) if a <= x && b <= x => Ordering::Less,
+            (Some(_), Some(_))                     => Ordering::Greater,
+            (Some(a), None   ) if a <= x           => Ordering::Equal,
+            (Some(_), None   )                     => Ordering::Greater,
+            (None   , Some(b)) if b <= x           => Ordering::Less,
+            (None   , Some(_))                     => Ordering::Equal,
+            (None   , None   )                     => Ordering::Equal,
+        }
     }
 }
 
@@ -146,11 +146,11 @@ impl<T: Timespans + Clone> TimeZone for Wrap<T> {
         // > - The date is timezone-agnostic up to one day (i.e. practically always),
         // >   so the local date and UTC date should be equal for most cases
         // >   even though the raw calculation between `NaiveDate` and `Duration` may not.
-		//
-		// For these reasons we return always a single offset here if we can, rather than being
-		// technically correct and returning Ambiguous(_,_) on days when the clock changes. The
-		// alternative is painful errors when computing unambiguous times such as
-		// `TimeZone.ymd(ambiguous_date).hms(unambiguous_time)`.
+        //
+        // For these reasons we return always a single offset here if we can, rather than being
+        // technically correct and returning Ambiguous(_,_) on days when the clock changes. The
+        // alternative is painful errors when computing unambiguous times such as
+        // `TimeZone.ymd(ambiguous_date).hms(unambiguous_time)`.
         use chrono::LocalResult::*;
         match (earliest, latest) {
             (result @ Single(_), _) => result,
@@ -189,7 +189,7 @@ impl<T: Timespans + Clone> TimeZone for Wrap<T> {
     }
 
     fn offset_from_utc_date(&self, utc: &NaiveDate) -> Self::Offset {
-		// See comment above for why it is OK to just take any arbitrary time in the day
+        // See comment above for why it is OK to just take any arbitrary time in the day
         self.offset_from_utc_datetime(&utc.and_hms(12, 0, 0))
     }
 
