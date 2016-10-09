@@ -3,7 +3,7 @@ use std::fmt::{Debug, Display, Formatter, Error};
 use std::cmp::Ordering;
 use binary_search::binary_search;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct FixedTimespan {
     pub utc_offset: i64,
     pub dst_offset: i64,
@@ -17,6 +17,12 @@ impl Offset for FixedTimespan {
 }
 
 impl Display for FixedTimespan {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        write!(f, "{}", self.name)
+    }
+}
+
+impl Debug for FixedTimespan {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         write!(f, "{}", self.name)
     }
@@ -218,6 +224,7 @@ impl<T: Timespans + Clone> TimeZone for Wrap<T> {
     // exactly one timespan, no matter what (so the `unwrap` is safe).
     fn offset_from_utc_datetime(&self, utc: &NaiveDateTime) -> Self::Offset {
         let timestamp = utc.timestamp();
+        println!("Finding offset for {}", timestamp);
         let timespans = T::timespans();
         let index = binary_search(0, timespans.len(),
             |i| timespans.utc_span(i).cmp(timestamp)
