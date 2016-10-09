@@ -163,6 +163,11 @@ lazy_static! {
         ( ?P<target>  \S+ )  \s+
         ( ?P<name>    \S+ )
     "##).unwrap();
+
+    /// Format of an empty line, which contains only comments.
+    static ref EMPTY_LINE: Regex = Regex::new(r##"(?x) ^
+        \s* (\#.*)?
+    $"##).unwrap();
 }
 
 
@@ -811,7 +816,7 @@ impl<'line> Line<'line> {
     /// Attempt to parse this line, returning a `Line` depending on what
     /// type of line it was, or an `Error` if it couldn't be parsed.
     pub fn from_str(input: &str) -> Result<Line, Error> {
-        if input.is_empty() || input.chars().all(char::is_whitespace) {
+        if EMPTY_LINE.is_match(input) {
             Ok(Line::Space)
         }
         else if let Ok(zone) = Zone::from_str(input) {
@@ -964,4 +969,19 @@ mod test {
     }
 
     test!(golb: "GOLB" => Err(Error::Fail));
+
+    test!(comment: "# this is a comment" => Ok(Line::Space));
+    test!(another_comment: "     # so is this" => Ok(Line::Space));
+    test!(multiple_hash: "     # so is this ## " => Ok(Line::Space));
+    test!(non_comment: " this is not a # comment" => Err(Error::Fail));
+
+    test!(comment_after: "Link  Europe/Istanbul  Asia/Istanbul #with a comment after" => Ok(Line::Link(Link {
+        existing:  "Europe/Istanbul",
+        new:       "Asia/Istanbul",
+    })));
+
+    test!(two_comments_after: "Link  Europe/Istanbul  Asia/Istanbul   # comment ## comment" => Ok(Line::Link(Link {
+        existing:  "Europe/Istanbul",
+        new:       "Asia/Istanbul",
+    })));
 }
