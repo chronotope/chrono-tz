@@ -115,8 +115,12 @@ pub use directory::*;
 
 #[cfg(test)]
 mod tests {
-    use super::Europe::London;
+    use super::Etc::UTC;
     use super::Europe::Berlin;
+    use super::Europe::London;
+    use super::Europe::Vilnius;
+    use super::Europe::Warsaw;
+    use super::US::Eastern;
     use chrono::{TimeZone, Duration};
 
     #[test]
@@ -125,6 +129,40 @@ mod tests {
         let converted = dt.with_timezone(&Berlin);
         let expected = Berlin.ymd(2016, 10, 8).and_hms(18, 0, 0);
         assert_eq!(converted, expected);
+    }
+
+    #[test]
+    fn us_eastern_dst_commutativity() {
+        let dt = UTC.ymd(2002, 4, 7).and_hms(7, 0, 0);
+        for days in -420..720 {
+            let dt1 = (dt + Duration::days(days)).with_timezone(&Eastern);
+            let dt2 = dt.with_timezone(&Eastern) + Duration::days(days);
+            assert_eq!(dt1, dt2);
+        }
+    }
+
+    #[test]
+    fn warsaw_tz_name() {
+        let dt = UTC.ymd(1915, 8, 4).and_hms(22, 35, 59);
+        assert_eq!(dt.with_timezone(&Warsaw).format("%Z").to_string(), "WMT");
+        let dt = dt + Duration::seconds(1);
+        assert_eq!(dt.with_timezone(&Warsaw).format("%Z").to_string(), "CET");
+    }
+
+    #[test]
+    fn vilnius_utc_offset() {
+        let dt = UTC.ymd(1916, 12, 31).and_hms(22, 35, 59).with_timezone(&Vilnius);
+        assert_eq!(dt, Vilnius.ymd(1916, 12, 31).and_hms(23, 59, 59));
+        let dt = dt + Duration::seconds(1);
+        assert_eq!(dt, Vilnius.ymd(1917, 1, 1).and_hms(0, 11, 36));
+    }
+
+    #[test]
+    fn victorian_times() {
+        let dt = UTC.ymd(1847, 12, 1).and_hms(0, 1, 14).with_timezone(&London);
+        assert_eq!(dt, London.ymd(1847, 11, 30).and_hms(23, 59, 59));
+        let dt = dt + Duration::seconds(1);
+        assert_eq!(dt, London.ymd(1847, 12, 1).and_hms(0, 1, 15));
     }
 
     #[test]
