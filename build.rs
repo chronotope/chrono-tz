@@ -81,7 +81,7 @@ impl Timespans for {zone} {{
             rest: REST
         }}
     }}
-}}\n",
+}}\n\n",
             zone = zone_name,
             rest = format_rest(timespans.rest),
             utc = timespans.first.utc_offset,
