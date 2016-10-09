@@ -108,6 +108,7 @@
 extern crate chrono;
 
 mod timezone_impl;
+mod binary_search;
 mod timezones;
 mod directory;
 
@@ -196,12 +197,13 @@ mod tests {
     }
 
     #[test]
-    fn time_exists() {
+    #[should_panic]
+    fn nonexistent_time_2() {
         let _ = London.ymd(2016, 3, 27).and_hms(1, 0, 0);
     }
 
     #[test]
-    fn time_exists_2() {
+    fn time_exists() {
         let _ = London.ymd(2016, 3, 27).and_hms(2, 0, 0);
     }
 
@@ -214,6 +216,11 @@ mod tests {
     #[test]
     #[should_panic]
     fn ambiguous_time_2() {
-        let _ = London.ymd(2016, 10, 30).and_hms(2, 0, 0);
+        let _ = London.ymd(2016, 10, 30).and_hms(1, 30, 0);
+    }
+
+    #[test]
+    fn unambiguous_time() {
+        let _ = London.ymd(2016, 10, 30);//.and_hms(2, 0, 0);
     }
 }
