@@ -22,6 +22,15 @@ impl Display for FixedTimespan {
     }
 }
 
+/// Represents the span of time that a given rule is valid for.
+/// Note that I have made the assumption that all ranges are
+/// left-inclusive and right-exclusive - that is to say,
+/// if the clocks go forward by 1 hour at 1am, the time 1am
+/// does not exist in local time (the clock goes from 00:59:59
+/// to 02:00:00). Likewise, if the clocks go back by one hour
+/// at 2am, the clock goes from 01:59:59 to 01:00:00. This is
+/// an arbitrary choice, and I could not find a source to
+/// confirm whether or not this is correct.
 struct Span {
     begin: Option<i64>,
     end: Option<i64>,
