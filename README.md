@@ -45,6 +45,17 @@ let utc_time = pacific_time.with_timezone(&UTC);
 assert_eq!(utc_time, UTC.ymd(1990, 5, 6).and_hms(19, 30, 45));
 ```
 
+Create a naive datetime and convert it to a timezone-aware datetime
+
+```rust
+use chrono::{TimeZone, NaiveDate};
+use chrono_tz::Africa::Johannesburg;
+
+let naive_dt = NaiveDate::from_ymd(2038, 1, 19).and_hms(3, 14, 08);
+let tz_aware = Johannesburg.from_local_datetime(&naive_dt).unwrap();
+assert_eq!(tz_aware.to_string(), "2038-01-19 03:14:08 SAST");
+```
+
 London and New York change their clocks on different days in March
 so only have a 4-hour difference on certain days.
 
@@ -94,7 +105,7 @@ assert_eq!(dt.to_rfc3339(), "2016-05-10T12:00:00+01:00");
 
 ## Known Issues
 
-The timezone info for Dushanbe is not parsed correctly by [`zoneinfo_parse`][zoneinfo_parse]
+- The timezone info for Dushanbe is not parsed correctly by [`zoneinfo_parse`][zoneinfo_parse]
 and so I have modified that line slightly to correct it
 
 ```
@@ -104,13 +115,15 @@ and so I have modified that line slightly to correct it
 Zone	Asia/Dushanbe	4:35:12 -	LMT	1924 May  2
 			5:00	-	+05	1930 Jun 21
 			6:00 RussiaAsia +06/+07	1991 Mar 31  2:00s
-			5:00	1:00	+06	1991 Sep  9  2:00s # TODO: This is different to the source file but should be correct
+			5:00	1:00	+06	1991 Sep  9  2:00s # "+06" was "+05/+06"
 			5:00	-	+05
 ```
 
-Strings cannot be parsed into appropriate datetimes currently, they can only be printed out.
-Chrono handles fixed offsets only for parsing.
-
-Currently no rustc-serialize or serde support.
+- Strings cannot be parsed into appropriate datetimes currently, they can only be printed out.
+  Chrono handles fixed offsets only for parsing.
+- Currently no rustc-serialize or serde support.
+- With the current version of [`zoneinfo_parse`][zoneinfo_parse] negative offsets with nonzero
+  minutes and/or seconds are handled incorrectly. I have submitted a pull request to fix this
+  bug.
 
 [zoneinfo_parse]: https://github.com/rust-datetime/zoneinfo-parse
