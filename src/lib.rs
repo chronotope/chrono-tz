@@ -6,7 +6,7 @@
 //! and [`zoneinfo_parse`][zoneinfo_parse].
 //!
 //! [chrono]: https://github.com/lifthrasiir/rust-chrono
-//! [timezone]: ../chrono/offset/trait.TimeZone.html
+//! [timezone]: https://lifthrasiir.github.io/rust-chrono/chrono/offset/trait.TimeZone.html
 //! [iana]: http://www.iana.org/time-zones
 //! [zoneinfo_parse]: https://github.com/rust-datetime/zoneinfo-parse
 //!
