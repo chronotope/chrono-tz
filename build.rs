@@ -78,7 +78,7 @@ impl Debug for {zone} {{
 impl Timespans for {zone} {{
     fn this() -> Self {{ {zone} }}
     fn timespans() -> FixedTimespanSet {{
-        static REST: &'static [(i64, FixedTimespan)] = {rest};
+        const REST: &'static [(i64, FixedTimespan)] = {rest};
         FixedTimespanSet {{
             first: FixedTimespan {{
                 utc_offset: {utc},
