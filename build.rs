@@ -128,7 +128,7 @@ fn write_directory_file(directory_file: &mut File, table: &Table) {
                             }
                         }
                     }
-                    write!(directory_file, "    }}\n").unwrap();
+                    write!(directory_file, "    }}\n\n").unwrap();
                 },
                 Child::TimeZone(name) => {
                     let name = convert_bad_chars(name);
