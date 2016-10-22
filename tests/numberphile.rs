@@ -109,7 +109,8 @@ fn israel_palestine() {
 }
 
 // FIXME doesn't currently work!
-//#[test]
+#[test]
+#[ignore]
 fn london_julian_to_gregorian() {
     let from = London.ymd(1752, 9, 2).and_hms(12, 0, 0);
     let to = London.ymd(1752, 9, 14).and_hms(12, 0, 0);
@@ -117,7 +118,8 @@ fn london_julian_to_gregorian() {
 }
 
 // FIXME doesn't currently work!
-//#[test]
+#[test]
+#[ignore]
 fn russian_julian_to_gregorian() {
     let from = Moscow.ymd(1918, 1, 31).and_hms(12, 0, 0);
     let to = Moscow.ymd(1918, 2, 14).and_hms(12, 0, 0);
@@ -125,7 +127,8 @@ fn russian_julian_to_gregorian() {
 }
 
 // FIXME doesn't currently work!
-//#[test]
+#[test]
+#[ignore]
 fn london_25_march() {
     let from = London.ymd(924, 3, 24).and_hms(12, 0, 0);
     let to = London.ymd(925, 3, 25).and_hms(12, 0, 0);
@@ -133,7 +136,8 @@ fn london_25_march() {
 }
 
 // FIXME doesn't currently work!
-//#[test]
+#[test]
+#[ignore]
 fn leapsecond() {
     let from = UTC.ymd(2016, 6, 30).and_hms(23, 59, 59);
     let to = UTC.ymd(2016, 6, 30).and_hms_milli(23, 59, 59, 1000);
@@ -141,7 +145,8 @@ fn leapsecond() {
 }
 
 // FIXME doesn't currently work!
-//#[test]
+#[test]
+#[ignore]
 fn leapsecond_2() {
     let from = UTC.ymd(2016, 6, 30).and_hms(23, 59, 59);
     let to = UTC.ymd(2016, 7, 1).and_hms(0, 0, 0);
