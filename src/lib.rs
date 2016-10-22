@@ -130,6 +130,7 @@ mod timezones;
 mod directory;
 
 pub use directory::*;
+pub use timezones::Tz;
 
 #[cfg(test)]
 mod tests {
