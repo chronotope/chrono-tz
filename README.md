@@ -22,7 +22,7 @@ Put this in your `Cargo.toml`:
 ```toml
 [dependencies]
 chrono = "0.2"
-chrono-tz = "0.1"
+chrono-tz = "0.2"
 ```
 
 Then you will need to write (in your crate root):
@@ -134,8 +134,6 @@ Zone	Asia/Dushanbe	4:35:12 -	LMT	1924 May  2
 			5:00	-	+05
 ```
 
-- Strings cannot be parsed into appropriate datetimes currently, they can only be printed out.
-  Chrono handles fixed offsets only for parsing.
 - Currently no rustc-serialize or serde support.
 - With the current version of [`zoneinfo_parse`][zoneinfo_parse] negative offsets with nonzero
   minutes and/or seconds are handled incorrectly. I have submitted a pull request to fix this
