@@ -121,6 +121,25 @@
 //! assert_eq!(dt.to_rfc3339(), "2016-05-10T12:00:00+01:00");
 //! # }
 //! ```
+//!
+//! You can convert a timezone string to a timezone using the FromStr trait
+//! 
+//! ```
+//! # extern crate chrono;
+//! # extern crate chrono_tz;
+//! use chrono::TimeZone;
+//! use chrono_tz::Tz;
+//! use chrono_tz::Etc::UTC;
+//! use std::str::FromStr;
+//! 
+//! # fn main() {
+//! let timezone_str = "Antarctica/South_Pole";
+//! let tz = Tz::from_str(timezone_str).unwrap();
+//! let dt = tz.ymd(2016, 10, 22).and_hms(12, 0, 0);
+//! let utc = dt.with_timezone(&UTC);
+//! assert_eq!(utc.to_string(), "2016-10-21 23:00:00 UTC");
+//! # }
+//! ```
 
 extern crate chrono;
 
