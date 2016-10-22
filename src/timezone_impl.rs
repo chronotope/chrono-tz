@@ -2,6 +2,7 @@ use chrono::{Offset, TimeZone, NaiveDate, NaiveDateTime, LocalResult, Duration};
 use std::fmt::{Debug, Display, Formatter, Error};
 use std::cmp::Ordering;
 use binary_search::binary_search;
+use super::timezones::Tz;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct FixedTimespan {
@@ -25,6 +26,47 @@ impl Display for FixedTimespan {
 impl Debug for FixedTimespan {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         write!(f, "{}", self.name)
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct TzOffset {
+    tz: Tz,
+    offset: FixedTimespan,
+}
+
+impl TzOffset {
+    fn new(tz: Tz, offset: FixedTimespan) -> Self {
+        TzOffset {
+            tz: tz,
+            offset: offset,
+        }
+    }
+
+    fn map_localresult(tz: Tz, result: LocalResult<FixedTimespan>) -> LocalResult<Self> {
+        match result {
+            LocalResult::None => LocalResult::None,
+            LocalResult::Single(s) => LocalResult::Single(TzOffset::new(tz, s)),
+            LocalResult::Ambiguous(a, b) => LocalResult::Ambiguous(TzOffset::new(tz, a), TzOffset::new(tz, b)),
+        }
+    }
+}
+
+impl Offset for TzOffset {
+    fn local_minus_utc(&self) -> Duration {
+        self.offset.local_minus_utc()
+    }
+}
+
+impl Display for TzOffset {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        Display::fmt(&self.offset,f)
+    }
+}
+
+impl Debug for TzOffset {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        Debug::fmt(&self.offset,f)
     }
 }
 
@@ -123,30 +165,14 @@ impl FixedTimespanSet {
     }
 }
 
-pub trait Timespans {
-    fn this() -> Self;
-    fn timespans() -> FixedTimespanSet;
+pub trait TimeSpans {
+    fn timespans(&self) -> FixedTimespanSet;
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Wrap<T>(pub T);
+impl TimeZone for Tz {
+    type Offset = TzOffset;
 
-impl<T: Debug> Debug for Wrap<T> {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        self.0.fmt(f)
-    }
-}
-
-impl<T: Debug> Display for Wrap<T> {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        self.0.fmt(f)
-    }
-}
-
-impl<T: Timespans + Clone> TimeZone for Wrap<T> {
-    type Offset = FixedTimespan;
-
-    fn from_offset(_: &Self::Offset) -> Self { Wrap(T::this()) }
+    fn from_offset(offset: &Self::Offset) -> Self { offset.tz }
 
     fn offset_from_local_date(&self, local: &NaiveDate) -> LocalResult<Self::Offset> {
         let earliest = self.offset_from_local_datetime(&local.and_hms(0, 0, 0));
@@ -192,11 +218,11 @@ impl<T: Timespans + Clone> TimeZone for Wrap<T> {
     // check the two surrounding timespans (if they exist) to see if there is any ambiguity.
     fn offset_from_local_datetime(&self, local: &NaiveDateTime) -> LocalResult<Self::Offset> {
         let timestamp = local.timestamp();
-        let timespans = T::timespans();
+        let timespans = self.timespans();
         let index = binary_search(0, timespans.len(),
             |i| timespans.local_span(i).cmp(timestamp)
         );
-        match index {
+        TzOffset::map_localresult(*self, match index {
             Ok(0) if timespans.len() == 1 =>
                 LocalResult::Single(timespans.get(0)),
             Ok(0) if timespans.local_span(1).contains(timestamp) =>
@@ -212,7 +238,7 @@ impl<T: Timespans + Clone> TimeZone for Wrap<T> {
             Ok(i) =>
                 LocalResult::Single(timespans.get(i)),
             Err(_) => LocalResult::None,
-        }
+        })
     }
 
     fn offset_from_utc_date(&self, utc: &NaiveDate) -> Self::Offset {
@@ -225,10 +251,10 @@ impl<T: Timespans + Clone> TimeZone for Wrap<T> {
     fn offset_from_utc_datetime(&self, utc: &NaiveDateTime) -> Self::Offset {
         let timestamp = utc.timestamp();
         println!("Finding offset for {}", timestamp);
-        let timespans = T::timespans();
+        let timespans = self.timespans();
         let index = binary_search(0, timespans.len(),
             |i| timespans.utc_span(i).cmp(timestamp)
         ).unwrap();
-        timespans.get(index)
+        TzOffset::new(*self, timespans.get(index))
     }
 }
