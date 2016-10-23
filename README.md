@@ -109,10 +109,8 @@ You can convert a timezone string to a timezone using the FromStr trait
 use chrono::TimeZone;
 use chrono_tz::Tz;
 use chrono_tz::Etc::UTC;
-use std::str::FromStr;
 
-let timezone_str = "Antarctica/South_Pole";
-let tz = Tz::from_str(timezone_str).unwrap();
+let tz: Tz = "Antarctica/South_Pole".parse().unwrap();
 let dt = tz.ymd(2016, 10, 22).and_hms(12, 0, 0);
 let utc = dt.with_timezone(&UTC);
 assert_eq!(utc.to_string(), "2016-10-21 23:00:00 UTC");
