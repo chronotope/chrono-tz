@@ -117,13 +117,15 @@ lazy_static! {
 
     /// Format of an hour and a minute specification.
     static ref HM_FIELD: Regex = Regex::new(r##"(?x) ^
-        ( ?P<hour> -? \d{1,2} ) : ( ?P<minute> \d{2} )
+        ( ?P<sign> -? )
+        ( ?P<hour> \d{1,2} ) : ( ?P<minute> \d{2} )
         ( ?P<flag> [wsugz] )?
     $ "##).unwrap();
 
     /// Format of an hour, a minute, and a second specification.
     static ref HMS_FIELD: Regex = Regex::new(r##"(?x) ^
-        ( ?P<hour> -? \d{1,2} ) : ( ?P<minute> \d{2} ) : ( ?P<second> \d{2} )
+        ( ?P<sign> -? )
+        ( ?P<hour> \d{1,2} ) : ( ?P<minute> \d{2} ) : ( ?P<second> \d{2} )
         ( ?P<flag> [wsugz] )?
     $ "##).unwrap();
 
@@ -161,6 +163,11 @@ lazy_static! {
         ( ?P<target>  \S+ )  \s+
         ( ?P<name>    \S+ )
     "##).unwrap();
+
+    /// Format of an empty line, which contains only comments.
+    static ref EMPTY_LINE: Regex = Regex::new(r##"(?x) ^
+        \s* (\#.*)?
+    $"##).unwrap();
 }
 
 
@@ -713,21 +720,23 @@ impl FromStr for TimeSpecAndType {
             Ok(TimeSpecAndType(TimeSpec::Hours(input.parse().unwrap()), TimeType::Wall))
         }
         else if let Some(caps) = HM_FIELD.captures(input) {
-            let hour   = caps.name("hour").unwrap().parse().unwrap();
-            let minute = caps.name("minute").unwrap().parse().unwrap();
-            let flag   = caps.name("flag").and_then(|c| parse_time_type(&c[0..1]))
+            let sign   : i8 = if caps.name("sign").unwrap() == "-" { -1 } else { 1 };
+            let hour   : i8 = caps.name("hour").unwrap().parse().unwrap();
+            let minute : i8 = caps.name("minute").unwrap().parse().unwrap();
+            let flag        = caps.name("flag").and_then(|c| parse_time_type(&c[0..1]))
                                           .unwrap_or(TimeType::Wall);
 
-            Ok(TimeSpecAndType(TimeSpec::HoursMinutes(hour, minute), flag))
+            Ok(TimeSpecAndType(TimeSpec::HoursMinutes(hour * sign, minute * sign), flag))
         }
         else if let Some(caps) = HMS_FIELD.captures(input) {
-            let hour   = caps.name("hour").unwrap().parse().unwrap();
-            let minute = caps.name("minute").unwrap().parse().unwrap();
-            let second = caps.name("second").unwrap().parse().unwrap();
-            let flag   = caps.name("flag").and_then(|c| parse_time_type(&c[0..1]))
+            let sign   : i8 = if caps.name("sign").unwrap() == "-" { -1 } else { 1 };
+            let hour   : i8 = caps.name("hour").unwrap().parse().unwrap();
+            let minute : i8 = caps.name("minute").unwrap().parse().unwrap();
+            let second : i8 = caps.name("second").unwrap().parse().unwrap();
+            let flag        = caps.name("flag").and_then(|c| parse_time_type(&c[0..1]))
                                           .unwrap_or(TimeType::Wall);
 
-            Ok(TimeSpecAndType(TimeSpec::HoursMinutesSeconds(hour, minute, second), flag))
+            Ok(TimeSpecAndType(TimeSpec::HoursMinutesSeconds(hour * sign, minute * sign, second * sign), flag))
         }
         else {
             Err(Error::Fail)
@@ -807,7 +816,7 @@ impl<'line> Line<'line> {
     /// Attempt to parse this line, returning a `Line` depending on what
     /// type of line it was, or an `Error` if it couldn't be parsed.
     pub fn from_str(input: &str) -> Result<Line, Error> {
-        if input.is_empty() || input.chars().all(char::is_whitespace) {
+        if EMPTY_LINE.is_match(input) {
             Ok(Line::Space)
         }
         else if let Ok(zone) = Zone::from_str(input) {
@@ -925,6 +934,27 @@ mod test {
                 time:        Some(ChangeTime::UntilYear(YearSpec::Number(1919))),
             },
         })));
+
+        #[test]
+        fn negative_offsets() {
+            static LINE: &'static str = "Zone    Europe/London   -0:01:15 -  LMT 1847 Dec  1  0:00s";
+            let zone = Zone::from_str(LINE).unwrap();
+            assert_eq!(zone.info.utc_offset, TimeSpec::HoursMinutesSeconds(0, -1, -15));
+        }
+
+        #[test]
+        fn negative_offsets_2() {
+            static LINE: &'static str = "Zone        Europe/Madrid   -0:14:44 -      LMT     1901 Jan  1  0:00s";
+            let zone = Zone::from_str(LINE).unwrap();
+            assert_eq!(zone.info.utc_offset, TimeSpec::HoursMinutesSeconds(0, -14, -44));
+        }
+
+        #[test]
+        fn negative_offsets_3() {
+            static LINE: &'static str = "Zone America/Danmarkshavn -1:14:40 -    LMT 1916 Jul 28";
+            let zone = Zone::from_str(LINE).unwrap();
+            assert_eq!(zone.info.utc_offset, TimeSpec::HoursMinutesSeconds(-1, -14, -40));
+        }
     }
 
     test!(link: "Link  Europe/Istanbul  Asia/Istanbul" => Ok(Line::Link(Link {
@@ -939,4 +969,19 @@ mod test {
     }
 
     test!(golb: "GOLB" => Err(Error::Fail));
+
+    test!(comment: "# this is a comment" => Ok(Line::Space));
+    test!(another_comment: "     # so is this" => Ok(Line::Space));
+    test!(multiple_hash: "     # so is this ## " => Ok(Line::Space));
+    test!(non_comment: " this is not a # comment" => Err(Error::Fail));
+
+    test!(comment_after: "Link  Europe/Istanbul  Asia/Istanbul #with a comment after" => Ok(Line::Link(Link {
+        existing:  "Europe/Istanbul",
+        new:       "Asia/Istanbul",
+    })));
+
+    test!(two_comments_after: "Link  Europe/Istanbul  Asia/Istanbul   # comment ## comment" => Ok(Line::Link(Link {
+        existing:  "Europe/Istanbul",
+        new:       "Asia/Istanbul",
+    })));
 }

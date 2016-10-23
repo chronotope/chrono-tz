@@ -231,7 +231,7 @@ impl FixedTimespanSetBuilder {
             start_zone_id: &mut Option<String>)
     {
         *dst_offset = amount;
-        *start_zone_id = Some(timespan.format.format_constant());
+        *start_zone_id = Some(timespan.format.format(*dst_offset, None));
 
         if *insert_start_transition {
             let time = self.start_time.unwrap();
