@@ -129,7 +129,7 @@
 //! # extern crate chrono_tz;
 //! use chrono::TimeZone;
 //! use chrono_tz::Tz;
-//! use chrono_tz::Etc::UTC;
+//! use chrono_tz::UTC;
 //! 
 //! # fn main() {
 //! let tz: Tz = "Antarctica/South_Pole".parse().unwrap();
@@ -154,7 +154,7 @@ mod tests {
     use super::America::Danmarkshavn;
     use super::Asia::Dhaka;
     use super::Australia::Adelaide;
-    use super::Etc::UTC;
+    use super::UTC;
     use super::Europe::Amsterdam;
     use super::Europe::Berlin;
     use super::Europe::London;

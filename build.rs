@@ -138,6 +138,20 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) {
 // Create a file containing nice-looking re-exports such as Europe::London
 // instead of having to use chrono_tz::timezones::Europe__London
 fn write_directory_file(directory_file: &mut File, table: &Table) {
+
+    // add the `loose' zone definitions first at the top of the file
+    write!(directory_file, "use timezones::Tz;\n\n").unwrap();
+    let zones = table.zonesets.keys().chain(table.links.keys())
+                .filter(|zone| !zone.contains('/'))
+                .collect::<BTreeSet<_>>();
+    for zone in zones {
+        let zone = convert_bad_chars(zone);
+        write!(directory_file,
+              "pub const {name} : Tz = Tz::{name};\n",
+              name = zone).unwrap();
+    }
+
+    // now add the `structured' zone names in submodules
     for entry in table.structure() {
         if entry.name.contains('/') { continue; }
         let module_name = convert_bad_chars(entry.name);

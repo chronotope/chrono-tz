@@ -108,7 +108,7 @@ You can convert a timezone string to a timezone using the FromStr trait
 ```rust
 use chrono::TimeZone;
 use chrono_tz::Tz;
-use chrono_tz::Etc::UTC;
+use chrono_tz::UTC;
 
 let tz: Tz = "Antarctica/South_Pole".parse().unwrap();
 let dt = tz.ymd(2016, 10, 22).and_hms(12, 0, 0);
