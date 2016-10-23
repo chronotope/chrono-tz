@@ -250,7 +250,6 @@ impl TimeZone for Tz {
     // exactly one timespan, no matter what (so the `unwrap` is safe).
     fn offset_from_utc_datetime(&self, utc: &NaiveDateTime) -> Self::Offset {
         let timestamp = utc.timestamp();
-        println!("Finding offset for {}", timestamp);
         let timespans = self.timespans();
         let index = binary_search(0, timespans.len(),
             |i| timespans.utc_span(i).cmp(timestamp)
