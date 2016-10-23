@@ -150,6 +150,7 @@ fn write_directory_file(directory_file: &mut File, table: &Table) {
               "pub const {name} : Tz = Tz::{name};\n",
               name = zone).unwrap();
     }
+    write!(directory_file, "\n").unwrap();
 
     // now add the `structured' zone names in submodules
     for entry in table.structure() {
