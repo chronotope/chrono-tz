@@ -17,7 +17,7 @@
 //! ```toml
 //! [dependencies]
 //! chrono = "0.2"
-//! chrono-tz = "0.1"
+//! chrono-tz = "0.2"
 //! ```
 //!
 //! Then you will need to write (in your crate root):
