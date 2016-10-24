@@ -14,4 +14,4 @@ license = "MIT/Apache-2.0"
 chrono = "0.2"
 
 [build-dependencies]
-zoneinfo_parse = "0.1"
+zoneinfo_parse = "0.1.4"

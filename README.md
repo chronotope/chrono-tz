@@ -8,6 +8,7 @@ and [`zoneinfo_parse`][zoneinfo_parse].
 [chrono]: https://github.com/lifthrasiir/rust-chrono
 [timezone]: https://lifthrasiir.github.io/rust-chrono/chrono/offset/trait.TimeZone.html
 [iana]: http://www.iana.org/time-zones
+[zoneinfo_parse]: https://github.com/rust-datetime/zoneinfo-parse
 
 ## Documentation
 
@@ -116,25 +117,10 @@ let utc = dt.with_timezone(&UTC);
 assert_eq!(utc.to_string(), "2016-10-21 23:00:00 UTC");
 ```
 
-## Known Issues
+## Future Improvements
 
-- The timezone info for Dushanbe is not parsed correctly by [`zoneinfo_parse`][zoneinfo_parse]
-and so I have modified that line slightly to correct it
-
-```
-# Tajikistan
-# From Shanks & Pottenger.
-# Zone	NAME		GMTOFF	RULES	FORMAT	[UNTIL]
-Zone	Asia/Dushanbe	4:35:12 -	LMT	1924 May  2
-			5:00	-	+05	1930 Jun 21
-			6:00 RussiaAsia +06/+07	1991 Mar 31  2:00s
-			5:00	1:00	+06	1991 Sep  9  2:00s # "+06" was "+05/+06"
-			5:00	-	+05
-```
-
-- Currently no rustc-serialize or serde support.
-- With the current version of [`zoneinfo_parse`][zoneinfo_parse] negative offsets with nonzero
-  minutes and/or seconds are handled incorrectly. I have submitted a pull request to fix this
-  bug.
-
-[zoneinfo_parse]: https://github.com/rust-datetime/zoneinfo-parse
+- `rustc-serialize` and `serde` support.
+- Handle leap seconds
+- Handle Julian to Gregorian calendar transitions
+- Load tzdata always from latest version
+- Dynamic tzdata loading
