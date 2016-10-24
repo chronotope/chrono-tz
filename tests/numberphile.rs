@@ -86,8 +86,8 @@ fn double_bst() {
 }
 
 #[test]
-fn libia_2013() {
-    // Libia actually put their clocks *forward* in 2013, but not in any other year
+fn libya_2013() {
+    // Libya actually put their clocks *forward* in 2013, but not in any other year
     let from = Tripoli.ymd(2012, 3, 1).and_hms(12, 0, 0);
     let to = Tripoli.ymd(2012, 4, 1).and_hms(12, 0, 0);
     assert_eq!(seconds(from, to), 60 * 60 * 24 * 31);
