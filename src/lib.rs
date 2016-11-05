@@ -1,4 +1,4 @@
-//! # Chrono-TZ 0.2.2
+//! # Chrono-TZ 0.2.3
 //!
 //! `Chrono-TZ` is a library that provides implementors of the
 //! [`TimeZone`][timezone] trait for [`rust-chrono`][chrono]. The
