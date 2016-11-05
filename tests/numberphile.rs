@@ -103,8 +103,8 @@ fn libya_2013() {
 
 #[test]
 fn israel_palestine() {
-    let from = Jerusalem.ymd(2016, 10, 22).and_hms(12, 0, 0);
-    let to = Gaza.ymd(2016, 10, 22).and_hms(12, 0, 0);
+    let from = Jerusalem.ymd(2016, 10, 29).and_hms(12, 0, 0);
+    let to = Gaza.ymd(2016, 10, 29).and_hms(12, 0, 0);
     assert_eq!(seconds(from, to), 60 * 60);
 }
 

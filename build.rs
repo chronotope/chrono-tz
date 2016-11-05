@@ -200,16 +200,29 @@ fn write_directory_file(directory_file: &mut File, table: &Table) {
 
 fn main() {
     let mut table = TableBuilder::new();
-    let tzdir = Path::new("tzdb");
-    let lines = std::fs::read_dir(tzdir).unwrap().into_iter()
-        .map(Result::unwrap)
-        .map(|direntry| direntry.path())
+
+    let tzfiles = [
+        "tz/africa",
+        "tz/antarctica",
+        "tz/asia",
+        "tz/australasia",
+        "tz/backward",
+        "tz/etcetera",
+        "tz/europe",
+        "tz/northamerica",
+        "tz/pacificnew",
+        "tz/southamerica",
+    ];
+
+    let lines = tzfiles.iter()
+        .map(Path::new)
         .map(File::open)
         .map(Result::unwrap)
         .map(BufReader::new)
         .flat_map(BufRead::lines)
         .map(Result::unwrap)
         .map(strip_comments);
+
     for line in lines {
         match Line::from_str(&line).unwrap() {
             Line::Zone(zone) => table.add_zone_line(zone).unwrap(),
