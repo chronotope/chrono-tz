@@ -1,0 +1,7 @@
+[package]
+name = "parse-zoneinfo"
+version = "0.1.0"
+authors = ["Djzin <djzin@users.noreply.github.com>"]
+
+[dependencies]
+regex = "^0.1"
