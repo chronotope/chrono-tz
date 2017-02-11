@@ -1,4 +1,4 @@
-use chrono::{Offset, TimeZone, NaiveDate, NaiveDateTime, LocalResult, Duration};
+use chrono::{Offset, TimeZone, NaiveDate, NaiveDateTime, LocalResult, FixedOffset};
 use std::fmt::{Debug, Display, Formatter, Error};
 use std::cmp::Ordering;
 use binary_search::binary_search;
@@ -6,14 +6,14 @@ use super::timezones::Tz;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct FixedTimespan {
-    pub utc_offset: i64,
-    pub dst_offset: i64,
+    pub utc_offset: i32,
+    pub dst_offset: i32,
     pub name: &'static str,
 }
 
 impl Offset for FixedTimespan {
-    fn local_minus_utc(&self) -> Duration {
-        Duration::seconds(self.utc_offset + self.dst_offset)
+    fn fix(&self) -> FixedOffset {
+        FixedOffset::east(self.utc_offset + self.dst_offset)
     }
 }
 
@@ -53,8 +53,8 @@ impl TzOffset {
 }
 
 impl Offset for TzOffset {
-    fn local_minus_utc(&self) -> Duration {
-        self.offset.local_minus_utc()
+    fn fix(&self) -> FixedOffset {
+        self.offset.fix()
     }
 }
 
@@ -143,14 +143,14 @@ impl FixedTimespanSet {
                 None
             } else {
                 let span = self.rest[index - 1];
-                Some(span.0 + span.1.utc_offset + span.1.dst_offset)
+                Some(span.0 + span.1.utc_offset as i64 + span.1.dst_offset as i64)
             },
             end: if index == self.rest.len() {
                 None
             } else if index == 0 {
-                Some(self.rest[index].0 + self.first.utc_offset + self.first.dst_offset)
+                Some(self.rest[index].0 + self.first.utc_offset as i64 + self.first.dst_offset as i64)
             } else {
-                Some(self.rest[index].0 + self.rest[index - 1].1.utc_offset + self.rest[index - 1].1.dst_offset)
+                Some(self.rest[index].0 + self.rest[index - 1].1.utc_offset as i64 + self.rest[index - 1].1.dst_offset as i64)
             }
         }
     }
