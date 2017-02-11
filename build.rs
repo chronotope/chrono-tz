@@ -1,10 +1,10 @@
-extern crate zoneinfo_parse;
+extern crate parse_zoneinfo;
 
-use zoneinfo_parse::line::Line;
-use zoneinfo_parse::table::{TableBuilder, Table};
-use zoneinfo_parse::transitions::TableTransitions;
-use zoneinfo_parse::structure::{Structure, Child};
-use zoneinfo_parse::transitions::FixedTimespan;
+use parse_zoneinfo::line::{LineParser, Line};
+use parse_zoneinfo::table::{TableBuilder, Table};
+use parse_zoneinfo::transitions::TableTransitions;
+use parse_zoneinfo::structure::{Structure, Child};
+use parse_zoneinfo::transitions::FixedTimespan;
 
 use std::env;
 use std::path::Path;
@@ -199,6 +199,7 @@ fn write_directory_file(directory_file: &mut File, table: &Table) {
 }
 
 fn main() {
+    let parser = LineParser::new();
     let mut table = TableBuilder::new();
 
     let tzfiles = [
@@ -224,7 +225,7 @@ fn main() {
         .map(strip_comments);
 
     for line in lines {
-        match Line::from_str(&line).unwrap() {
+        match parser.parse_str(&line).unwrap() {
             Line::Zone(zone) => table.add_zone_line(zone).unwrap(),
             Line::Continuation(cont) => table.add_continuation_line(cont).unwrap(),
             Line::Rule(rule) => table.add_rule_line(rule).unwrap(),

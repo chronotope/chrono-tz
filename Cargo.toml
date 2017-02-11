@@ -1,6 +1,6 @@
 [package]
 name = "chrono-tz"
-version = "0.2.4"
+version = "0.2.5"
 authors = ["Djzin"]
 build = "build.rs"
 description = "TimeZone implementations for rust-chrono from the IANA database"
@@ -14,4 +14,4 @@ license = "MIT/Apache-2.0"
 chrono = "0.2"
 
 [build-dependencies]
-zoneinfo_parse = "0.1.4"
+parse-zoneinfo = "0.1"
