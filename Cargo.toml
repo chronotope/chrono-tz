@@ -2,6 +2,11 @@
 name = "parse-zoneinfo"
 version = "0.1.0"
 authors = ["Djzin <djzin@users.noreply.github.com>"]
+description = "Parse zoneinfo files from the IANA database"
+keywords = ["date", "time", "timezone", "zone", "calendar"]
+repository = "https://github.com/djzin/parse-zoneinfo"
+readme = "README.md"
+license = "MIT"
 
 [dependencies]
 regex = "^0.1"

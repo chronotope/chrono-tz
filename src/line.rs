@@ -14,6 +14,22 @@ pub struct LineParser {
     empty_line: Regex,
 }
 
+#[derive(PartialEq, Debug, Clone)]
+pub enum Error {
+    FailedYearParse(String),
+    FailedMonthParse(String),
+    FailedWeekdayParse(String),
+    InvalidLineType(String),
+    TypeColumnContainedNonHyphen(String),
+    CouldNotParseSaving(String),
+    InvalidDaySpec(String),
+    InvalidTimeSpecAndType(String),
+    NonWallClockInTimeSpec(String),
+    NotParsedAsRuleLine,
+    NotParsedAsZoneLine,
+    NotParsedAsLinkLine,
+}
+
 impl LineParser {
     pub fn new() -> Self {
         LineParser {
@@ -145,22 +161,6 @@ impl Month {
             Month::December            => 31,
         }
     }
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub enum Error {
-    FailedYearParse(String),
-    FailedMonthParse(String),
-    FailedWeekdayParse(String),
-    InvalidLineType(String),
-    TypeColumnContainedNonHyphen(String),
-    CouldNotParseSaving(String),
-    InvalidDaySpec(String),
-    InvalidTimeSpecAndType(String),
-    NonWallClockInTimeSpec(String),
-    NotParsedAsRuleLine,
-    NotParsedAsZoneLine,
-    NotParsedAsLinkLine,
 }
 
 impl FromStr for Month {
