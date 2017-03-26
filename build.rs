@@ -81,25 +81,29 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) {
                zone = zone_name,
                raw_zone_name = zone).unwrap();
     }
-    write!(timezone_file, 
+    write!(timezone_file,
 "             s => Err(s.to_string())
         }}
     }}
 }}\n\n").unwrap();
 
     write!(timezone_file,
-"impl Debug for Tz {{
-    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {{
-        match *self {{\n").unwrap();
+"pub fn get_name(tz: &Tz) -> &'static str {{
+    match *tz {{\n").unwrap();
     for zone in &zones {
         let zone_name = convert_bad_chars(zone);
         write!(timezone_file,
-               "            Tz::{zone} => write!(f, \"{raw_zone_name}\"),\n",
+               "        Tz::{zone} => \"{raw_zone_name}\",\n",
                zone = zone_name,
                raw_zone_name = zone).unwrap();
     }
     write!(timezone_file,
-"         }}
+"    }}
+}}\n\n").unwrap();
+    write!(timezone_file,
+"impl Debug for Tz {{
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {{
+        write!(f, \"{{}}\", get_name(&self))
     }}
 }}\n\n").unwrap();
     write!(timezone_file,
@@ -110,7 +114,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) {
         let timespans = table.timespans(&zone).unwrap();
         let zone_name = convert_bad_chars(zone);
         write!(
-            timezone_file, 
+            timezone_file,
 "            Tz::{zone} => {{
                 const REST: &'static [(i64, FixedTimespan)] = {rest};
                 FixedTimespanSet {{

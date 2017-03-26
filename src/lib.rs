@@ -99,7 +99,7 @@
 //! # extern crate chrono_tz;
 //! use chrono::TimeZone;
 //! use chrono_tz::Asia::Kolkata;
-//! 
+//!
 //! # fn main() {
 //! let dt = Kolkata.ymd(2000, 1, 1).and_hms(0, 0, 0);
 //! let timestamp = dt.timestamp();
@@ -114,7 +114,7 @@
 //! # extern crate chrono_tz;
 //! use chrono::TimeZone;
 //! use chrono_tz::Europe::London;
-//! 
+//!
 //! # fn main() {
 //! let dt = London.ymd(2016, 5, 10).and_hms(12, 0, 0);
 //! assert_eq!(dt.to_string(), "2016-05-10 12:00:00 BST");
@@ -123,14 +123,14 @@
 //! ```
 //!
 //! You can convert a timezone string to a timezone using the FromStr trait
-//! 
+//!
 //! ```
 //! # extern crate chrono;
 //! # extern crate chrono_tz;
 //! use chrono::TimeZone;
 //! use chrono_tz::Tz;
 //! use chrono_tz::UTC;
-//! 
+//!
 //! # fn main() {
 //! let tz: Tz = "Antarctica/South_Pole".parse().unwrap();
 //! let dt = tz.ymd(2016, 10, 22).and_hms(12, 0, 0);
@@ -147,7 +147,7 @@ mod timezones;
 mod directory;
 
 pub use directory::*;
-pub use timezones::Tz;
+pub use timezones::{Tz, get_name};
 
 #[cfg(test)]
 mod tests {
@@ -165,6 +165,8 @@ mod tests {
     use super::Pacific::Noumea;
     use super::Pacific::Tahiti;
     use super::US::Eastern;
+    use super::Tz;
+    use super::get_name;
     use chrono::{TimeZone, Duration};
 
     #[test]
@@ -361,5 +363,13 @@ mod tests {
     #[test]
     fn unambiguous_time_2() {
         let _ = Moscow.ymd(2014, 10, 26).and_hms(2, 0, 0);
+    }
+
+    #[test]
+    fn test_get_name() {
+        assert_eq!(get_name(&London), "Europe/London");
+        assert_eq!(get_name(&Tz::Africa__Abidjan), "Africa/Abidjan");
+        assert_eq!(get_name(&Tz::UTC), "UTC");
+        assert_eq!(get_name(&Tz::Zulu), "Zulu");
     }
 }
