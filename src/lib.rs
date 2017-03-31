@@ -147,7 +147,7 @@ mod timezones;
 mod directory;
 
 pub use directory::*;
-pub use timezones::{Tz, get_name};
+pub use timezones::Tz;
 
 #[cfg(test)]
 mod tests {
@@ -166,7 +166,6 @@ mod tests {
     use super::Pacific::Tahiti;
     use super::US::Eastern;
     use super::Tz;
-    use super::get_name;
     use chrono::{TimeZone, Duration};
 
     #[test]
@@ -367,9 +366,9 @@ mod tests {
 
     #[test]
     fn test_get_name() {
-        assert_eq!(get_name(&London), "Europe/London");
-        assert_eq!(get_name(&Tz::Africa__Abidjan), "Africa/Abidjan");
-        assert_eq!(get_name(&Tz::UTC), "UTC");
-        assert_eq!(get_name(&Tz::Zulu), "Zulu");
+        assert_eq!(London.name(), "Europe/London");
+        assert_eq!(Tz::Africa__Abidjan.name(), "Africa/Abidjan");
+        assert_eq!(Tz::UTC.name(), "UTC");
+        assert_eq!(Tz::Zulu.name(), "Zulu");
     }
 }

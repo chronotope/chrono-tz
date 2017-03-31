@@ -88,22 +88,24 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) {
 }}\n\n").unwrap();
 
     write!(timezone_file,
-"pub fn get_name(tz: &Tz) -> &'static str {{
-    match *tz {{\n").unwrap();
+"impl Tz {{
+    pub fn name(self: &Tz) -> &'static str {{
+        match *self {{\n").unwrap();
     for zone in &zones {
         let zone_name = convert_bad_chars(zone);
         write!(timezone_file,
-               "        Tz::{zone} => \"{raw_zone_name}\",\n",
+               "            Tz::{zone} => \"{raw_zone_name}\",\n",
                zone = zone_name,
                raw_zone_name = zone).unwrap();
     }
     write!(timezone_file,
-"    }}
+"        }}
+    }}
 }}\n\n").unwrap();
     write!(timezone_file,
 "impl Debug for Tz {{
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {{
-        write!(f, \"{{}}\", get_name(&self))
+        write!(f, \"{{}}\", self.name())
     }}
 }}\n\n").unwrap();
     write!(timezone_file,
