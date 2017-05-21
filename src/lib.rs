@@ -17,7 +17,13 @@
 //! ```toml
 //! [dependencies]
 //! chrono = "0.3"
-//! chrono-tz = "0.3"
+//! chrono-tz = "0.3.3"
+//! ```
+//!
+//! If you want Serde support, specify it like this:
+//!
+//! ```toml
+//! chrono-tz = { version = "0.3.3", features = ["serde"] }
 //! ```
 //!
 //! Then you will need to write (in your crate root):
@@ -140,6 +146,9 @@
 //! ```
 
 extern crate chrono;
+
+#[cfg(feature = "serde")]
+mod serde;
 
 mod timezone_impl;
 mod binary_search;
