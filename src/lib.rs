@@ -1,4 +1,4 @@
-//! # Chrono-TZ 0.4.0
+//! # Chrono-TZ 0.4.1
 //!
 //! `Chrono-TZ` is a library that provides implementors of the
 //! [`TimeZone`][timezone] trait for [`rust-chrono`][chrono]. The
@@ -18,6 +18,12 @@
 //! [dependencies]
 //! chrono = "0.4"
 //! chrono-tz = "0.4"
+//! ```
+//!
+//! If you want Serde support, specify it like this:
+//!
+//! ```toml
+//! chrono-tz = { version = "0.4", features = ["serde"] }
 //! ```
 //!
 //! Then you will need to write (in your crate root):
@@ -140,6 +146,9 @@
 //! ```
 
 extern crate chrono;
+
+#[cfg(feature = "serde")]
+mod serde;
 
 mod timezone_impl;
 mod binary_search;

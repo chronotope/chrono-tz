@@ -119,7 +119,6 @@ assert_eq!(utc.to_string(), "2016-10-21 23:00:00 UTC");
 
 ## Future Improvements
 
-- `rustc-serialize` and `serde` support.
 - Handle leap seconds
 - Handle Julian to Gregorian calendar transitions
 - Load tzdata always from latest version

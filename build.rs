@@ -82,7 +82,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) {
                raw_zone_name = zone).unwrap();
     }
     write!(timezone_file,
-"             s => Err(s.to_string())
+"             s => Err(format!(\"'{{}}' is not a valid timezone\", s.to_string()))
         }}
     }}
 }}\n\n").unwrap();
