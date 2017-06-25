@@ -1,4 +1,4 @@
-//! # Chrono-TZ 0.3.2
+//! # Chrono-TZ 0.4.0
 //!
 //! `Chrono-TZ` is a library that provides implementors of the
 //! [`TimeZone`][timezone] trait for [`rust-chrono`][chrono]. The
@@ -16,8 +16,8 @@
 //!
 //! ```toml
 //! [dependencies]
-//! chrono = "0.3"
-//! chrono-tz = "0.3"
+//! chrono = "0.4"
+//! chrono-tz = "0.4"
 //! ```
 //!
 //! Then you will need to write (in your crate root):
@@ -34,13 +34,13 @@
 //! ```
 //! # extern crate chrono;
 //! # extern crate chrono_tz;
-//! use chrono::{TimeZone, UTC};
+//! use chrono::{TimeZone, Utc};
 //! use chrono_tz::US::Pacific;
 //!
 //! # fn main() {
 //! let pacific_time = Pacific.ymd(1990, 5, 6).and_hms(12, 30, 45);
-//! let utc_time = pacific_time.with_timezone(&UTC);
-//! assert_eq!(utc_time, UTC.ymd(1990, 5, 6).and_hms(19, 30, 45));
+//! let utc_time = pacific_time.with_timezone(&Utc);
+//! assert_eq!(utc_time, Utc.ymd(1990, 5, 6).and_hms(19, 30, 45));
 //! # }
 //! ```
 //!
