@@ -533,20 +533,20 @@ impl LineParser {
             Ok(TimeSpecAndType(TimeSpec::Hours(input.parse().unwrap()), TimeType::Wall))
         }
         else if let Some(caps) = self.hm_field.captures(input) {
-            let sign   : i8 = if caps.name("sign").unwrap() == "-" { -1 } else { 1 };
-            let hour   : i8 = caps.name("hour").unwrap().parse().unwrap();
-            let minute : i8 = caps.name("minute").unwrap().parse().unwrap();
-            let flag        = caps.name("flag").and_then(|c| parse_time_type(&c[0..1]))
+            let sign   : i8 = if caps.name("sign").unwrap().as_str() == "-" { -1 } else { 1 };
+            let hour   : i8 = caps.name("hour").unwrap().as_str().parse().unwrap();
+            let minute : i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
+            let flag        = caps.name("flag").and_then(|c| parse_time_type(&c.as_str()[0..1]))
                                           .unwrap_or(TimeType::Wall);
 
             Ok(TimeSpecAndType(TimeSpec::HoursMinutes(hour * sign, minute * sign), flag))
         }
         else if let Some(caps) = self.hms_field.captures(input) {
-            let sign   : i8 = if caps.name("sign").unwrap() == "-" { -1 } else { 1 };
-            let hour   : i8 = caps.name("hour").unwrap().parse().unwrap();
-            let minute : i8 = caps.name("minute").unwrap().parse().unwrap();
-            let second : i8 = caps.name("second").unwrap().parse().unwrap();
-            let flag        = caps.name("flag").and_then(|c| parse_time_type(&c[0..1]))
+            let sign   : i8 = if caps.name("sign").unwrap().as_str() == "-" { -1 } else { 1 };
+            let hour   : i8 = caps.name("hour").unwrap().as_str().parse().unwrap();
+            let minute : i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
+            let second : i8 = caps.name("second").unwrap().as_str().parse().unwrap();
+            let flag        = caps.name("flag").and_then(|c| parse_time_type(&c.as_str()[0..1]))
                                           .unwrap_or(TimeType::Wall);
 
             Ok(TimeSpecAndType(TimeSpec::HoursMinutesSeconds(hour * sign, minute * sign, second * sign), flag))
@@ -570,10 +570,10 @@ impl LineParser {
             let weekday = input[4..].parse()?;
             Ok(DaySpec::Last(weekday))
         } else if let Some(caps) = self.day_field.captures(input) {
-            let weekday = caps.name("weekday").unwrap().parse().unwrap();
-            let day     = caps.name("day").unwrap().parse().unwrap();
+            let weekday = caps.name("weekday").unwrap().as_str().parse().unwrap();
+            let day     = caps.name("day").unwrap().as_str().parse().unwrap();
 
-            match caps.name("sign").unwrap() {
+            match caps.name("sign").unwrap().as_str() {
                 "<=" => Ok(DaySpec::LastOnOrBefore(weekday, day)),
                 ">=" => Ok(DaySpec::FirstOnOrAfter(weekday, day)),
                  _   => unreachable!("The regex only matches one of those two!"),
@@ -585,12 +585,12 @@ impl LineParser {
 
     fn parse_rule<'a>(&self, input: &'a str) -> Result<Rule<'a>, Error> {
         if let Some(caps) = self.rule_line.captures(input) {
-            let name      = caps.name("name").unwrap();
-            let from_year = caps.name("from").unwrap().parse()?;
+            let name      = caps.name("name").unwrap().as_str();
+            let from_year = caps.name("from").unwrap().as_str().parse()?;
 
             // The end year can be ‘only’ to indicate that this rule only
             // takes place on that year.
-            let to_year = match caps.name("to").unwrap() {
+            let to_year = match caps.name("to").unwrap().as_str() {
                 "only"  => None,
                 to      => Some(to.parse()?),
             };
@@ -599,16 +599,16 @@ impl LineParser {
             // should be “-”, so throw an error if it isn’t. (It only exists
             // for compatibility with old versions that used to contain year
             // types.) Sometimes “‐”, a Unicode hyphen, is used as well.
-            let t = caps.name("type").unwrap();
+            let t = caps.name("type").unwrap().as_str();
             if t != "-" && t != "\u{2010}"  {
                 return Err(Error::TypeColumnContainedNonHyphen(t.to_string()));
             }
 
-            let month        = caps.name("in").unwrap().parse()?;
-            let day          = self.parse_dayspec(caps.name("on").unwrap())?;
-            let time         = self.parse_timespec_and_type(caps.name("at").unwrap())?;
-            let time_to_add  = self.parse_timespec(caps.name("save").unwrap())?;
-            let letters      = match caps.name("letters").unwrap() {
+            let month        = caps.name("in").unwrap().as_str().parse()?;
+            let day          = self.parse_dayspec(caps.name("on").unwrap().as_str())?;
+            let time         = self.parse_timespec_and_type(caps.name("at").unwrap().as_str())?;
+            let time_to_add  = self.parse_timespec(caps.name("save").unwrap().as_str())?;
+            let letters      = match caps.name("letters").unwrap().as_str() {
                 "-"  => None,
                 l    => Some(l),
             };
@@ -642,15 +642,15 @@ impl LineParser {
     }
 
     fn zoneinfo_from_captures<'a>(&self, caps: Captures<'a>) -> Result<ZoneInfo<'a>, Error> {
-        let utc_offset = self.parse_timespec(caps.name("gmtoff").unwrap())?;
-        let saving = self.saving_from_str(caps.name("rulessave").unwrap())?;
-        let format = caps.name("format").unwrap();
+        let utc_offset = self.parse_timespec(caps.name("gmtoff").unwrap().as_str())?;
+        let saving = self.saving_from_str(caps.name("rulessave").unwrap().as_str())?;
+        let format = caps.name("format").unwrap().as_str();
 
         let time = match (caps.name("year"), caps.name("month"), caps.name("day"), caps.name("time")) {
-            (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime  (y.parse()?, m.parse()?, self.parse_dayspec(d)?, self.parse_timespec_and_type(t)?)),
-            (Some(y), Some(m), Some(d), _      ) => Some(ChangeTime::UntilDay   (y.parse()?, m.parse()?, self.parse_dayspec(d)?)),
-            (Some(y), Some(m), _      , _      ) => Some(ChangeTime::UntilMonth (y.parse()?, m.parse()?)),
-            (Some(y), _      , _      , _      ) => Some(ChangeTime::UntilYear  (y.parse()?)),
+            (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime  (y.as_str().parse()?, m.as_str().parse()?, self.parse_dayspec(d.as_str())?, self.parse_timespec_and_type(t.as_str())?)),
+            (Some(y), Some(m), Some(d), _      ) => Some(ChangeTime::UntilDay   (y.as_str().parse()?, m.as_str().parse()?, self.parse_dayspec(d.as_str())?)),
+            (Some(y), Some(m), _      , _      ) => Some(ChangeTime::UntilMonth (y.as_str().parse()?, m.as_str().parse()?)),
+            (Some(y), _      , _      , _      ) => Some(ChangeTime::UntilYear  (y.as_str().parse()?)),
             (None   , None   , None   , None   ) => None,
             _                                    => unreachable!("Out-of-order capturing groups!"),
         };
@@ -665,7 +665,7 @@ impl LineParser {
 
     fn parse_zone<'a>(&self, input: &'a str) -> Result<Zone<'a>, Error> {
         if let Some(caps) = self.zone_line.captures(input) {
-            let name = caps.name("name").unwrap();
+            let name = caps.name("name").unwrap().as_str();
             let info = self.zoneinfo_from_captures(caps)?;
             Ok(Zone {
                 name: name,
@@ -678,8 +678,8 @@ impl LineParser {
 
     fn parse_link<'a>(&self, input: &'a str) -> Result<Link<'a>, Error> {
         if let Some(caps) = self.link_line.captures(input) {
-            let target  = caps.name("target").unwrap();
-            let name    = caps.name("name").unwrap();
+            let target  = caps.name("target").unwrap().as_str();
+            let name    = caps.name("name").unwrap().as_str();
             Ok(Link { existing: target, new: name })
         }
         else {
