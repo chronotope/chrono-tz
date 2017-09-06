@@ -9,4 +9,4 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
-regex = "^0.1"
+regex = "^0.2"
