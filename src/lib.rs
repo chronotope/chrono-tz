@@ -380,4 +380,10 @@ mod tests {
         assert_eq!(Tz::UTC.name(), "UTC");
         assert_eq!(Tz::Zulu.name(), "Zulu");
     }
+
+    #[test]
+    fn test_impl_hash() {
+        #[derive(Hash)]
+        struct Foo(Tz);
+    }
 }
