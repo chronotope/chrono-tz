@@ -259,7 +259,17 @@ fn weekdays() {
 }
 
 fn is_leap(year: i64) -> bool {
-    year % 4 == 0 && year % 100 != 0 || year % 400 == 0
+    // Leap year rules: years which are factors of 4, except those divisible
+    // by 100, unless they are divisible by 400.
+    //
+    // We test most common cases first: 4th year, 100th year, then 400th year.
+    //
+    // We factor out 4 from 100 since it was already tested, leaving us checking
+    // if it's divisible by 25. Afterwards, we do the same, factoring 25 from
+    // 400, leaving us with 16.
+    //
+    // Factors of 4 and 16 can quickly be found with bitwise AND.
+    year & 3 == 0 && (year % 25 != 0 || year & 15 == 0)
 }
 
 #[cfg(test)]

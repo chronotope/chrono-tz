@@ -237,7 +237,7 @@ impl FixedTimespanSetBuilder {
             let timespan = FixedTimespan {
                 utc_offset: timespan.offset,
                 dst_offset: *dst_offset,
-                name:       start_zone_id.clone().unwrap_or("".to_owned()),
+                name:       start_zone_id.clone().unwrap_or_else(String::new),
             };
 
             self.rest.push((time, timespan));
@@ -247,7 +247,7 @@ impl FixedTimespanSetBuilder {
             self.first = Some(FixedTimespan {
                 utc_offset: utc_offset,
                 dst_offset: *dst_offset,
-                name:       start_zone_id.clone().unwrap_or("".to_owned()),
+                name:       start_zone_id.clone().unwrap_or_else(String::new),
             });
         }
     }
@@ -273,23 +273,18 @@ impl FixedTimespanSetBuilder {
                     self.until_time = Some(timespan.end_time.unwrap().to_timestamp() - utc_offset - *dst_offset);
                 }
 
-                // Find the minimum rule based on the current UTC and DST offsets.
-                // (this can be replaced with min_by when it stabilises):
-                //.min_by(|r| r.1.absolute_datetime(year, utc_offset, dst_offset));
-                let pos = {
-                    let earliest = activated_rules.iter().enumerate()
-                        .map(|(i, r)| (r.absolute_datetime(year, utc_offset, *dst_offset), i))
-                        .min()
-                        .map(|(_, i)| i);
+                // Find the minimum rule and its start time based on the current
+                // UTC and DST offsets.
+                let earliest = activated_rules.iter().enumerate()
+                    .map(|(i, r)| (i, r.absolute_datetime(year, utc_offset, *dst_offset)))
+                    .min_by_key(|&(_, time)| time);
 
-                    match earliest {
-                        Some(p) => p,
-                        None    => break,
-                    }
+                let (pos, earliest_at) = match earliest {
+                    Some((pos, time)) => (pos, time),
+                    None => break,
                 };
 
                 let earliest_rule = activated_rules.remove(pos);
-                let earliest_at = earliest_rule.absolute_datetime(year, utc_offset, *dst_offset);
 
                 if use_until && earliest_at >= self.until_time.unwrap() {
                     break;
