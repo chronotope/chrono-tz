@@ -38,12 +38,12 @@ extern crate chrono_tz;
 Create a time in one timezone and convert it to UTC
 
 ```rust
-use chrono::{TimeZone, UTC};
+use chrono::{TimeZone, Utc};
 use chrono_tz::US::Pacific;
 
 let pacific_time = Pacific.ymd(1990, 5, 6).and_hms(12, 30, 45);
-let utc_time = pacific_time.with_timezone(&UTC);
-assert_eq!(utc_time, UTC.ymd(1990, 5, 6).and_hms(19, 30, 45));
+let utc_time = pacific_time.with_timezone(&Utc);
+assert_eq!(utc_time, Utc.ymd(1990, 5, 6).and_hms(19, 30, 45));
 ```
 
 Create a naive datetime and convert it to a timezone-aware datetime
