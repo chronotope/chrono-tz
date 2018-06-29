@@ -1,6 +1,6 @@
 [package]
 name = "parse-zoneinfo"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Djzin <djzin@users.noreply.github.com>"]
 description = "Parse zoneinfo files from the IANA database"
 keywords = ["date", "time", "timezone", "zone", "calendar"]
