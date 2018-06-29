@@ -383,6 +383,7 @@ mod tests {
 
     #[test]
     fn test_impl_hash() {
+        #[allow(dead_code)]
         #[derive(Hash)]
         struct Foo(Tz);
     }
