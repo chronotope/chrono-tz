@@ -1,6 +1,6 @@
 [package]
 name = "chrono-tz"
-version = "0.4.1"
+version = "0.5.0"
 authors = ["Djzin"]
 build = "build.rs"
 description = "TimeZone implementations for rust-chrono from the IANA database"
@@ -15,7 +15,7 @@ chrono = "0.4"
 serde = { version = "1", optional = true }
 
 [build-dependencies]
-parse-zoneinfo = "0.1"
+parse-zoneinfo = "0.2"
 
 [dev-dependencies]
 serde_test = "1"
