@@ -11,7 +11,7 @@ readme = "README.md"
 license = "MIT/Apache-2.0"
 
 [dependencies]
-chrono = "0.4"
+chrono = { version = "0.4", default-features = false }
 serde = { version = "1", optional = true }
 
 [build-dependencies]
