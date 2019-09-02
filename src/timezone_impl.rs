@@ -4,10 +4,17 @@ use std::cmp::Ordering;
 use binary_search::binary_search;
 use super::timezones::Tz;
 
+/// An Offset that applies for a period of time
+///
+/// For example, [`::US::Eastern`] is composed of at least two
+/// `FixedTimespan`s: `EST` and `EDT`, that are variously in effect.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct FixedTimespan {
+    /// The base offset from UTC, usually doesn't change unless the government changes something
     pub utc_offset: i32,
+    /// The additional offset from UTC for this timespan
     pub dst_offset: i32,
+    /// The name of this timezone, for example the difference between `EDT`/`EST`
     pub name: &'static str,
 }
 
