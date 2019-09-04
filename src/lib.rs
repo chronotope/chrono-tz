@@ -196,6 +196,18 @@ mod tests {
     }
 
     #[test]
+    fn test_addition_across_tzs() {
+        use chrono::TimeZone;
+        let three_hours = Duration::hours(2);
+        let edt = Eastern.ymd(2019, 11, 3).and_hms(0, 0, 0);
+        let est = edt + three_hours;
+
+        assert_eq!(edt.to_string(), "2019-11-03 00:00:00 EDT".to_string());
+        assert_eq!(est.to_string(), "2019-11-03 01:00:00 EST".to_string());
+        assert_eq!(est.timestamp(), edt.timestamp() + three_hours.num_seconds());
+    }
+
+    #[test]
     fn warsaw_tz_name() {
         let dt = UTC.ymd(1915, 8, 4).and_hms(22, 35, 59);
         assert_eq!(dt.with_timezone(&Warsaw).format("%Z").to_string(), "WMT");
