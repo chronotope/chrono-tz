@@ -3,7 +3,7 @@ use std::str::FromStr;
 #[allow(deprecated, unused_imports)]
 use std::ascii::AsciiExt;
 
-use regex::{Regex, Captures};
+use regex::{Captures, Regex};
 
 pub struct LineParser {
     rule_line: Regex,
@@ -35,7 +35,8 @@ pub enum Error {
 impl LineParser {
     pub fn new() -> Self {
         LineParser {
-            rule_line: Regex::new(r##"(?x) ^
+            rule_line: Regex::new(
+                r##"(?x) ^
                 Rule \s+
                 ( ?P<name>    \S+)  \s+
                 ( ?P<from>    \S+)  \s+
@@ -47,27 +48,39 @@ impl LineParser {
                 ( ?P<save>    \S+)  \s+
                 ( ?P<letters> \S+)  \s*
                 (\#.*)?
-            $ "##).unwrap(),
+            $ "##,
+            )
+            .unwrap(),
 
-            day_field: Regex::new(r##"(?x) ^
+            day_field: Regex::new(
+                r##"(?x) ^
                 ( ?P<weekday> \w+ )
                 ( ?P<sign>    [<>] = )
                 ( ?P<day>     \d+ )
-            $ "##).unwrap(),
+            $ "##,
+            )
+            .unwrap(),
 
-            hm_field: Regex::new(r##"(?x) ^
+            hm_field: Regex::new(
+                r##"(?x) ^
                 ( ?P<sign> -? )
                 ( ?P<hour> \d{1,2} ) : ( ?P<minute> \d{2} )
                 ( ?P<flag> [wsugz] )?
-            $ "##).unwrap(),
+            $ "##,
+            )
+            .unwrap(),
 
-            hms_field: Regex::new(r##"(?x) ^
+            hms_field: Regex::new(
+                r##"(?x) ^
                 ( ?P<sign> -? )
                 ( ?P<hour> \d{1,2} ) : ( ?P<minute> \d{2} ) : ( ?P<second> \d{2} )
                 ( ?P<flag> [wsugz] )?
-            $ "##).unwrap(),
+            $ "##,
+            )
+            .unwrap(),
 
-            zone_line: Regex::new(r##"(?x) ^
+            zone_line: Regex::new(
+                r##"(?x) ^
                 Zone \s+
                 ( ?P<name> [ A-Z a-z 0-9 / _ + - ]+ )  \s+
                 ( ?P<gmtoff>     \S+ )  \s+
@@ -78,9 +91,12 @@ impl LineParser {
                 ( ?P<day>        \S+ )? \s*
                 ( ?P<time>       \S+ )? \s*
                 (\#.*)?
-            $ "##).unwrap(),
+            $ "##,
+            )
+            .unwrap(),
 
-            continuation_line: Regex::new(r##"(?x) ^
+            continuation_line: Regex::new(
+                r##"(?x) ^
                 \s+
                 ( ?P<gmtoff>     \S+ )  \s+
                 ( ?P<rulessave>  \S+ )  \s+
@@ -90,19 +106,27 @@ impl LineParser {
                 ( ?P<day>        \S+ )? \s*
                 ( ?P<time>       \S+ )? \s*
                 (\#.*)?
-            $ "##).unwrap(),
+            $ "##,
+            )
+            .unwrap(),
 
-            link_line: Regex::new(r##"(?x) ^
+            link_line: Regex::new(
+                r##"(?x) ^
                 Link  \s+
                 ( ?P<target>  \S+ )  \s+
                 ( ?P<name>    \S+ )  \s*
                 (\#.*)?
-            $ "##).unwrap(),
+            $ "##,
+            )
+            .unwrap(),
 
-            empty_line: Regex::new(r##"(?x) ^
+            empty_line: Regex::new(
+                r##"(?x) ^
                 \s*
                 (\#.*)?
-            $"##).unwrap(),
+            $"##,
+            )
+            .unwrap(),
         }
     }
 }
@@ -123,8 +147,8 @@ impl FromStr for Year {
             "max" | "maximum" => Year::Maximum,
             year => match year.parse() {
                 Ok(year) => Year::Number(year),
-                Err(_)   => return Err(Error::FailedYearParse(input.to_string())),
-            }
+                Err(_) => return Err(Error::FailedYearParse(input.to_string())),
+            },
         })
     }
 }
@@ -148,19 +172,19 @@ pub enum Month {
 impl Month {
     fn length(self, is_leap: bool) -> i8 {
         match self {
-            Month::January             => 31,
+            Month::January => 31,
             Month::February if is_leap => 29,
-            Month::February            => 28,
-            Month::March               => 31,
-            Month::April               => 30,
-            Month::May                 => 31,
-            Month::June                => 30,
-            Month::July                => 31,
-            Month::August              => 31,
-            Month::September           => 30,
-            Month::October             => 31,
-            Month::November            => 30,
-            Month::December            => 31,
+            Month::February => 28,
+            Month::March => 31,
+            Month::April => 30,
+            Month::May => 31,
+            Month::June => 30,
+            Month::July => 31,
+            Month::August => 31,
+            Month::September => 30,
+            Month::October => 31,
+            Month::November => 30,
+            Month::December => 31,
         }
     }
 }
@@ -170,19 +194,19 @@ impl FromStr for Month {
 
     fn from_str(input: &str) -> Result<Month, Self::Err> {
         Ok(match &*input.to_ascii_lowercase() {
-            "jan" | "january"    => Month::January,
-            "feb" | "february"   => Month::February,
-            "mar" | "march"      => Month::March,
-            "apr" | "april"      => Month::April,
-            "may"                => Month::May,
-            "jun" | "june"       => Month::June,
-            "jul" | "july"       => Month::July,
-            "aug" | "august"     => Month::August,
-            "sep" | "september"  => Month::September,
-            "oct" | "october"    => Month::October,
-            "nov" | "november"   => Month::November,
-            "dec" | "december"   => Month::December,
-            other                => return Err(Error::FailedMonthParse(other.to_string())),
+            "jan" | "january" => Month::January,
+            "feb" | "february" => Month::February,
+            "mar" | "march" => Month::March,
+            "apr" | "april" => Month::April,
+            "may" => Month::May,
+            "jun" | "june" => Month::June,
+            "jul" | "july" => Month::July,
+            "aug" | "august" => Month::August,
+            "sep" | "september" => Month::September,
+            "oct" | "october" => Month::October,
+            "nov" | "november" => Month::November,
+            "dec" | "december" => Month::December,
+            other => return Err(Error::FailedMonthParse(other.to_string())),
         })
     }
 }
@@ -203,14 +227,14 @@ impl FromStr for Weekday {
 
     fn from_str(input: &str) -> Result<Weekday, Self::Err> {
         Ok(match &*input.to_ascii_lowercase() {
-            "mon" | "monday"     => Weekday::Monday,
-            "tue" | "tuesday"    => Weekday::Tuesday,
-            "wed" | "wednesday"  => Weekday::Wednesday,
-            "thu" | "thursday"   => Weekday::Thursday,
-            "fri" | "friday"     => Weekday::Friday,
-            "sat" | "saturday"   => Weekday::Saturday,
-            "sun" | "sunday"     => Weekday::Sunday,
-            other                => return Err(Error::FailedWeekdayParse(other.to_string())),
+            "mon" | "monday" => Weekday::Monday,
+            "tue" | "tuesday" => Weekday::Tuesday,
+            "wed" | "wednesday" => Weekday::Wednesday,
+            "thu" | "thursday" => Weekday::Thursday,
+            "fri" | "friday" => Weekday::Friday,
+            "sat" | "saturday" => Weekday::Saturday,
+            "sun" | "sunday" => Weekday::Sunday,
+            other => return Err(Error::FailedWeekdayParse(other.to_string())),
         })
     }
 }
@@ -220,16 +244,16 @@ pub enum DaySpec {
     Ordinal(i8),
     Last(Weekday),
     LastOnOrBefore(Weekday, i8),
-    FirstOnOrAfter(Weekday, i8)
+    FirstOnOrAfter(Weekday, i8),
 }
 
 impl Weekday {
     fn calculate(year: i64, month: Month, day: i8) -> Weekday {
         let m = month as i64;
-        let y = if m < 3 { year - 1} else { year };
+        let y = if m < 3 { year - 1 } else { year };
         let d = day as i64;
         const T: [i64; 12] = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
-        match (y + y/4 - y/100 + y/400 + T[m as usize-1] + d) % 7 {
+        match (y + y / 4 - y / 100 + y / 400 + T[m as usize - 1] + d) % 7 {
             0 => Weekday::Sunday,
             1 => Weekday::Monday,
             2 => Weekday::Tuesday,
@@ -237,7 +261,7 @@ impl Weekday {
             4 => Weekday::Thursday,
             5 => Weekday::Friday,
             6 => Weekday::Saturday,
-            _ => panic!("why is negative modulus designed so?")
+            _ => panic!("why is negative modulus designed so?"),
         }
     }
 }
@@ -245,19 +269,40 @@ impl Weekday {
 #[cfg(test)]
 #[test]
 fn weekdays() {
-    assert_eq!(Weekday::calculate(1970, Month::January, 1), Weekday::Thursday);
-    assert_eq!(Weekday::calculate(2017, Month::February, 11), Weekday::Saturday);
+    assert_eq!(
+        Weekday::calculate(1970, Month::January, 1),
+        Weekday::Thursday
+    );
+    assert_eq!(
+        Weekday::calculate(2017, Month::February, 11),
+        Weekday::Saturday
+    );
     assert_eq!(Weekday::calculate(1890, Month::March, 2), Weekday::Sunday);
     assert_eq!(Weekday::calculate(2100, Month::April, 20), Weekday::Tuesday);
     assert_eq!(Weekday::calculate(2009, Month::May, 31), Weekday::Sunday);
     assert_eq!(Weekday::calculate(2001, Month::June, 9), Weekday::Saturday);
     assert_eq!(Weekday::calculate(1995, Month::July, 21), Weekday::Friday);
     assert_eq!(Weekday::calculate(1982, Month::August, 8), Weekday::Sunday);
-    assert_eq!(Weekday::calculate(1962, Month::September, 6), Weekday::Thursday);
-    assert_eq!(Weekday::calculate(1899, Month::October, 14), Weekday::Saturday);
-    assert_eq!(Weekday::calculate(2016, Month::November, 18), Weekday::Friday);
-    assert_eq!(Weekday::calculate(2010, Month::December, 19), Weekday::Sunday);
-    assert_eq!(Weekday::calculate(2016, Month::February, 29), Weekday::Monday);
+    assert_eq!(
+        Weekday::calculate(1962, Month::September, 6),
+        Weekday::Thursday
+    );
+    assert_eq!(
+        Weekday::calculate(1899, Month::October, 14),
+        Weekday::Saturday
+    );
+    assert_eq!(
+        Weekday::calculate(2016, Month::November, 18),
+        Weekday::Friday
+    );
+    assert_eq!(
+        Weekday::calculate(2010, Month::December, 19),
+        Weekday::Sunday
+    );
+    assert_eq!(
+        Weekday::calculate(2016, Month::February, 29),
+        Weekday::Monday
+    );
 }
 
 fn is_leap(year: i64) -> bool {
@@ -295,12 +340,17 @@ impl DaySpec {
 
         match *self {
             DaySpec::Ordinal(day) => day,
-            DaySpec::Last(weekday) => (1..length+1).rev()
-                .find(|&day| Weekday::calculate(year, month, day) == weekday).unwrap(),
-            DaySpec::LastOnOrBefore(weekday, day) => (1..day+1).rev()
-                .find(|&day| Weekday::calculate(year, month, day) == weekday).unwrap(),
-            DaySpec::FirstOnOrAfter(weekday, day) => (day..length+1)
-                .find(|&day| Weekday::calculate(year, month, day) == weekday).unwrap(),
+            DaySpec::Last(weekday) => (1..length + 1)
+                .rev()
+                .find(|&day| Weekday::calculate(year, month, day) == weekday)
+                .unwrap(),
+            DaySpec::LastOnOrBefore(weekday, day) => (1..day + 1)
+                .rev()
+                .find(|&day| Weekday::calculate(year, month, day) == weekday)
+                .unwrap(),
+            DaySpec::FirstOnOrAfter(weekday, day) => (day..length + 1)
+                .find(|&day| Weekday::calculate(year, month, day) == weekday)
+                .unwrap(),
         }
     }
 }
@@ -386,7 +436,6 @@ pub enum ChangeTime {
 
 impl ChangeTime {
     pub fn to_timestamp(&self) -> i64 {
-
         fn seconds_in_year(year: i64) -> i64 {
             if is_leap(year) {
                 366 * 24 * 60 * 60
@@ -403,7 +452,14 @@ impl ChangeTime {
             }
         }
 
-        fn time_to_timestamp(year: i64, month: i8, day: i8, hour: i8, minute: i8, second: i8) -> i64 {
+        fn time_to_timestamp(
+            year: i64,
+            month: i8,
+            day: i8,
+            hour: i8,
+            minute: i8,
+            second: i8,
+        ) -> i64 {
             const MONTHS_NON_LEAP: [i64; 12] = [
                 0,
                 31,
@@ -416,7 +472,7 @@ impl ChangeTime {
                 31 + 28 + 31 + 30 + 31 + 30 + 31 + 31,
                 31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30,
                 31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31,
-                31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30
+                31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30,
             ];
             const MONTHS_LEAP: [i64; 12] = [
                 0,
@@ -430,10 +486,16 @@ impl ChangeTime {
                 31 + 29 + 31 + 30 + 31 + 30 + 31 + 31,
                 31 + 29 + 31 + 30 + 31 + 30 + 31 + 31 + 30,
                 31 + 29 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31,
-                31 + 29 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30
+                31 + 29 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30,
             ];
             seconds_until_start_of_year(year)
-                + 60 * 60 * 24 * if is_leap(year) { MONTHS_LEAP[month as usize - 1] } else { MONTHS_NON_LEAP[month as usize - 1] }
+                + 60 * 60
+                    * 24
+                    * if is_leap(year) {
+                        MONTHS_LEAP[month as usize - 1]
+                    } else {
+                        MONTHS_NON_LEAP[month as usize - 1]
+                    }
                 + 60 * 60 * 24 * (day as i64 - 1)
                 + 60 * 60 * hour as i64
                 + 60 * minute as i64
@@ -441,14 +503,22 @@ impl ChangeTime {
         }
 
         match *self {
-            ChangeTime::UntilYear(Year::Number(y))             => time_to_timestamp(y, 1,                             1, 0, 0,   0),
-            ChangeTime::UntilMonth(Year::Number(y), m)         => time_to_timestamp(y, m as i8,                       1, 0, 0,   0),
-            ChangeTime::UntilDay(Year::Number(y), m, d)        => time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), 0, 0,   0),
+            ChangeTime::UntilYear(Year::Number(y)) => time_to_timestamp(y, 1, 1, 0, 0, 0),
+            ChangeTime::UntilMonth(Year::Number(y), m) => time_to_timestamp(y, m as i8, 1, 0, 0, 0),
+            ChangeTime::UntilDay(Year::Number(y), m, d) => {
+                time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), 0, 0, 0)
+            }
             ChangeTime::UntilTime(Year::Number(y), m, d, time) => match time.0 {
-                TimeSpec::Zero                                 => time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), 0, 0,   0),
-                TimeSpec::Hours(h)                             => time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), h, 0,   0),
-                TimeSpec::HoursMinutes(h, min)                 => time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), h, min, 0),
-                TimeSpec::HoursMinutesSeconds(h, min, s)       => time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), h, min, s),
+                TimeSpec::Zero => time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), 0, 0, 0),
+                TimeSpec::Hours(h) => {
+                    time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), h, 0, 0)
+                }
+                TimeSpec::HoursMinutes(h, min) => {
+                    time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), h, min, 0)
+                }
+                TimeSpec::HoursMinutesSeconds(h, min, s) => {
+                    time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), h, min, s)
+                }
             },
             _ => unreachable!(),
         }
@@ -456,11 +526,11 @@ impl ChangeTime {
 
     pub fn year(&self) -> i64 {
         match *self {
-            ChangeTime::UntilYear(Year::Number(y))      => y,
+            ChangeTime::UntilYear(Year::Number(y)) => y,
             ChangeTime::UntilMonth(Year::Number(y), ..) => y,
-            ChangeTime::UntilDay(Year::Number(y), ..)   => y,
-            ChangeTime::UntilTime(Year::Number(y), ..)  => y,
-            _ => unreachable!()
+            ChangeTime::UntilDay(Year::Number(y), ..) => y,
+            ChangeTime::UntilTime(Year::Number(y), ..) => y,
+            _ => unreachable!(),
         }
     }
 }
@@ -474,8 +544,12 @@ fn to_timestamp() {
     assert_eq!(time.to_timestamp(), 1451606400);
     let time = ChangeTime::UntilYear(Year::Number(1900));
     assert_eq!(time.to_timestamp(), -2208988800);
-    let time = ChangeTime::UntilTime(Year::Number(2000), Month::February, DaySpec::Last(Weekday::Sunday),
-        TimeSpecAndType(TimeSpec::Hours(9), TimeType::Wall));
+    let time = ChangeTime::UntilTime(
+        Year::Number(2000),
+        Month::February,
+        DaySpec::Last(Weekday::Sunday),
+        TimeSpecAndType(TimeSpec::Hours(9), TimeType::Wall),
+    );
     assert_eq!(time.to_timestamp(), 951642000);
 }
 
@@ -529,10 +603,10 @@ pub enum Line<'a> {
 
 fn parse_time_type(c: &str) -> Option<TimeType> {
     Some(match c {
-        "w"             => TimeType::Wall,
-        "s"             => TimeType::Standard,
+        "w" => TimeType::Wall,
+        "s" => TimeType::Standard,
         "u" | "g" | "z" => TimeType::UTC,
-         _              => return None,
+        _ => return None,
     })
 }
 
@@ -540,28 +614,46 @@ impl LineParser {
     fn parse_timespec_and_type(&self, input: &str) -> Result<TimeSpecAndType, Error> {
         if input == "-" {
             Ok(TimeSpecAndType(TimeSpec::Zero, TimeType::Wall))
-        }
-        else if input.chars().all(|c| c == '-' || c.is_digit(10)) {
-            Ok(TimeSpecAndType(TimeSpec::Hours(input.parse().unwrap()), TimeType::Wall))
-        }
-        else if let Some(caps) = self.hm_field.captures(input) {
-            let sign   : i8 = if caps.name("sign").unwrap().as_str() == "-" { -1 } else { 1 };
-            let hour   : i8 = caps.name("hour").unwrap().as_str().parse().unwrap();
-            let minute : i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
-            let flag        = caps.name("flag").and_then(|c| parse_time_type(&c.as_str()[0..1]))
-                                          .unwrap_or(TimeType::Wall);
+        } else if input.chars().all(|c| c == '-' || c.is_digit(10)) {
+            Ok(TimeSpecAndType(
+                TimeSpec::Hours(input.parse().unwrap()),
+                TimeType::Wall,
+            ))
+        } else if let Some(caps) = self.hm_field.captures(input) {
+            let sign: i8 = if caps.name("sign").unwrap().as_str() == "-" {
+                -1
+            } else {
+                1
+            };
+            let hour: i8 = caps.name("hour").unwrap().as_str().parse().unwrap();
+            let minute: i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
+            let flag = caps
+                .name("flag")
+                .and_then(|c| parse_time_type(&c.as_str()[0..1]))
+                .unwrap_or(TimeType::Wall);
 
-            Ok(TimeSpecAndType(TimeSpec::HoursMinutes(hour * sign, minute * sign), flag))
-        }
-        else if let Some(caps) = self.hms_field.captures(input) {
-            let sign   : i8 = if caps.name("sign").unwrap().as_str() == "-" { -1 } else { 1 };
-            let hour   : i8 = caps.name("hour").unwrap().as_str().parse().unwrap();
-            let minute : i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
-            let second : i8 = caps.name("second").unwrap().as_str().parse().unwrap();
-            let flag        = caps.name("flag").and_then(|c| parse_time_type(&c.as_str()[0..1]))
-                                          .unwrap_or(TimeType::Wall);
+            Ok(TimeSpecAndType(
+                TimeSpec::HoursMinutes(hour * sign, minute * sign),
+                flag,
+            ))
+        } else if let Some(caps) = self.hms_field.captures(input) {
+            let sign: i8 = if caps.name("sign").unwrap().as_str() == "-" {
+                -1
+            } else {
+                1
+            };
+            let hour: i8 = caps.name("hour").unwrap().as_str().parse().unwrap();
+            let minute: i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
+            let second: i8 = caps.name("second").unwrap().as_str().parse().unwrap();
+            let flag = caps
+                .name("flag")
+                .and_then(|c| parse_time_type(&c.as_str()[0..1]))
+                .unwrap_or(TimeType::Wall);
 
-            Ok(TimeSpecAndType(TimeSpec::HoursMinutesSeconds(hour * sign, minute * sign, second * sign), flag))
+            Ok(TimeSpecAndType(
+                TimeSpec::HoursMinutesSeconds(hour * sign, minute * sign, second * sign),
+                flag,
+            ))
         } else {
             Err(Error::InvalidTimeSpecAndType(input.to_string()))
         }
@@ -583,12 +675,12 @@ impl LineParser {
             Ok(DaySpec::Last(weekday))
         } else if let Some(caps) = self.day_field.captures(input) {
             let weekday = caps.name("weekday").unwrap().as_str().parse().unwrap();
-            let day     = caps.name("day").unwrap().as_str().parse().unwrap();
+            let day = caps.name("day").unwrap().as_str().parse().unwrap();
 
             match caps.name("sign").unwrap().as_str() {
                 "<=" => Ok(DaySpec::LastOnOrBefore(weekday, day)),
                 ">=" => Ok(DaySpec::FirstOnOrAfter(weekday, day)),
-                 _   => unreachable!("The regex only matches one of those two!"),
+                _ => unreachable!("The regex only matches one of those two!"),
             }
         } else {
             Err(Error::InvalidDaySpec(input.to_string()))
@@ -597,14 +689,14 @@ impl LineParser {
 
     fn parse_rule<'a>(&self, input: &'a str) -> Result<Rule<'a>, Error> {
         if let Some(caps) = self.rule_line.captures(input) {
-            let name      = caps.name("name").unwrap().as_str();
+            let name = caps.name("name").unwrap().as_str();
             let from_year = caps.name("from").unwrap().as_str().parse()?;
 
             // The end year can be ‘only’ to indicate that this rule only
             // takes place on that year.
             let to_year = match caps.name("to").unwrap().as_str() {
-                "only"  => None,
-                to      => Some(to.parse()?),
+                "only" => None,
+                to => Some(to.parse()?),
             };
 
             // According to the spec, the only value inside the ‘type’ column
@@ -612,28 +704,28 @@ impl LineParser {
             // for compatibility with old versions that used to contain year
             // types.) Sometimes “‐”, a Unicode hyphen, is used as well.
             let t = caps.name("type").unwrap().as_str();
-            if t != "-" && t != "\u{2010}"  {
+            if t != "-" && t != "\u{2010}" {
                 return Err(Error::TypeColumnContainedNonHyphen(t.to_string()));
             }
 
-            let month        = caps.name("in").unwrap().as_str().parse()?;
-            let day          = self.parse_dayspec(caps.name("on").unwrap().as_str())?;
-            let time         = self.parse_timespec_and_type(caps.name("at").unwrap().as_str())?;
-            let time_to_add  = self.parse_timespec(caps.name("save").unwrap().as_str())?;
-            let letters      = match caps.name("letters").unwrap().as_str() {
-                "-"  => None,
-                l    => Some(l),
+            let month = caps.name("in").unwrap().as_str().parse()?;
+            let day = self.parse_dayspec(caps.name("on").unwrap().as_str())?;
+            let time = self.parse_timespec_and_type(caps.name("at").unwrap().as_str())?;
+            let time_to_add = self.parse_timespec(caps.name("save").unwrap().as_str())?;
+            let letters = match caps.name("letters").unwrap().as_str() {
+                "-" => None,
+                l => Some(l),
             };
 
             Ok(Rule {
-                name:         name,
-                from_year:    from_year,
-                to_year:      to_year,
-                month:        month,
-                day:          day,
-                time:         time,
-                time_to_add:  time_to_add,
-                letters:      letters,
+                name: name,
+                from_year: from_year,
+                to_year: to_year,
+                month: month,
+                day: day,
+                time: time,
+                time_to_add: time_to_add,
+                letters: letters,
             })
         } else {
             Err(Error::NotParsedAsRuleLine)
@@ -643,7 +735,10 @@ impl LineParser {
     fn saving_from_str<'a>(&self, input: &'a str) -> Result<Saving<'a>, Error> {
         if input == "-" {
             Ok(Saving::NoSaving)
-        } else if input.chars().all(|c| c == '-' || c == '_' || c.is_alphabetic()) {
+        } else if input
+            .chars()
+            .all(|c| c == '-' || c == '_' || c.is_alphabetic())
+        {
             Ok(Saving::Multiple(input))
         } else if self.hm_field.is_match(input) {
             let time = self.parse_timespec(input)?;
@@ -658,20 +753,37 @@ impl LineParser {
         let saving = self.saving_from_str(caps.name("rulessave").unwrap().as_str())?;
         let format = caps.name("format").unwrap().as_str();
 
-        let time = match (caps.name("year"), caps.name("month"), caps.name("day"), caps.name("time")) {
-            (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime  (y.as_str().parse()?, m.as_str().parse()?, self.parse_dayspec(d.as_str())?, self.parse_timespec_and_type(t.as_str())?)),
-            (Some(y), Some(m), Some(d), _      ) => Some(ChangeTime::UntilDay   (y.as_str().parse()?, m.as_str().parse()?, self.parse_dayspec(d.as_str())?)),
-            (Some(y), Some(m), _      , _      ) => Some(ChangeTime::UntilMonth (y.as_str().parse()?, m.as_str().parse()?)),
-            (Some(y), _      , _      , _      ) => Some(ChangeTime::UntilYear  (y.as_str().parse()?)),
-            (None   , None   , None   , None   ) => None,
-            _                                    => unreachable!("Out-of-order capturing groups!"),
+        let time = match (
+            caps.name("year"),
+            caps.name("month"),
+            caps.name("day"),
+            caps.name("time"),
+        ) {
+            (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime(
+                y.as_str().parse()?,
+                m.as_str().parse()?,
+                self.parse_dayspec(d.as_str())?,
+                self.parse_timespec_and_type(t.as_str())?,
+            )),
+            (Some(y), Some(m), Some(d), _) => Some(ChangeTime::UntilDay(
+                y.as_str().parse()?,
+                m.as_str().parse()?,
+                self.parse_dayspec(d.as_str())?,
+            )),
+            (Some(y), Some(m), _, _) => Some(ChangeTime::UntilMonth(
+                y.as_str().parse()?,
+                m.as_str().parse()?,
+            )),
+            (Some(y), _, _, _) => Some(ChangeTime::UntilYear(y.as_str().parse()?)),
+            (None, None, None, None) => None,
+            _ => unreachable!("Out-of-order capturing groups!"),
         };
 
         Ok(ZoneInfo {
-            utc_offset:  utc_offset,
-            saving:      saving,
-            format:      format,
-            time:        time,
+            utc_offset: utc_offset,
+            saving: saving,
+            format: format,
+            time: time,
         })
     }
 
@@ -690,40 +802,42 @@ impl LineParser {
 
     fn parse_link<'a>(&self, input: &'a str) -> Result<Link<'a>, Error> {
         if let Some(caps) = self.link_line.captures(input) {
-            let target  = caps.name("target").unwrap().as_str();
-            let name    = caps.name("name").unwrap().as_str();
-            Ok(Link { existing: target, new: name })
-        }
-        else {
+            let target = caps.name("target").unwrap().as_str();
+            let name = caps.name("name").unwrap().as_str();
+            Ok(Link {
+                existing: target,
+                new: name,
+            })
+        } else {
             Err(Error::NotParsedAsLinkLine)
         }
     }
 
     pub fn parse_str<'a>(&self, input: &'a str) -> Result<Line<'a>, Error> {
         if self.empty_line.is_match(input) {
-            return Ok(Line::Space)
+            return Ok(Line::Space);
         }
 
         match self.parse_zone(input) {
-            Err(Error::NotParsedAsZoneLine) => {},
+            Err(Error::NotParsedAsZoneLine) => {}
             result => return result.map(Line::Zone),
         }
 
         match self.continuation_line.captures(input) {
-            None => {},
+            None => {}
             Some(caps) => return self.zoneinfo_from_captures(caps).map(Line::Continuation),
         }
 
         match self.parse_rule(input) {
-            Err(Error::NotParsedAsRuleLine) => {},
+            Err(Error::NotParsedAsRuleLine) => {}
             result => return result.map(Line::Rule),
         }
 
         match self.parse_link(input) {
-            Err(Error::NotParsedAsLinkLine) => {},
+            Err(Error::NotParsedAsLinkLine) => {}
             result => return result.map(Line::Link),
         }
-        
+
         Err(Error::InvalidLineType(input.to_string()))
     }
 }
@@ -820,15 +934,22 @@ mod tests {
         static LINE: &'static str = "Zone    Europe/London   -0:01:15 -  LMT 1847 Dec  1  0:00s";
         let parser = LineParser::new();
         let zone = parser.parse_zone(LINE).unwrap();
-        assert_eq!(zone.info.utc_offset, TimeSpec::HoursMinutesSeconds(0, -1, -15));
+        assert_eq!(
+            zone.info.utc_offset,
+            TimeSpec::HoursMinutesSeconds(0, -1, -15)
+        );
     }
 
     #[test]
     fn negative_offsets_2() {
-        static LINE: &'static str = "Zone        Europe/Madrid   -0:14:44 -      LMT     1901 Jan  1  0:00s";
+        static LINE: &'static str =
+            "Zone        Europe/Madrid   -0:14:44 -      LMT     1901 Jan  1  0:00s";
         let parser = LineParser::new();
         let zone = parser.parse_zone(LINE).unwrap();
-        assert_eq!(zone.info.utc_offset, TimeSpec::HoursMinutesSeconds(0, -14, -44));
+        assert_eq!(
+            zone.info.utc_offset,
+            TimeSpec::HoursMinutesSeconds(0, -14, -44)
+        );
     }
 
     #[test]
@@ -836,7 +957,10 @@ mod tests {
         static LINE: &'static str = "Zone America/Danmarkshavn -1:14:40 -    LMT 1916 Jul 28";
         let parser = LineParser::new();
         let zone = parser.parse_zone(LINE).unwrap();
-        assert_eq!(zone.info.utc_offset, TimeSpec::HoursMinutesSeconds(-1, -14, -40));
+        assert_eq!(
+            zone.info.utc_offset,
+            TimeSpec::HoursMinutesSeconds(-1, -14, -40)
+        );
     }
 
     test!(link: "Link  Europe/Istanbul  Asia/Istanbul" => Ok(Line::Link(Link {

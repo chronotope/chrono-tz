@@ -34,10 +34,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use table::Table;
 
-
 /// Trait to put the `structure` method on Tables.
 pub trait Structure {
-
     /// Returns an iterator over the structure of this table.
     fn structure(&self) -> TableStructure;
 }
@@ -47,20 +45,19 @@ impl Structure for Table {
         let mut mappings = BTreeMap::new();
 
         for key in self.zonesets.keys().chain(self.links.keys()) {
-
             // Extract the name from the *last* slash. So
             // `America/Kentucky/Louisville` is split into
             // `America/Kentucky` and `Louisville` components.
             let last_slash = match key.rfind('/') {
                 Some(pos) => pos,
-                None      => continue,
+                None => continue,
             };
 
             // Split the string around the slash, which gets removed.
-            let parent = &key[.. last_slash];
+            let parent = &key[..last_slash];
             {
                 let set = mappings.entry(parent).or_insert_with(BTreeSet::new);
-                set.insert(Child::TimeZone(&key[last_slash + 1 ..]));
+                set.insert(Child::TimeZone(&key[last_slash + 1..]));
             }
 
             // If the *parent* name still has a slash in it, then this is
@@ -68,16 +65,15 @@ impl Structure for Table {
             // need to make sure that `America` now has a `Kentucky`
             // child, too.
             if let Some(first_slash) = parent.find('/') {
-                let grandparent = &parent[.. first_slash];
+                let grandparent = &parent[..first_slash];
                 let set = mappings.entry(grandparent).or_insert_with(BTreeSet::new);
-                set.insert(Child::Submodule(&parent[first_slash + 1 ..]));
+                set.insert(Child::Submodule(&parent[first_slash + 1..]));
             }
         }
 
         TableStructure { mappings: mappings }
     }
 }
-
 
 /// The structure of a set of time zone names.
 #[derive(PartialEq, Debug)]
@@ -90,7 +86,6 @@ impl<'table> IntoIterator for TableStructure<'table> {
     type IntoIter = Iter<'table>;
 
     fn into_iter(self) -> Self::IntoIter {
-
         // It’s necessary to sort the keys before producing them, to
         // ensure that (for example) `America` is produced before
         // `America/Kentucky`.
@@ -118,7 +113,7 @@ impl<'table> Iterator for Iter<'table> {
         loop {
             let key = match self.keys.pop() {
                 Some(k) => k,
-                None    => return None,
+                None => return None,
             };
 
             // Move the strings out into an (automatically-sorted) vector.
@@ -135,7 +130,6 @@ impl<'table> Iterator for Iter<'table> {
 /// An entry returned from a `TableStructure` iterator.
 #[derive(PartialEq, Debug)]
 pub struct TableStructureEntry<'table> {
-
     /// This entry’s name, which *can* still include slashes.
     pub name: &'table str,
 
@@ -150,14 +144,12 @@ pub struct TableStructureEntry<'table> {
 /// before the files in them can be written.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone)]
 pub enum Child<'table> {
-
     /// A module containing **only** submodules, no time zones.
     Submodule(&'table str),
 
     /// A module containing **only** the details of a time zone.
     TimeZone(&'table str),
 }
-
 
 #[cfg(test)]
 #[allow(unused_results)]
@@ -189,7 +181,13 @@ mod test {
         table.zonesets.insert("a/b".to_owned(), Vec::new());
 
         let mut structure = table.structure().into_iter();
-        assert_eq!(structure.next(), Some(TableStructureEntry { name: &"a".to_owned(), children: vec![ Child::TimeZone("b") ] }));
+        assert_eq!(
+            structure.next(),
+            Some(TableStructureEntry {
+                name: &"a".to_owned(),
+                children: vec![Child::TimeZone("b")]
+            })
+        );
         assert_eq!(structure.next(), None);
     }
 
@@ -198,11 +196,23 @@ mod test {
         let mut table = Table::default();
         table.zonesets.insert("a/b/c".to_owned(), Vec::new());
         table.zonesets.insert("a/b/d".to_owned(), Vec::new());
-        table.zonesets.insert("a/e".to_owned(),   Vec::new());
+        table.zonesets.insert("a/e".to_owned(), Vec::new());
 
         let mut structure = table.structure().into_iter();
-        assert_eq!(structure.next(), Some(TableStructureEntry { name: &"a".to_owned(),   children: vec![ Child::Submodule("b"), Child::TimeZone("e") ] }));
-        assert_eq!(structure.next(), Some(TableStructureEntry { name: &"a/b".to_owned(), children: vec![ Child::TimeZone("c"),  Child::TimeZone("d") ] }));
+        assert_eq!(
+            structure.next(),
+            Some(TableStructureEntry {
+                name: &"a".to_owned(),
+                children: vec![Child::Submodule("b"), Child::TimeZone("e")]
+            })
+        );
+        assert_eq!(
+            structure.next(),
+            Some(TableStructureEntry {
+                name: &"a/b".to_owned(),
+                children: vec![Child::TimeZone("c"), Child::TimeZone("d")]
+            })
+        );
         assert_eq!(structure.next(), None);
     }
 }

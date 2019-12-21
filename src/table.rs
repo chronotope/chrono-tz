@@ -1,13 +1,12 @@
-use std::collections::hash_map::{HashMap, Entry};
+use std::collections::hash_map::{Entry, HashMap};
 use std::error::Error as ErrorTrait;
 use std::fmt;
 
-use line::{self, Year, Month, DaySpec, ChangeTime, TimeType};
+use line::{self, ChangeTime, DaySpec, Month, TimeType, Year};
 
 /// A **table** of all the data in one or more zoneinfo files.
 #[derive(PartialEq, Debug, Default)]
 pub struct Table {
-
     /// Mapping of ruleset names to rulesets.
     pub rulesets: HashMap<String, Vec<RuleInfo>>,
 
@@ -18,25 +17,20 @@ pub struct Table {
     pub links: HashMap<String, String>,
 }
 
-
 impl Table {
-
     /// Tries to find the zoneset with the given name by looking it up in
     /// either the zonesets map or the links map.
     pub fn get_zoneset(&self, zone_name: &str) -> Option<&[ZoneInfo]> {
         if self.zonesets.contains_key(zone_name) {
             Some(&*self.zonesets[zone_name])
-        }
-        else if self.links.contains_key(zone_name) {
+        } else if self.links.contains_key(zone_name) {
             let target = &self.links[zone_name];
             Some(&*self.zonesets[&*target])
-        }
-        else {
+        } else {
             None
         }
     }
 }
-
 
 /// An owned rule definition line.
 ///
@@ -45,7 +39,6 @@ impl Table {
 /// applied to it.
 #[derive(PartialEq, Debug)]
 pub struct RuleInfo {
-
     /// The year that this rule *starts* applying.
     pub from_year: Year,
 
@@ -76,45 +69,42 @@ pub struct RuleInfo {
 impl<'line> From<line::Rule<'line>> for RuleInfo {
     fn from(info: line::Rule) -> RuleInfo {
         RuleInfo {
-            from_year:    info.from_year,
-            to_year:      info.to_year,
-            month:        info.month,
-            day:          info.day,
-            time:         info.time.0.as_seconds(),
-            time_type:    info.time.1,
-            time_to_add:  info.time_to_add.as_seconds(),
-            letters:      info.letters.map(str::to_owned),
+            from_year: info.from_year,
+            to_year: info.to_year,
+            month: info.month,
+            day: info.day,
+            time: info.time.0.as_seconds(),
+            time_type: info.time.1,
+            time_to_add: info.time_to_add.as_seconds(),
+            letters: info.letters.map(str::to_owned),
         }
     }
 }
 
 impl RuleInfo {
-
     /// Returns whether this rule is in effect during the given year.
     pub fn applies_to_year(&self, year: i64) -> bool {
         use line::Year::*;
 
         match (self.from_year, self.to_year) {
-            (Number(from), None)             => year == from,
-            (Number(from), Some(Maximum))    => year >= from,
+            (Number(from), None) => year == from,
+            (Number(from), Some(Maximum)) => year >= from,
             (Number(from), Some(Number(to))) => year >= from && year <= to,
             _ => unreachable!(),
         }
     }
 
     pub fn absolute_datetime(&self, year: i64, utc_offset: i64, dst_offset: i64) -> i64 {
-
         let offset = match self.time_type {
-            TimeType::UTC       => 0,
-            TimeType::Standard  => utc_offset,
-            TimeType::Wall      => utc_offset + dst_offset,
+            TimeType::UTC => 0,
+            TimeType::Standard => utc_offset,
+            TimeType::Wall => utc_offset + dst_offset,
         };
 
         let changetime = ChangeTime::UntilDay(Year::Number(year), self.month, self.day);
         changetime.to_timestamp() + self.time - offset
     }
 }
-
 
 /// An owned zone definition line.
 ///
@@ -125,7 +115,6 @@ impl RuleInfo {
 /// slices.
 #[derive(PartialEq, Debug)]
 pub struct ZoneInfo {
-
     /// The number of seconds that need to be added to UTC to get the
     /// standard time in this zone.
     pub offset: i64,
@@ -147,16 +136,15 @@ impl<'line> From<line::ZoneInfo<'line>> for ZoneInfo {
         ZoneInfo {
             offset: info.utc_offset.as_seconds(),
             saving: match info.saving {
-                line::Saving::NoSaving     => Saving::NoSaving,
-                line::Saving::Multiple(s)  => Saving::Multiple(s.to_owned()),
-                line::Saving::OneOff(t)    => Saving::OneOff(t.as_seconds()),
+                line::Saving::NoSaving => Saving::NoSaving,
+                line::Saving::Multiple(s) => Saving::Multiple(s.to_owned()),
+                line::Saving::OneOff(t) => Saving::OneOff(t.as_seconds()),
             },
-            format:   Format::new(info.format),
+            format: Format::new(info.format),
             end_time: info.time,
         }
     }
 }
-
 
 /// The amount of daylight saving time (DST) to apply to this timespan. This
 /// is a special type for a certain field in a zone line, which can hold
@@ -165,7 +153,6 @@ impl<'line> From<line::ZoneInfo<'line>> for ZoneInfo {
 /// This is the owned version of the `Saving` type in the `line` module.
 #[derive(PartialEq, Debug)]
 pub enum Saving {
-
     /// Just stick to the base offset.
     NoSaving,
 
@@ -179,11 +166,9 @@ pub enum Saving {
     Multiple(String),
 }
 
-
 /// The format string to generate a time zone abbreviation from.
 #[derive(PartialEq, Debug, Clone)]
 pub enum Format {
-
     /// A constant format, which remains the same throughout both standard
     /// and DST timespans.
     Constant(String),
@@ -191,7 +176,6 @@ pub enum Format {
     /// An alternate format, such as “PST/PDT”, which changes between
     /// standard and DST timespans.
     Alternate {
-
         /// Abbreviation to use during Standard Time.
         standard: String,
 
@@ -205,21 +189,18 @@ pub enum Format {
 }
 
 impl Format {
-
     /// Convert the template into one of the `Format` variants. This can’t
     /// fail, as any syntax that doesn’t match one of the two formats will
     /// just be a ‘constant’ format.
     pub fn new(template: &str) -> Format {
         if let Some(pos) = template.find('/') {
             Format::Alternate {
-                standard:  template[.. pos].to_owned(),
-                dst:       template[pos + 1 ..].to_owned(),
+                standard: template[..pos].to_owned(),
+                dst: template[pos + 1..].to_owned(),
             }
-        }
-        else if template.contains("%s") {
+        } else if template.contains("%s") {
             Format::Placeholder(template.to_owned())
-        }
-        else {
+        } else {
             Format::Constant(template.to_owned())
         }
     }
@@ -227,7 +208,7 @@ impl Format {
     pub fn format(&self, dst_offset: i64, letters: Option<&String>) -> String {
         let letters = match letters {
             Some(l) => &**l,
-            None    => "",
+            None => "",
         };
 
         match *self {
@@ -241,18 +222,15 @@ impl Format {
     pub fn format_constant(&self) -> String {
         if let Format::Constant(ref s) = *self {
             s.clone()
-        }
-        else {
+        } else {
             panic!("Expected a constant formatting string");
         }
     }
 }
 
-
 /// A builder for `Table` values based on various line definitions.
 #[derive(PartialEq, Debug)]
 pub struct TableBuilder {
-
     /// The table that’s being built up.
     table: Table,
 
@@ -263,7 +241,6 @@ pub struct TableBuilder {
 }
 
 impl TableBuilder {
-
     /// Creates a new builder with an empty table.
     pub fn new() -> TableBuilder {
         TableBuilder {
@@ -276,7 +253,10 @@ impl TableBuilder {
     ///
     /// Returns an error if there’s already a zone with the same name, or the
     /// zone refers to a ruleset that hasn’t been defined yet.
-    pub fn add_zone_line<'line>(&mut self, zone_line: line::Zone<'line>) -> Result<(), Error<'line>> {
+    pub fn add_zone_line<'line>(
+        &mut self,
+        zone_line: line::Zone<'line>,
+    ) -> Result<(), Error<'line>> {
         if let line::Saving::Multiple(ruleset_name) = zone_line.info.saving {
             if !self.table.rulesets.contains_key(ruleset_name) {
                 return Err(Error::UnknownRuleset(ruleset_name));
@@ -284,8 +264,8 @@ impl TableBuilder {
         }
 
         let zoneset: &mut _ = match self.table.zonesets.entry(zone_line.name.to_owned()) {
-            Entry::Occupied(_)  => return Err(Error::DuplicateZone),
-            Entry::Vacant(e)    => e.insert(Vec::new()),
+            Entry::Occupied(_) => return Err(Error::DuplicateZone),
+            Entry::Vacant(e) => e.insert(Vec::new()),
         };
 
         zoneset.push(zone_line.info.into());
@@ -297,7 +277,10 @@ impl TableBuilder {
     ///
     /// Returns an error if the builder wasn’t expecting a continuation line
     /// (meaning, the previous line wasn’t a zone line)
-    pub fn add_continuation_line(&mut self, continuation_line: line::ZoneInfo) -> Result<(), Error> {
+    pub fn add_continuation_line(
+        &mut self,
+        continuation_line: line::ZoneInfo,
+    ) -> Result<(), Error> {
         let zoneset: &mut _ = match self.current_zoneset_name {
             Some(ref name) => self.table.zonesets.get_mut(name).unwrap(),
             None => return Err(Error::SurpriseContinuationLine),
@@ -310,9 +293,11 @@ impl TableBuilder {
     /// Adds a new line describing one entry in a ruleset, creating that set
     /// if it didn’t exist already.
     pub fn add_rule_line(&mut self, rule_line: line::Rule) -> Result<(), Error> {
-        let ruleset = self.table.rulesets
-                                .entry(rule_line.name.to_owned())
-                                .or_insert_with(Vec::new);
+        let ruleset = self
+            .table
+            .rulesets
+            .entry(rule_line.name.to_owned())
+            .or_insert_with(Vec::new);
 
         ruleset.push(rule_line.into());
         self.current_zoneset_name = None;
@@ -322,10 +307,13 @@ impl TableBuilder {
     /// Adds a new line linking one zone to another.
     ///
     /// Returns an error if there was already a link with that name.
-    pub fn add_link_line<'line>(&mut self, link_line: line::Link<'line>) -> Result<(), Error<'line>> {
+    pub fn add_link_line<'line>(
+        &mut self,
+        link_line: line::Link<'line>,
+    ) -> Result<(), Error<'line>> {
         match self.table.links.entry(link_line.new.to_owned()) {
-            Entry::Occupied(_)  => Err(Error::DuplicateLink(link_line.new)),
-            Entry::Vacant(e)    => {
+            Entry::Occupied(_) => Err(Error::DuplicateLink(link_line.new)),
+            Entry::Vacant(e) => {
                 let _ = e.insert(link_line.existing.to_owned());
                 self.current_zoneset_name = None;
                 Ok(())
@@ -339,11 +327,9 @@ impl TableBuilder {
     }
 }
 
-
 /// Something that can go wrong while constructing a `Table`.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Error<'line> {
-
     /// A continuation line was passed in, but the previous line wasn’t a zone
     /// definition line.
     SurpriseContinuationLine,
