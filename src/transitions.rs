@@ -101,8 +101,7 @@
 //! The logic in this file is based off of `zic.c`, which comes with the
 //! zoneinfo files and is in the public domain.
 
-use table::{Table, Saving, RuleInfo, ZoneInfo};
-
+use table::{RuleInfo, Saving, Table, ZoneInfo};
 
 /// A set of timespans, separated by the instances at which the timespans
 /// change over. There will always be one more timespan than transitions.
@@ -111,7 +110,6 @@ use table::{Table, Saving, RuleInfo, ZoneInfo};
 /// except it uses owned `Vec`s instead of slices.
 #[derive(PartialEq, Debug, Clone)]
 pub struct FixedTimespanSet {
-
     /// The first timespan, which is assumed to have been in effect up until
     /// the initial transition instant (if any). Each set has to have at
     /// least one timespan.
@@ -125,7 +123,6 @@ pub struct FixedTimespanSet {
     pub rest: Vec<(i64, FixedTimespan)>,
 }
 
-
 /// An individual timespan with a fixed offset.
 ///
 /// This mimics the `FixedTimespan` struct in `datetime::cal::zone`, except
@@ -133,7 +130,6 @@ pub struct FixedTimespanSet {
 /// DST fields. Also, the name is an owned `String` here instead of a slice.
 #[derive(PartialEq, Debug, Clone)]
 pub struct FixedTimespan {
-
     /// The number of seconds offset from UTC during this timespan.
     pub utc_offset: i64,
 
@@ -145,25 +141,20 @@ pub struct FixedTimespan {
 }
 
 impl FixedTimespan {
-
     /// The total offset in effect during this timespan.
     pub fn total_offset(&self) -> i64 {
         self.utc_offset + self.dst_offset
     }
 }
 
-
 /// Trait to put the `timespans` method on Tables.
 pub trait TableTransitions {
-
     /// Computes a fixed timespan set for the timezone with the given name.
     /// Returns `None` if the table doesn’t contain a time zone with that name.
     fn timespans(&self, zone_name: &str) -> Option<FixedTimespanSet>;
 }
 
-
 impl TableTransitions for Table {
-
     fn timespans(&self, zone_name: &str) -> Option<FixedTimespanSet> {
         let mut builder = FixedTimespanSetBuilder::default();
 
@@ -174,8 +165,8 @@ impl TableTransitions for Table {
 
         for (i, zone_info) in zoneset.iter().enumerate() {
             let mut dst_offset = 0;
-            let use_until      = i != zoneset.len() - 1;
-            let utc_offset     = zone_info.offset;
+            let use_until = i != zoneset.len() - 1;
+            let utc_offset = zone_info.offset;
 
             let mut insert_start_transition = i > 0;
             let mut start_zone_id = None;
@@ -184,30 +175,59 @@ impl TableTransitions for Table {
 
             match zone_info.saving {
                 Saving::NoSaving => {
-                    builder.add_fixed_saving(zone_info, 0, &mut dst_offset, utc_offset, &mut insert_start_transition, &mut start_zone_id);
-                },
+                    builder.add_fixed_saving(
+                        zone_info,
+                        0,
+                        &mut dst_offset,
+                        utc_offset,
+                        &mut insert_start_transition,
+                        &mut start_zone_id,
+                    );
+                }
 
                 Saving::OneOff(amount) => {
-                    builder.add_fixed_saving(zone_info, amount, &mut dst_offset, utc_offset, &mut insert_start_transition, &mut start_zone_id);
-                },
+                    builder.add_fixed_saving(
+                        zone_info,
+                        amount,
+                        &mut dst_offset,
+                        utc_offset,
+                        &mut insert_start_transition,
+                        &mut start_zone_id,
+                    );
+                }
 
                 Saving::Multiple(ref rules) => {
                     let rules = &self.rulesets[&*rules];
-                    builder.add_multiple_saving(zone_info, &*rules, &mut dst_offset, use_until, utc_offset, &mut insert_start_transition, &mut start_zone_id, &mut start_utc_offset, &mut start_dst_offset);
+                    builder.add_multiple_saving(
+                        zone_info,
+                        &*rules,
+                        &mut dst_offset,
+                        use_until,
+                        utc_offset,
+                        &mut insert_start_transition,
+                        &mut start_zone_id,
+                        &mut start_utc_offset,
+                        &mut start_dst_offset,
+                    );
                 }
             }
 
             if insert_start_transition && start_zone_id.is_some() {
-                let t = (builder.start_time.expect("Start time"), FixedTimespan {
-                    utc_offset: start_utc_offset,
-                    dst_offset: start_dst_offset,
-                    name:       start_zone_id.clone().expect("Start zone ID"),
-                });
+                let t = (
+                    builder.start_time.expect("Start time"),
+                    FixedTimespan {
+                        utc_offset: start_utc_offset,
+                        dst_offset: start_dst_offset,
+                        name: start_zone_id.clone().expect("Start zone ID"),
+                    },
+                );
                 builder.rest.push(t);
             }
 
             if use_until {
-                builder.start_time = Some(zone_info.end_time.expect("End time").to_timestamp() - utc_offset - dst_offset);
+                builder.start_time = Some(
+                    zone_info.end_time.expect("End time").to_timestamp() - utc_offset - dst_offset,
+                );
             }
         }
 
@@ -225,10 +245,15 @@ struct FixedTimespanSetBuilder {
 }
 
 impl FixedTimespanSetBuilder {
-    fn add_fixed_saving(&mut self, timespan: &ZoneInfo, amount: i64,
-            dst_offset: &mut i64, utc_offset: i64, insert_start_transition: &mut bool,
-            start_zone_id: &mut Option<String>)
-    {
+    fn add_fixed_saving(
+        &mut self,
+        timespan: &ZoneInfo,
+        amount: i64,
+        dst_offset: &mut i64,
+        utc_offset: i64,
+        insert_start_transition: &mut bool,
+        start_zone_id: &mut Option<String>,
+    ) {
         *dst_offset = amount;
         *start_zone_id = Some(timespan.format.format(*dst_offset, None));
 
@@ -237,26 +262,33 @@ impl FixedTimespanSetBuilder {
             let timespan = FixedTimespan {
                 utc_offset: timespan.offset,
                 dst_offset: *dst_offset,
-                name:       start_zone_id.clone().unwrap_or_else(String::new),
+                name: start_zone_id.clone().unwrap_or_else(String::new),
             };
 
             self.rest.push((time, timespan));
             *insert_start_transition = false;
-        }
-        else {
+        } else {
             self.first = Some(FixedTimespan {
                 utc_offset: utc_offset,
                 dst_offset: *dst_offset,
-                name:       start_zone_id.clone().unwrap_or_else(String::new),
+                name: start_zone_id.clone().unwrap_or_else(String::new),
             });
         }
     }
 
     #[allow(unused_results)]
-    fn add_multiple_saving(&mut self, timespan: &ZoneInfo, rules: &[RuleInfo],
-            dst_offset: &mut i64, use_until: bool, utc_offset: i64, insert_start_transition: &mut bool,
-            start_zone_id: &mut Option<String>, start_utc_offset: &mut i64, start_dst_offset: &mut i64)
-    {
+    fn add_multiple_saving(
+        &mut self,
+        timespan: &ZoneInfo,
+        rules: &[RuleInfo],
+        dst_offset: &mut i64,
+        use_until: bool,
+        utc_offset: i64,
+        insert_start_transition: &mut bool,
+        start_zone_id: &mut Option<String>,
+        start_utc_offset: &mut i64,
+        start_dst_offset: &mut i64,
+    ) {
         use std::mem::replace;
 
         for year in 1800..2100 {
@@ -264,18 +296,22 @@ impl FixedTimespanSetBuilder {
                 break;
             }
 
-            let mut activated_rules = rules.iter()
-                                           .filter(|r| r.applies_to_year(year))
-                                           .collect::<Vec<_>>();
+            let mut activated_rules = rules
+                .iter()
+                .filter(|r| r.applies_to_year(year))
+                .collect::<Vec<_>>();
 
             loop {
                 if use_until {
-                    self.until_time = Some(timespan.end_time.unwrap().to_timestamp() - utc_offset - *dst_offset);
+                    self.until_time =
+                        Some(timespan.end_time.unwrap().to_timestamp() - utc_offset - *dst_offset);
                 }
 
                 // Find the minimum rule and its start time based on the current
                 // UTC and DST offsets.
-                let earliest = activated_rules.iter().enumerate()
+                let earliest = activated_rules
+                    .iter()
+                    .enumerate()
                     .map(|(i, r)| (i, r.absolute_datetime(year, utc_offset, *dst_offset)))
                     .min_by_key(|&(_, time)| time);
 
@@ -300,24 +336,44 @@ impl FixedTimespanSetBuilder {
                     if earliest_at < self.start_time.unwrap() {
                         replace(start_utc_offset, timespan.offset);
                         replace(start_dst_offset, *dst_offset);
-                        replace(start_zone_id, Some(timespan.format.format(*dst_offset, earliest_rule.letters.as_ref())));
+                        replace(
+                            start_zone_id,
+                            Some(
+                                timespan
+                                    .format
+                                    .format(*dst_offset, earliest_rule.letters.as_ref()),
+                            ),
+                        );
                         continue;
                     }
 
-                    if start_zone_id.is_none() && *start_utc_offset + *start_dst_offset == timespan.offset + *dst_offset {
-                        replace(start_zone_id, Some(timespan.format.format(*dst_offset, earliest_rule.letters.as_ref())));
+                    if start_zone_id.is_none()
+                        && *start_utc_offset + *start_dst_offset == timespan.offset + *dst_offset
+                    {
+                        replace(
+                            start_zone_id,
+                            Some(
+                                timespan
+                                    .format
+                                    .format(*dst_offset, earliest_rule.letters.as_ref()),
+                            ),
+                        );
                     }
                 }
 
-                let t = (earliest_at, FixedTimespan {
-                    utc_offset: timespan.offset,
-                    dst_offset: earliest_rule.time_to_add,
-                    name:       timespan.format.format(earliest_rule.time_to_add, earliest_rule.letters.as_ref()),
-                });
+                let t = (
+                    earliest_at,
+                    FixedTimespan {
+                        utc_offset: timespan.offset,
+                        dst_offset: earliest_rule.time_to_add,
+                        name: timespan
+                            .format
+                            .format(earliest_rule.time_to_add, earliest_rule.letters.as_ref()),
+                    },
+                );
                 self.rest.push(t);
             }
         }
-
     }
 
     fn build(mut self) -> FixedTimespanSet {
@@ -325,19 +381,25 @@ impl FixedTimespanSetBuilder {
 
         let first = match self.first {
             Some(ft) => ft,
-            None     => self.rest.iter().find(|t| t.1.dst_offset == 0).unwrap().1.clone(),
+            None => self
+                .rest
+                .iter()
+                .find(|t| t.1.dst_offset == 0)
+                .unwrap()
+                .1
+                .clone(),
         };
 
         let mut zoneset = FixedTimespanSet {
             first: first,
-            rest:  self.rest,
+            rest: self.rest,
         };
         optimise(&mut zoneset);
         zoneset
     }
 }
 
-#[allow(unused_results)]  // for remove
+#[allow(unused_results)] // for remove
 fn optimise(transitions: &mut FixedTimespanSet) {
     let mut from_i = 0;
     let mut to_i = 0;
@@ -346,7 +408,9 @@ fn optimise(transitions: &mut FixedTimespanSet) {
         if to_i > 1 {
             let from = transitions.rest[from_i].0;
             let to = transitions.rest[to_i - 1].0;
-            if from + transitions.rest[to_i - 1].1.total_offset() <= to + transitions.rest[to_i - 2].1.total_offset() {
+            if from + transitions.rest[to_i - 1].1.total_offset()
+                <= to + transitions.rest[to_i - 2].1.total_offset()
+            {
                 transitions.rest[to_i - 1].1 = transitions.rest[from_i].1.clone();
                 from_i += 1;
                 continue;
@@ -368,11 +432,10 @@ fn optimise(transitions: &mut FixedTimespanSet) {
     }
 }
 
-
 #[cfg(test)]
 mod test {
-    use super::*;
     use super::optimise;
+    use super::*;
 
     // Allow unused results in test code, because the only ‘results’ that
     // we need to ignore are the ones from inserting and removing from
@@ -382,20 +445,108 @@ mod test {
     #[allow(unused_results)]
     fn optimise_macquarie() {
         let mut transitions = FixedTimespanSet {
-            first: FixedTimespan { utc_offset:     0, dst_offset:    0, name:  "zzz".to_owned() },
+            first: FixedTimespan {
+                utc_offset: 0,
+                dst_offset: 0,
+                name: "zzz".to_owned(),
+            },
             rest: vec![
-                (-2_214_259_200, FixedTimespan { utc_offset: 36000,  dst_offset:    0,  name: "AEST".to_owned() }),
-                (-1_680_508_800, FixedTimespan { utc_offset: 36000,  dst_offset: 3600,  name: "AEDT".to_owned() }),
-                (-1_669_892_400, FixedTimespan { utc_offset: 36000,  dst_offset: 3600,  name: "AEDT".to_owned() }),  // gets removed
-                (-1_665_392_400, FixedTimespan { utc_offset: 36000,  dst_offset:    0,  name: "AEST".to_owned() }),
-                (-1_601_719_200, FixedTimespan { utc_offset:     0,  dst_offset:    0,  name:  "zzz".to_owned() }),
-                (  -687_052_800, FixedTimespan { utc_offset: 36000,  dst_offset:    0,  name: "AEST".to_owned() }),
-                (   -94_730_400, FixedTimespan { utc_offset: 36000,  dst_offset:    0,  name: "AEST".to_owned() }),  // also gets removed
-                (   -71_136_000, FixedTimespan { utc_offset: 36000,  dst_offset: 3600,  name: "AEDT".to_owned() }),
-                (   -55_411_200, FixedTimespan { utc_offset: 36000,  dst_offset:    0,  name: "AEST".to_owned() }),
-                (   -37_267_200, FixedTimespan { utc_offset: 36000,  dst_offset: 3600,  name: "AEDT".to_owned() }),
-                (   -25_776_000, FixedTimespan { utc_offset: 36000,  dst_offset:    0,  name: "AEST".to_owned() }),
-                (    -5_817_600, FixedTimespan { utc_offset: 36000,  dst_offset: 3600,  name: "AEDT".to_owned() }),
+                (
+                    -2_214_259_200,
+                    FixedTimespan {
+                        utc_offset: 36000,
+                        dst_offset: 0,
+                        name: "AEST".to_owned(),
+                    },
+                ),
+                (
+                    -1_680_508_800,
+                    FixedTimespan {
+                        utc_offset: 36000,
+                        dst_offset: 3600,
+                        name: "AEDT".to_owned(),
+                    },
+                ),
+                (
+                    -1_669_892_400,
+                    FixedTimespan {
+                        utc_offset: 36000,
+                        dst_offset: 3600,
+                        name: "AEDT".to_owned(),
+                    },
+                ), // gets removed
+                (
+                    -1_665_392_400,
+                    FixedTimespan {
+                        utc_offset: 36000,
+                        dst_offset: 0,
+                        name: "AEST".to_owned(),
+                    },
+                ),
+                (
+                    -1_601_719_200,
+                    FixedTimespan {
+                        utc_offset: 0,
+                        dst_offset: 0,
+                        name: "zzz".to_owned(),
+                    },
+                ),
+                (
+                    -687_052_800,
+                    FixedTimespan {
+                        utc_offset: 36000,
+                        dst_offset: 0,
+                        name: "AEST".to_owned(),
+                    },
+                ),
+                (
+                    -94_730_400,
+                    FixedTimespan {
+                        utc_offset: 36000,
+                        dst_offset: 0,
+                        name: "AEST".to_owned(),
+                    },
+                ), // also gets removed
+                (
+                    -71_136_000,
+                    FixedTimespan {
+                        utc_offset: 36000,
+                        dst_offset: 3600,
+                        name: "AEDT".to_owned(),
+                    },
+                ),
+                (
+                    -55_411_200,
+                    FixedTimespan {
+                        utc_offset: 36000,
+                        dst_offset: 0,
+                        name: "AEST".to_owned(),
+                    },
+                ),
+                (
+                    -37_267_200,
+                    FixedTimespan {
+                        utc_offset: 36000,
+                        dst_offset: 3600,
+                        name: "AEDT".to_owned(),
+                    },
+                ),
+                (
+                    -25_776_000,
+                    FixedTimespan {
+                        utc_offset: 36000,
+                        dst_offset: 0,
+                        name: "AEST".to_owned(),
+                    },
+                ),
+                (
+                    -5_817_600,
+                    FixedTimespan {
+                        utc_offset: 36000,
+                        dst_offset: 3600,
+                        name: "AEDT".to_owned(),
+                    },
+                ),
             ],
         };
 
