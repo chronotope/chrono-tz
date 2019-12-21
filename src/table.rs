@@ -369,6 +369,7 @@ impl<'line> ErrorTrait for Error<'line> {
         "interpretation error"
     }
 
+    #[allow(bare_trait_objects)] // remove when we require edition 2018
     fn cause(&self) -> Option<&ErrorTrait> {
         None
     }
