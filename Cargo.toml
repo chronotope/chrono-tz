@@ -19,3 +19,4 @@ parse-zoneinfo = "0.2"
 
 [dev-dependencies]
 serde_test = "1"
+chrono = { version = "0.4", default-features = false, features = ["alloc"] }
