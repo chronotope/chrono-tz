@@ -188,9 +188,9 @@ impl Month {
         }
     }
 
-    /// Get the next calendar month, wrapping such than `December.next() == January`
-    fn next(self) -> Month {
-        match self {
+    /// Get the next calendar month, with an error going from Dec->Jan
+    fn next_in_year(self) -> Result<Month, &'static str> {
+        Ok(match self {
             Month::January => Month::February,
             Month::February => Month::March,
             Month::March => Month::April,
@@ -202,14 +202,14 @@ impl Month {
             Month::September => Month::October,
             Month::October => Month::November,
             Month::November => Month::December,
-            Month::December => Month::January,
-        }
+            Month::December => Err("Cannot wrap year from dec->jan")?,
+        })
     }
 
-    /// Get the previous calendar month, wrapping such that `January.prev() == December`
-    fn prev(self) -> Month {
-        match self {
-            Month::January => Month::December,
+    /// Get the previous calendar month, with an error going from Jan->Dec
+    fn prev_in_year(self) -> Result<Month, &'static str> {
+        Ok(match self {
+            Month::January => Err("Cannot wrap years from jan->dec")?,
             Month::February => Month::January,
             Month::March => Month::February,
             Month::April => Month::March,
@@ -221,7 +221,7 @@ impl Month {
             Month::October => Month::September,
             Month::November => Month::October,
             Month::December => Month::November,
-        }
+        })
     }
 }
 
@@ -374,7 +374,8 @@ impl DaySpec {
     pub fn to_concrete_day(&self, year: i64, month: Month) -> (Month, i8) {
         let leap = is_leap(year);
         let length = month.length(leap);
-        let prev_length = month.prev().length(leap);
+        // we will never hit the 0 because we unwrap prev_in_year below
+        let prev_length = month.prev_in_year().map(|m| m.length(leap)).unwrap_or(0);
 
         match *self {
             DaySpec::Ordinal(day) => (month, day),
@@ -391,11 +392,14 @@ impl DaySpec {
                     if inner_day >= 1 && Weekday::calculate(year, month, inner_day) == weekday {
                         Some((month, inner_day))
                     } else if inner_day < 1
-                        && Weekday::calculate(year, month.prev(), prev_length + inner_day)
-                            == weekday
+                        && Weekday::calculate(
+                            year,
+                            month.prev_in_year().unwrap(),
+                            prev_length + inner_day,
+                        ) == weekday
                     {
                         // inner_day is negative, so this is subtraction
-                        Some((month.prev(), prev_length + inner_day))
+                        Some((month.prev_in_year().unwrap(), prev_length + inner_day))
                     } else {
                         None
                     }
@@ -408,9 +412,13 @@ impl DaySpec {
                     {
                         Some((month, inner_day))
                     } else if inner_day > length
-                        && Weekday::calculate(year, month.next(), inner_day - length) == weekday
+                        && Weekday::calculate(
+                            year,
+                            month.next_in_year().unwrap(),
+                            inner_day - length,
+                        ) == weekday
                     {
-                        Some((month.next(), inner_day - length))
+                        Some((month.next_in_year().unwrap(), inner_day - length))
                     } else {
                         None
                     }
