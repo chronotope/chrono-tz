@@ -1,8 +1,8 @@
-use chrono::{Offset, TimeZone, NaiveDate, NaiveDateTime, LocalResult, FixedOffset};
-use std::fmt::{Debug, Display, Formatter, Error};
-use std::cmp::Ordering;
-use binary_search::binary_search;
 use super::timezones::Tz;
+use binary_search::binary_search;
+use chrono::{FixedOffset, LocalResult, NaiveDate, NaiveDateTime, Offset, TimeZone};
+use std::cmp::Ordering;
+use std::fmt::{Debug, Display, Error, Formatter};
 
 /// An Offset that applies for a period of time
 ///
@@ -54,7 +54,9 @@ impl TzOffset {
         match result {
             LocalResult::None => LocalResult::None,
             LocalResult::Single(s) => LocalResult::Single(TzOffset::new(tz, s)),
-            LocalResult::Ambiguous(a, b) => LocalResult::Ambiguous(TzOffset::new(tz, a), TzOffset::new(tz, b)),
+            LocalResult::Ambiguous(a, b) => {
+                LocalResult::Ambiguous(TzOffset::new(tz, a), TzOffset::new(tz, b))
+            }
         }
     }
 }
@@ -67,13 +69,13 @@ impl Offset for TzOffset {
 
 impl Display for TzOffset {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        Display::fmt(&self.offset,f)
+        Display::fmt(&self.offset, f)
     }
 }
 
 impl Debug for TzOffset {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        Debug::fmt(&self.offset,f)
+        Debug::fmt(&self.offset, f)
     }
 }
 
@@ -94,24 +96,24 @@ struct Span {
 impl Span {
     fn contains(&self, x: i64) -> bool {
         match (self.begin, self.end) {
-            (Some(a), Some(b)) if a <= x && x < b  => true,
-            (Some(a), None   ) if a <= x           => true,
-            (None   , Some(b)) if b > x            => true,
-            (None   , None   )                     => true,
-            _                                      => false,
+            (Some(a), Some(b)) if a <= x && x < b => true,
+            (Some(a), None) if a <= x => true,
+            (None, Some(b)) if b > x => true,
+            (None, None) => true,
+            _ => false,
         }
     }
 
     fn cmp(&self, x: i64) -> Ordering {
         match (self.begin, self.end) {
-            (Some(a), Some(b)) if a <= x && x < b  => Ordering::Equal,
+            (Some(a), Some(b)) if a <= x && x < b => Ordering::Equal,
             (Some(a), Some(b)) if a <= x && b <= x => Ordering::Less,
-            (Some(_), Some(_))                     => Ordering::Greater,
-            (Some(a), None   ) if a <= x           => Ordering::Equal,
-            (Some(_), None   )                     => Ordering::Greater,
-            (None   , Some(b)) if b <= x           => Ordering::Less,
-            (None   , Some(_))                     => Ordering::Equal,
-            (None   , None   )                     => Ordering::Equal,
+            (Some(_), Some(_)) => Ordering::Greater,
+            (Some(a), None) if a <= x => Ordering::Equal,
+            (Some(_), None) => Ordering::Greater,
+            (None, Some(b)) if b <= x => Ordering::Less,
+            (None, Some(_)) => Ordering::Equal,
+            (None, None) => Ordering::Equal,
         }
     }
 }
@@ -139,7 +141,7 @@ impl FixedTimespanSet {
                 None
             } else {
                 Some(self.rest[index].0)
-            }
+            },
         }
     }
 
@@ -155,10 +157,18 @@ impl FixedTimespanSet {
             end: if index == self.rest.len() {
                 None
             } else if index == 0 {
-                Some(self.rest[index].0 + self.first.utc_offset as i64 + self.first.dst_offset as i64)
+                Some(
+                    self.rest[index].0
+                        + self.first.utc_offset as i64
+                        + self.first.dst_offset as i64,
+                )
             } else {
-                Some(self.rest[index].0 + self.rest[index - 1].1.utc_offset as i64 + self.rest[index - 1].1.dst_offset as i64)
-            }
+                Some(
+                    self.rest[index].0
+                        + self.rest[index - 1].1.utc_offset as i64
+                        + self.rest[index - 1].1.dst_offset as i64,
+                )
+            },
         }
     }
 
@@ -179,7 +189,9 @@ pub trait TimeSpans {
 impl TimeZone for Tz {
     type Offset = TzOffset;
 
-    fn from_offset(offset: &Self::Offset) -> Self { offset.tz }
+    fn from_offset(offset: &Self::Offset) -> Self {
+        offset.tz
+    }
 
     fn offset_from_local_date(&self, local: &NaiveDate) -> LocalResult<Self::Offset> {
         let earliest = self.offset_from_local_datetime(&local.and_hms(0, 0, 0));
@@ -215,8 +227,8 @@ impl TimeZone for Tz {
         match (earliest, latest) {
             (result @ Single(_), _) => result,
             (_, result @ Single(_)) => result,
-            (Ambiguous(offset,_),_) => Single(offset),
-            (_,Ambiguous(offset,_)) => Single(offset),
+            (Ambiguous(offset, _), _) => Single(offset),
+            (_, Ambiguous(offset, _)) => Single(offset),
             (None, None) => None,
         }
     }
@@ -226,26 +238,28 @@ impl TimeZone for Tz {
     fn offset_from_local_datetime(&self, local: &NaiveDateTime) -> LocalResult<Self::Offset> {
         let timestamp = local.timestamp();
         let timespans = self.timespans();
-        let index = binary_search(0, timespans.len(),
-            |i| timespans.local_span(i).cmp(timestamp)
-        );
-        TzOffset::map_localresult(*self, match index {
-            Ok(0) if timespans.len() == 1 =>
-                LocalResult::Single(timespans.get(0)),
-            Ok(0) if timespans.local_span(1).contains(timestamp) =>
-                LocalResult::Ambiguous(timespans.get(0), timespans.get(1)),
-            Ok(0) =>
-                LocalResult::Single(timespans.get(0)),
-            Ok(i) if timespans.local_span(i - 1).contains(timestamp) =>
-                LocalResult::Ambiguous(timespans.get(i - 1), timespans.get(i)),
-            Ok(i) if i == timespans.len() - 1 =>
-                LocalResult::Single(timespans.get(i)),
-            Ok(i) if timespans.local_span(i + 1).contains(timestamp) =>
-                LocalResult::Ambiguous(timespans.get(i), timespans.get(i + 1)),
-            Ok(i) =>
-                LocalResult::Single(timespans.get(i)),
-            Err(_) => LocalResult::None,
-        })
+        let index = binary_search(0, timespans.len(), |i| {
+            timespans.local_span(i).cmp(timestamp)
+        });
+        TzOffset::map_localresult(
+            *self,
+            match index {
+                Ok(0) if timespans.len() == 1 => LocalResult::Single(timespans.get(0)),
+                Ok(0) if timespans.local_span(1).contains(timestamp) => {
+                    LocalResult::Ambiguous(timespans.get(0), timespans.get(1))
+                }
+                Ok(0) => LocalResult::Single(timespans.get(0)),
+                Ok(i) if timespans.local_span(i - 1).contains(timestamp) => {
+                    LocalResult::Ambiguous(timespans.get(i - 1), timespans.get(i))
+                }
+                Ok(i) if i == timespans.len() - 1 => LocalResult::Single(timespans.get(i)),
+                Ok(i) if timespans.local_span(i + 1).contains(timestamp) => {
+                    LocalResult::Ambiguous(timespans.get(i), timespans.get(i + 1))
+                }
+                Ok(i) => LocalResult::Single(timespans.get(i)),
+                Err(_) => LocalResult::None,
+            },
+        )
     }
 
     fn offset_from_utc_date(&self, utc: &NaiveDate) -> Self::Offset {
@@ -258,9 +272,8 @@ impl TimeZone for Tz {
     fn offset_from_utc_datetime(&self, utc: &NaiveDateTime) -> Self::Offset {
         let timestamp = utc.timestamp();
         let timespans = self.timespans();
-        let index = binary_search(0, timespans.len(),
-            |i| timespans.utc_span(i).cmp(timestamp)
-        ).unwrap();
+        let index =
+            binary_search(0, timespans.len(), |i| timespans.utc_span(i).cmp(timestamp)).unwrap();
         TzOffset::new(*self, timespans.get(index))
     }
 }

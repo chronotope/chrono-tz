@@ -150,10 +150,10 @@ extern crate chrono;
 #[cfg(feature = "serde")]
 mod serde;
 
-mod timezone_impl;
 mod binary_search;
-mod timezones;
 mod directory;
+mod timezone_impl;
+mod timezones;
 
 pub use directory::*;
 pub use timezones::Tz;
@@ -163,7 +163,6 @@ mod tests {
     use super::America::Danmarkshavn;
     use super::Asia::Dhaka;
     use super::Australia::Adelaide;
-    use super::UTC;
     use super::Europe::Amsterdam;
     use super::Europe::Berlin;
     use super::Europe::London;
@@ -173,9 +172,10 @@ mod tests {
     use super::Pacific::Apia;
     use super::Pacific::Noumea;
     use super::Pacific::Tahiti;
-    use super::US::Eastern;
     use super::Tz;
-    use chrono::{TimeZone, Duration};
+    use super::US::Eastern;
+    use super::UTC;
+    use chrono::{Duration, TimeZone};
 
     #[test]
     fn london_to_berlin() {
@@ -217,7 +217,10 @@ mod tests {
 
     #[test]
     fn vilnius_utc_offset() {
-        let dt = UTC.ymd(1916, 12, 31).and_hms(22, 35, 59).with_timezone(&Vilnius);
+        let dt = UTC
+            .ymd(1916, 12, 31)
+            .and_hms(22, 35, 59)
+            .with_timezone(&Vilnius);
         assert_eq!(dt, Vilnius.ymd(1916, 12, 31).and_hms(23, 59, 59));
         let dt = dt + Duration::seconds(1);
         assert_eq!(dt, Vilnius.ymd(1917, 1, 1).and_hms(0, 11, 36));
@@ -225,7 +228,10 @@ mod tests {
 
     #[test]
     fn victorian_times() {
-        let dt = UTC.ymd(1847, 12, 1).and_hms(0, 1, 14).with_timezone(&London);
+        let dt = UTC
+            .ymd(1847, 12, 1)
+            .and_hms(0, 1, 14)
+            .with_timezone(&London);
         assert_eq!(dt, London.ymd(1847, 11, 30).and_hms(23, 59, 59));
         let dt = dt + Duration::seconds(1);
         assert_eq!(dt, London.ymd(1847, 12, 1).and_hms(0, 1, 15));
@@ -241,7 +247,10 @@ mod tests {
 
     #[test]
     fn international_date_line_change() {
-        let dt = UTC.ymd(2011, 12, 30).and_hms(9, 59, 59).with_timezone(&Apia);
+        let dt = UTC
+            .ymd(2011, 12, 30)
+            .and_hms(9, 59, 59)
+            .with_timezone(&Apia);
         assert_eq!(dt, Apia.ymd(2011, 12, 29).and_hms(23, 59, 59));
         let dt = dt + Duration::seconds(1);
         assert_eq!(dt, Apia.ymd(2011, 12, 31).and_hms(0, 0, 0));
@@ -249,7 +258,10 @@ mod tests {
 
     #[test]
     fn negative_offset_with_minutes_and_seconds() {
-        let dt = UTC.ymd(1900, 1, 1).and_hms(12, 0, 0).with_timezone(&Danmarkshavn);
+        let dt = UTC
+            .ymd(1900, 1, 1)
+            .and_hms(12, 0, 0)
+            .with_timezone(&Danmarkshavn);
         assert_eq!(dt, Danmarkshavn.ymd(1900, 1, 1).and_hms(10, 45, 20));
     }
 
@@ -301,7 +313,10 @@ mod tests {
 
     #[test]
     fn string_representation() {
-        let dt = UTC.ymd(2000, 9, 1).and_hms(12, 30, 15).with_timezone(&Adelaide);
+        let dt = UTC
+            .ymd(2000, 9, 1)
+            .and_hms(12, 30, 15)
+            .with_timezone(&Adelaide);
         assert_eq!(dt.to_string(), "2000-09-01 22:00:15 ACST");
         assert_eq!(format!("{:?}", dt), "2000-09-01T22:00:15ACST");
         assert_eq!(dt.to_rfc3339(), "2000-09-01T22:00:15+09:30");
@@ -310,7 +325,10 @@ mod tests {
 
     #[test]
     fn tahiti() {
-        let dt = UTC.ymd(1912, 10, 1).and_hms(9, 58, 16).with_timezone(&Tahiti);
+        let dt = UTC
+            .ymd(1912, 10, 1)
+            .and_hms(9, 58, 16)
+            .with_timezone(&Tahiti);
         let before = dt - Duration::hours(1);
         assert_eq!(before, Tahiti.ymd(1912, 9, 30).and_hms(23, 0, 0));
         let after = dt + Duration::hours(1);
@@ -319,7 +337,10 @@ mod tests {
 
     #[test]
     fn second_offsets() {
-        let dt = UTC.ymd(1914, 1, 1).and_hms(13, 40, 28).with_timezone(&Amsterdam);
+        let dt = UTC
+            .ymd(1914, 1, 1)
+            .and_hms(13, 40, 28)
+            .with_timezone(&Amsterdam);
         assert_eq!(dt.to_string(), "1914-01-01 14:00:00 AMT");
 
         // NOTE: pytz will give a different result here. The actual offset is +00:19:32.

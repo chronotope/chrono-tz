@@ -1,7 +1,7 @@
 extern crate serde;
 
+use self::serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
-use self::serde::{de, Serialize, Serializer, Deserialize, Deserializer};
 
 use timezones::Tz;
 
@@ -35,8 +35,8 @@ impl<'de> Deserialize<'de> for Tz {
 mod tests {
     extern crate serde_test;
 
-    use self::serde_test::{Token, assert_tokens, assert_de_tokens_error};
-    use timezones::Tz::{self, Europe__London, Etc__UTC, UTC};
+    use self::serde_test::{assert_de_tokens_error, assert_tokens, Token};
+    use timezones::Tz::{self, Etc__UTC, Europe__London, UTC};
 
     #[test]
     fn serde_ok_both_ways() {
@@ -47,7 +47,10 @@ mod tests {
 
     #[test]
     fn serde_de_error() {
-        assert_de_tokens_error::<Tz>(&[Token::Str("Europe/L")], "'Europe/L' is not a valid timezone");
+        assert_de_tokens_error::<Tz>(
+            &[Token::Str("Europe/L")],
+            "'Europe/L' is not a valid timezone",
+        );
         assert_de_tokens_error::<Tz>(&[Token::Str("")], "'' is not a valid timezone");
     }
 }
