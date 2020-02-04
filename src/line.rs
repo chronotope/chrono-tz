@@ -187,6 +187,42 @@ impl Month {
             Month::December => 31,
         }
     }
+
+    /// Get the next calendar month, with an error going from Dec->Jan
+    fn next_in_year(self) -> Result<Month, &'static str> {
+        Ok(match self {
+            Month::January => Month::February,
+            Month::February => Month::March,
+            Month::March => Month::April,
+            Month::April => Month::May,
+            Month::May => Month::June,
+            Month::June => Month::July,
+            Month::July => Month::August,
+            Month::August => Month::September,
+            Month::September => Month::October,
+            Month::October => Month::November,
+            Month::November => Month::December,
+            Month::December => Err("Cannot wrap year from dec->jan")?,
+        })
+    }
+
+    /// Get the previous calendar month, with an error going from Jan->Dec
+    fn prev_in_year(self) -> Result<Month, &'static str> {
+        Ok(match self {
+            Month::January => Err("Cannot wrap years from jan->dec")?,
+            Month::February => Month::January,
+            Month::March => Month::February,
+            Month::April => Month::March,
+            Month::May => Month::April,
+            Month::June => Month::May,
+            Month::July => Month::June,
+            Month::August => Month::July,
+            Month::September => Month::August,
+            Month::October => Month::September,
+            Month::November => Month::October,
+            Month::December => Month::November,
+        })
+    }
 }
 
 impl FromStr for Month {
@@ -335,21 +371,59 @@ fn leap_years() {
 }
 
 impl DaySpec {
-    pub fn to_concrete_day(&self, year: i64, month: Month) -> i8 {
-        let length = month.length(is_leap(year));
+    pub fn to_concrete_day(&self, year: i64, month: Month) -> (Month, i8) {
+        let leap = is_leap(year);
+        let length = month.length(leap);
+        // we will never hit the 0 because we unwrap prev_in_year below
+        let prev_length = month.prev_in_year().map(|m| m.length(leap)).unwrap_or(0);
 
         match *self {
-            DaySpec::Ordinal(day) => day,
-            DaySpec::Last(weekday) => (1..length + 1)
+            DaySpec::Ordinal(day) => (month, day),
+            DaySpec::Last(weekday) => (
+                month,
+                (1..length + 1)
+                    .rev()
+                    .find(|&day| Weekday::calculate(year, month, day) == weekday)
+                    .unwrap(),
+            ),
+            DaySpec::LastOnOrBefore(weekday, day) => (-7..day + 1)
                 .rev()
-                .find(|&day| Weekday::calculate(year, month, day) == weekday)
+                .flat_map(|inner_day| {
+                    if inner_day >= 1 && Weekday::calculate(year, month, inner_day) == weekday {
+                        Some((month, inner_day))
+                    } else if inner_day < 1
+                        && Weekday::calculate(
+                            year,
+                            month.prev_in_year().unwrap(),
+                            prev_length + inner_day,
+                        ) == weekday
+                    {
+                        // inner_day is negative, so this is subtraction
+                        Some((month.prev_in_year().unwrap(), prev_length + inner_day))
+                    } else {
+                        None
+                    }
+                })
+                .next()
                 .unwrap(),
-            DaySpec::LastOnOrBefore(weekday, day) => (1..day + 1)
-                .rev()
-                .find(|&day| Weekday::calculate(year, month, day) == weekday)
-                .unwrap(),
-            DaySpec::FirstOnOrAfter(weekday, day) => (day..length + 1)
-                .find(|&day| Weekday::calculate(year, month, day) == weekday)
+            DaySpec::FirstOnOrAfter(weekday, day) => (day..day + 8)
+                .flat_map(|inner_day| {
+                    if inner_day <= length && Weekday::calculate(year, month, inner_day) == weekday
+                    {
+                        Some((month, inner_day))
+                    } else if inner_day > length
+                        && Weekday::calculate(
+                            year,
+                            month.next_in_year().unwrap(),
+                            inner_day - length,
+                        ) == weekday
+                    {
+                        Some((month.next_in_year().unwrap(), inner_day - length))
+                    } else {
+                        None
+                    }
+                })
+                .next()
                 .unwrap(),
         }
     }
@@ -359,36 +433,116 @@ impl DaySpec {
 #[test]
 fn last_monday() {
     let dayspec = DaySpec::Last(Weekday::Monday);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::January), 25);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::February), 29);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::March), 28);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::April), 25);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::May), 30);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::June), 27);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::July), 25);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::August), 29);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::September), 26);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::October), 31);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::November), 28);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::December), 26);
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::January),
+        (Month::January, 25)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::February),
+        (Month::February, 29)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::March),
+        (Month::March, 28)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::April),
+        (Month::April, 25)
+    );
+    assert_eq!(dayspec.to_concrete_day(2016, Month::May), (Month::May, 30));
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::June),
+        (Month::June, 27)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::July),
+        (Month::July, 25)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::August),
+        (Month::August, 29)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::September),
+        (Month::September, 26)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::October),
+        (Month::October, 31)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::November),
+        (Month::November, 28)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::December),
+        (Month::December, 26)
+    );
 }
 
 #[cfg(test)]
 #[test]
 fn first_monday_on_or_after() {
     let dayspec = DaySpec::FirstOnOrAfter(Weekday::Monday, 20);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::January), 25);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::February), 22);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::March), 21);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::April), 25);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::May), 23);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::June), 20);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::July), 25);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::August), 22);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::September), 26);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::October), 24);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::November), 21);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::December), 26);
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::January),
+        (Month::January, 25)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::February),
+        (Month::February, 22)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::March),
+        (Month::March, 21)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::April),
+        (Month::April, 25)
+    );
+    assert_eq!(dayspec.to_concrete_day(2016, Month::May), (Month::May, 23));
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::June),
+        (Month::June, 20)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::July),
+        (Month::July, 25)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::August),
+        (Month::August, 22)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::September),
+        (Month::September, 26)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::October),
+        (Month::October, 24)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::November),
+        (Month::November, 21)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::December),
+        (Month::December, 26)
+    );
+}
+
+// A couple of specific timezone transitions that we care about
+#[cfg(test)]
+#[test]
+fn first_sunday_in_toronto() {
+    let dayspec = DaySpec::FirstOnOrAfter(Weekday::Sunday, 25);
+    assert_eq!(dayspec.to_concrete_day(1932, Month::April), (Month::May, 1));
+    // asia/zion
+    let dayspec = DaySpec::LastOnOrBefore(Weekday::Friday, 1);
+    assert_eq!(
+        dayspec.to_concrete_day(2012, Month::April),
+        (Month::March, 30)
+    );
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]
@@ -506,18 +660,25 @@ impl ChangeTime {
             ChangeTime::UntilYear(Year::Number(y)) => time_to_timestamp(y, 1, 1, 0, 0, 0),
             ChangeTime::UntilMonth(Year::Number(y), m) => time_to_timestamp(y, m as i8, 1, 0, 0, 0),
             ChangeTime::UntilDay(Year::Number(y), m, d) => {
-                time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), 0, 0, 0)
+                let (m, wd) = d.to_concrete_day(y, m);
+                time_to_timestamp(y, m as i8, wd, 0, 0, 0)
             }
             ChangeTime::UntilTime(Year::Number(y), m, d, time) => match time.0 {
-                TimeSpec::Zero => time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), 0, 0, 0),
+                TimeSpec::Zero => {
+                    let (m, wd) = d.to_concrete_day(y, m);
+                    time_to_timestamp(y, m as i8, wd, 0, 0, 0)
+                }
                 TimeSpec::Hours(h) => {
-                    time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), h, 0, 0)
+                    let (m, wd) = d.to_concrete_day(y, m);
+                    time_to_timestamp(y, m as i8, wd, h, 0, 0)
                 }
                 TimeSpec::HoursMinutes(h, min) => {
-                    time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), h, min, 0)
+                    let (m, wd) = d.to_concrete_day(y, m);
+                    time_to_timestamp(y, m as i8, wd, h, min, 0)
                 }
                 TimeSpec::HoursMinutesSeconds(h, min, s) => {
-                    time_to_timestamp(y, m as i8, d.to_concrete_day(y, m), h, min, s)
+                    let (m, wd) = d.to_concrete_day(y, m);
+                    time_to_timestamp(y, m as i8, wd, h, min, s)
                 }
             },
             _ => unreachable!(),
