@@ -14,7 +14,20 @@ The database itself is maintained by IANA. For more information, see [IANA’s p
 ### [View the Rustdoc](https://docs.rs/zoneinfo_parse)
 
 
-## Format
+# Installation
+
+This crate works with [Cargo](https://crates.io). Add the following to your `Cargo.toml` dependencies section:
+
+```toml
+[dependencies]
+datetime = "0.4"
+zoneinfo_parse = "0.1"
+```
+
+The earliest version of Rust that this crate is tested against is [Rust v1.31.0](https://blog.rust-lang.org/2018/12/06/Rust-1.31-and-rust-2018.html).
+
+
+# Usage
 
 The zoneinfo files contains `Zone`, `Rule`, and `Link` information. Each type of line forms a variant in the `line::Line` enum.
 
