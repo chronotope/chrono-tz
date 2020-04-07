@@ -77,7 +77,6 @@
 //! })));
 //! ```
 
-use std::ascii::AsciiExt;
 use std::error::Error as ErrorTrait;
 use std::fmt;
 use std::str::FromStr;
@@ -217,12 +216,12 @@ impl<'line> Rule<'line> {
     /// Attempts to parse the given string into a value of this type.
     pub fn from_str(input: &str) -> Result<Rule, Error> {
         if let Some(caps) = RULE_LINE.captures(input) {
-            let name      = caps.name("name").unwrap();
-            let from_year = try!(caps.name("from").unwrap().parse());
+            let name      = caps.name("name").unwrap().as_str();
+            let from_year = try!(caps.name("from").unwrap().as_str().parse());
 
             // The end year can be ‘only’ to indicate that this rule only
             // takes place on that year.
-            let to_year = match caps.name("to").unwrap() {
+            let to_year = match caps.name("to").unwrap().as_str() {
                 "only"  => None,
                 to      => Some(try!(to.parse())),
             };
@@ -231,16 +230,16 @@ impl<'line> Rule<'line> {
             // should be “-”, so throw an error if it isn’t. (It only exists
             // for compatibility with old versions that used to contain year
             // types.) Sometimes “‐”, a Unicode hyphen, is used as well.
-            let t = caps.name("type").unwrap();
+            let t = caps.name("type").unwrap().as_str();
             if t != "-" && t != "\u{2010}"  {
                 return Err(Error::Fail);
             }
 
-            let month        = try!(caps.name("in").unwrap().parse());
-            let day          = try!(caps.name("on").unwrap().parse());
-            let time         = try!(caps.name("at").unwrap().parse());
-            let time_to_add  = try!(caps.name("save").unwrap().parse());
-            let letters      = match caps.name("letters").unwrap() {
+            let month        = try!(caps.name("in").unwrap().as_str().parse());
+            let day          = try!(caps.name("on").unwrap().as_str().parse());
+            let time         = try!(caps.name("at").unwrap().as_str().parse());
+            let time_to_add  = try!(caps.name("save").unwrap().as_str().parse());
+            let letters      = match caps.name("letters").unwrap().as_str() {
                 "-"  => None,
                 l    => Some(l),
             };
@@ -297,7 +296,7 @@ impl<'line> Zone<'line> {
     /// Attempts to parse the given string into a value of this type.
     pub fn from_str(input: &str) -> Result<Zone, Error> {
         if let Some(caps) = ZONE_LINE.captures(input) {
-            let name = caps.name("name").unwrap();
+            let name = caps.name("name").unwrap().as_str();
             let info = try!(ZoneInfo::from_captures(caps));
 
             Ok(Zone {
@@ -334,18 +333,18 @@ pub struct ZoneInfo<'line> {
 
 impl<'line> ZoneInfo<'line> {
     fn from_captures(caps: Captures<'line>) -> Result<ZoneInfo<'line>, Error> {
-        let utc_offset    = try!(caps.name("gmtoff").unwrap().parse());
-        let saving        = try!(Saving::from_str(caps.name("rulessave").unwrap()));
-        let format        = caps.name("format").unwrap();
+        let utc_offset    = try!(caps.name("gmtoff").unwrap().as_str().parse());
+        let saving        = try!(Saving::from_str(caps.name("rulessave").unwrap().as_str()));
+        let format        = caps.name("format").unwrap().as_str();
 
         // The year, month, day, and time fields are all optional, meaning
         // that it should be impossible to, say, have a defined month but not
         // a defined year.
         let time = match (caps.name("year"), caps.name("month"), caps.name("day"), caps.name("time")) {
-            (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime  (try!(y.parse()), try!(m.parse()), try!(d.parse()), try!(t.parse()))),
-            (Some(y), Some(m), Some(d), _      ) => Some(ChangeTime::UntilDay   (try!(y.parse()), try!(m.parse()), try!(d.parse()))),
-            (Some(y), Some(m), _      , _      ) => Some(ChangeTime::UntilMonth (try!(y.parse()), try!(m.parse()))),
-            (Some(y), _      , _      , _      ) => Some(ChangeTime::UntilYear  (try!(y.parse()))),
+            (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime  (try!(y.as_str().parse()), try!(m.as_str().parse()), try!(d.as_str().parse()), try!(t.as_str().parse()))),
+            (Some(y), Some(m), Some(d), _      ) => Some(ChangeTime::UntilDay   (try!(y.as_str().parse()), try!(m.as_str().parse()), try!(d.as_str().parse()))),
+            (Some(y), Some(m), _      , _      ) => Some(ChangeTime::UntilMonth (try!(y.as_str().parse()), try!(m.as_str().parse()))),
+            (Some(y), _      , _      , _      ) => Some(ChangeTime::UntilYear  (try!(y.as_str().parse()))),
             (None   , None   , None   , None   ) => None,
             _                                    => unreachable!("Out-of-order capturing groups!"),
         };
@@ -466,8 +465,8 @@ impl<'line> Link<'line> {
     /// Attempts to parse the given string into a value of this type.
     pub fn from_str(input: &str) -> Result<Link, Error> {
         if let Some(caps) = LINK_LINE.captures(input) {
-            let target  = caps.name("target").unwrap();
-            let name    = caps.name("name").unwrap();
+            let target  = caps.name("target").unwrap().as_str();
+            let name    = caps.name("name").unwrap().as_str();
             Ok(Link { existing: target, new: name })
         }
         else {
@@ -643,10 +642,10 @@ impl FromStr for DaySpec {
 
         // Check if it’s a relative expression with the regex.
         else if let Some(caps) = DAY_FIELD.captures(input) {
-            let weekday = caps.name("weekday").unwrap().parse().unwrap();
-            let day     = caps.name("day").unwrap().parse().unwrap();
+            let weekday = caps.name("weekday").unwrap().as_str().parse().unwrap();
+            let day     = caps.name("day").unwrap().as_str().parse().unwrap();
 
-            match caps.name("sign").unwrap() {
+            match caps.name("sign").unwrap().as_str() {
                 "<=" => Ok(DaySpec::LastOnOrBefore(weekday, day)),
                 ">=" => Ok(DaySpec::FirstOnOrAfter(weekday, day)),
                  _   => unreachable!("The regex only matches one of those two!"),
@@ -720,20 +719,20 @@ impl FromStr for TimeSpecAndType {
             Ok(TimeSpecAndType(TimeSpec::Hours(input.parse().unwrap()), TimeType::Wall))
         }
         else if let Some(caps) = HM_FIELD.captures(input) {
-            let sign   : i8 = if caps.name("sign").unwrap() == "-" { -1 } else { 1 };
-            let hour   : i8 = caps.name("hour").unwrap().parse().unwrap();
-            let minute : i8 = caps.name("minute").unwrap().parse().unwrap();
-            let flag        = caps.name("flag").and_then(|c| parse_time_type(&c[0..1]))
+            let sign   : i8 = if caps.name("sign").unwrap().as_str() == "-" { -1 } else { 1 };
+            let hour   : i8 = caps.name("hour").unwrap().as_str().parse().unwrap();
+            let minute : i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
+            let flag        = caps.name("flag").and_then(|c| parse_time_type(&c.as_str()[0..1]))
                                           .unwrap_or(TimeType::Wall);
 
             Ok(TimeSpecAndType(TimeSpec::HoursMinutes(hour * sign, minute * sign), flag))
         }
         else if let Some(caps) = HMS_FIELD.captures(input) {
-            let sign   : i8 = if caps.name("sign").unwrap() == "-" { -1 } else { 1 };
-            let hour   : i8 = caps.name("hour").unwrap().parse().unwrap();
-            let minute : i8 = caps.name("minute").unwrap().parse().unwrap();
-            let second : i8 = caps.name("second").unwrap().parse().unwrap();
-            let flag        = caps.name("flag").and_then(|c| parse_time_type(&c[0..1]))
+            let sign   : i8 = if caps.name("sign").unwrap().as_str() == "-" { -1 } else { 1 };
+            let hour   : i8 = caps.name("hour").unwrap().as_str().parse().unwrap();
+            let minute : i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
+            let second : i8 = caps.name("second").unwrap().as_str().parse().unwrap();
+            let flag        = caps.name("flag").and_then(|c| parse_time_type(&c.as_str()[0..1]))
                                           .unwrap_or(TimeType::Wall);
 
             Ok(TimeSpecAndType(TimeSpec::HoursMinutesSeconds(hour * sign, minute * sign, second * sign), flag))
