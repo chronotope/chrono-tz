@@ -74,7 +74,7 @@ impl Structure for Table {
             }
         }
 
-        TableStructure { mappings: mappings }
+        TableStructure { mappings }
     }
 }
 

@@ -238,7 +238,7 @@ impl FixedTimespanSetBuilder {
             let timespan = FixedTimespan {
                 utc_offset: timespan.offset,
                 dst_offset: *dst_offset,
-                name:       start_zone_id.clone().unwrap_or("".to_owned()),
+                name:       start_zone_id.clone().unwrap_or_else(|| "".to_owned()),
             };
 
             self.rest.push((time, timespan));
@@ -248,7 +248,7 @@ impl FixedTimespanSetBuilder {
             self.first = Some(FixedTimespan {
                 utc_offset: utc_offset,
                 dst_offset: *dst_offset,
-                name:       start_zone_id.clone().unwrap_or("".to_owned()),
+                name:       start_zone_id.clone().unwrap_or_else(|| "".to_owned()),
             });
         }
     }
@@ -335,10 +335,7 @@ impl FixedTimespanSetBuilder {
             None     => self.rest.iter().find(|t| t.1.dst_offset == 0).unwrap().1.clone(),
         };
 
-        let mut zoneset = FixedTimespanSet {
-            first: first,
-            rest:  self.rest,
-        };
+        let mut zoneset = FixedTimespanSet { first, rest: self.rest };
         optimise(&mut zoneset);
         zoneset
     }

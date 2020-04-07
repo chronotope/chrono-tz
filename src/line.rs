@@ -337,12 +337,7 @@ impl<'line> ZoneInfo<'line> {
             _                                    => unreachable!("Out-of-order capturing groups!"),
         };
 
-        Ok(ZoneInfo {
-            utc_offset:  utc_offset,
-            saving:      saving,
-            format:      format,
-            time:        time,
-        })
+        Ok(ZoneInfo { utc_offset, saving, format, time })
     }
 }
 
