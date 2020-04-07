@@ -401,16 +401,12 @@ pub enum Error<'line> {
 
 impl<'line> fmt::Display for Error<'line> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.description())
+        write!(f, "interpretation error")
     }
 }
 
 impl<'line> ErrorTrait for Error<'line> {
-    fn description(&self) -> &str {
-        "interpretation error"
-    }
-
-    fn cause(&self) -> Option<&ErrorTrait> {
+    fn cause(&self) -> Option<&dyn ErrorTrait> {
         None
     }
 }

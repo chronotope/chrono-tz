@@ -764,16 +764,12 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.description())
+        write!(f, "parse error")
     }
 }
 
 impl ErrorTrait for Error {
-    fn description(&self) -> &str {
-        "parse error"
-    }
-
-    fn cause(&self) -> Option<&ErrorTrait> {
+    fn cause(&self) -> Option<&dyn ErrorTrait> {
         None
     }
 }
