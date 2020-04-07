@@ -87,10 +87,10 @@ use datetime::zone::TimeType;
 use regex::{Regex, Captures};
 
 
-/// A set of regexes to test against.
-///
-/// All of these regexes use the `(?x)` flag, which means they support
-/// comments and whitespace directly in the regex string!
+// A set of regexes to test against.
+//
+// All of these regexes use the `(?x)` flag, which means they support
+// comments and whitespace directly in the regex string!
 lazy_static! {
 
     /// Format of a Rule line: one capturing group per field.
@@ -590,7 +590,7 @@ impl DaySpec {
     /// Converts this day specification to a concrete date, given the year and
     /// month it should occur in.
     pub fn to_concrete_date(&self, year: i64, month: Month) -> LocalDate {
-        use datetime::{LocalDate, DatePiece, Year};
+        use datetime::{DatePiece, Year};
 
         match *self {
             DaySpec::Ordinal(day)           => LocalDate::ymd(year, month, day).unwrap(),
