@@ -27,17 +27,12 @@
 //! - **Calculating transitions** from this table is done by the `transitions`
 //!   module.
 
-#![crate_name = "zoneinfo_parse"]
-#![crate_type = "rlib"]
-#![crate_type = "dylib"]
-
 #![warn(missing_copy_implementations)]
-#![warn(missing_debug_implementations)]
-#![warn(missing_docs)]
-
-#![warn(trivial_casts, trivial_numeric_casts)]
-#![warn(unused_qualifications)]
-#![warn(unused_results)]
+//#![warn(missing_docs)]
+#![warn(nonstandard_style)]
+#![warn(trivial_numeric_casts)]
+#![warn(unreachable_pub)]
+#![warn(unused)]
 
 extern crate datetime;
 extern crate regex;

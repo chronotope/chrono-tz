@@ -839,9 +839,9 @@ impl<'line> Line<'line> {
 
 #[cfg(test)]
 mod test {
-    pub use std::str::FromStr;
-    pub use super::*;
-    pub use datetime::{Weekday, Month};
+    pub(crate) use std::str::FromStr;
+    pub(crate) use super::*;
+    pub(crate) use datetime::{Weekday, Month};
 
     macro_rules! test {
         ($name:ident: $input:expr => $result:expr) => {
