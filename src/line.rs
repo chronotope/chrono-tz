@@ -584,10 +584,10 @@ impl DaySpec {
 
     /// Converts this day specification to a concrete date, given the year and
     /// month it should occur in.
-    pub fn to_concrete_date(&self, year: i64, month: Month) -> LocalDate {
+    pub fn to_concrete_date(self, year: i64, month: Month) -> LocalDate {
         use datetime::{DatePiece, Year};
 
-        match *self {
+        match self {
             DaySpec::Ordinal(day)           => LocalDate::ymd(year, month, day).unwrap(),
             DaySpec::Last(w)                => DaySpec::find_weekday(w, Year(year).month(month).days(..).rev()),
             DaySpec::LastOnOrBefore(w, day) => DaySpec::find_weekday(w, Year(year).month(month).days(..).rev().filter(|d| d.day() < day)),
@@ -681,8 +681,8 @@ impl TimeSpec {
 
     /// Returns the number of seconds past midnight that this time spec
     /// represents.
-    pub fn as_seconds(&self) -> i64 {
-        match *self {
+    pub fn as_seconds(self) -> i64 {
+        match self {
             TimeSpec::Zero                         => 0,
             TimeSpec::Hours(h)                     => h as i64 * 3600,
             TimeSpec::HoursMinutes(h, m)           => h as i64 * 3600 + m as i64 * 60,
