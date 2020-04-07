@@ -112,10 +112,7 @@ impl<'table> Iterator for Iter<'table> {
     type Item = TableStructureEntry<'table>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let key = match self.keys.pop() {
-            Some(k) => k,
-            None    => return None,
-        };
+        let key = self.keys.pop()?;
 
         // Move the strings out into an (automatically-sorted) vector.
         let values = self.structure.mappings[key].iter().cloned().collect();

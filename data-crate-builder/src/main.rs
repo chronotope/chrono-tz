@@ -31,9 +31,9 @@ fn build_data_crate() -> Result<(), Error> {
     let mut opts = getopts::Options::new();
     opts.reqopt("o", "output", "directory to write the crate into", "DIR");
 
-    let matches = try!(opts.parse(args_os().skip(1)));
-    let data_crate = try!(DataCrate::new(matches.opt_str("output").unwrap(), &matches.free));
-    try!(data_crate.run());
+    let matches = opts.parse(args_os().skip(1))?;
+    let data_crate = DataCrate::new(matches.opt_str("output").unwrap(), &matches.free)?;
+    data_crate.run()?;
 
     println!("All done.");
     Ok(())

@@ -46,7 +46,7 @@ impl DataCrate {
         let mut errors = Vec::new();
 
         for arg in input_file_paths {
-            let f = try!(File::open(arg));
+            let f = File::open(arg)?;
             let reader = BufReader::new(f);
 
             for (line_number, line) in reader.lines().enumerate() {
@@ -109,8 +109,8 @@ impl DataCrate {
     /// data goes in (and the `mod.rs` files for those directories), and then
     /// creating the files inside those directories.
     pub fn run(&self) -> IOResult<()> {
-        try!(self.create_structure_directories());
-        try!(self.write_zonesets());
+        self.create_structure_directories()?;
+        self.write_zonesets()?;
         Ok(())
     }
 
@@ -121,35 +121,35 @@ impl DataCrate {
         open_opts.write(true).create(true).truncate(true);
 
         let base_mod_path = self.base_path.join("mod.rs");
-        let mut base_w = try!(open_opts.open(base_mod_path));
+        let mut base_w = open_opts.open(base_mod_path)?;
 
-        try!(writeln!(base_w, "{}", WARNING_HEADER));
-        try!(writeln!(base_w, "{}", MOD_HEADER));
+        writeln!(base_w, "{}", WARNING_HEADER)?;
+        writeln!(base_w, "{}", MOD_HEADER)?;
 
         for entry in self.table.structure() {
             if !entry.name.contains('/') {
-                try!(writeln!(base_w, "pub mod {};", entry.name));
+                writeln!(base_w, "pub mod {};", entry.name)?;
             }
 
             let components: PathBuf = entry.name.split('/').collect();
             let dir_path = self.base_path.join(components);
             if !dir_path.is_dir() {
                 println!("Creating directory {:?}", &dir_path);
-                try!(create_dir(&dir_path));
+                create_dir(&dir_path)?;
             }
 
             let mod_path = dir_path.join("mod.rs");
-            let mut w = try!(open_opts.open(mod_path));
+            let mut w = open_opts.open(mod_path)?;
             for child in &entry.children {
                 match *child {
                     Child::TimeZone(ref name) => {
                         let sanichild = sanitise_name(name);
-                        try!(writeln!(w, "mod {};", sanichild));
-                        try!(writeln!(w, "pub use self::{}::ZONE as {};\n", sanichild, sanichild));
+                        writeln!(w, "mod {};", sanichild)?;
+                        writeln!(w, "pub use self::{}::ZONE as {};\n", sanichild, sanichild)?;
                     },
                     Child::Submodule(ref name) => {
                         let sanichild = sanitise_name(name);
-                        try!(writeln!(w, "pub mod {};\n", sanichild));
+                        writeln!(w, "pub mod {};\n", sanichild)?;
                     },
                 }
             }
@@ -158,25 +158,25 @@ impl DataCrate {
         let mut keys: Vec<_> = self.table.zonesets.keys().chain(self.table.links.keys()).collect();
         keys.sort();
 
-        try!(writeln!(base_w, "\n\n"));
+        writeln!(base_w, "\n\n")?;
         for name in keys.iter().filter(|f| !f.contains('/')) {
             let sanichild = sanitise_name(name);
-            try!(writeln!(base_w, "mod {};", sanichild));
-            try!(writeln!(base_w, "pub use self::{}::ZONE as {};\n", sanichild, sanichild));
+            writeln!(base_w, "mod {};", sanichild)?;
+            writeln!(base_w, "pub use self::{}::ZONE as {};\n", sanichild, sanichild)?;
         }
 
-        try!(writeln!(base_w, "\n\n"));
-        try!(write!(base_w, "static ZONES: phf::Map<&'static str, &'static StaticTimeZone<'static>> = "));
+        writeln!(base_w, "\n\n")?;
+        write!(base_w, "static ZONES: phf::Map<&'static str, &'static StaticTimeZone<'static>> = ")?;
 
         let mut phf_map = PHFMap::new();
         for name in &keys {
             phf_map.entry(&***name, &format!("&{}", sanitise_name(name).replace("/", "::")));
         }
-        try!(phf_map.build(&mut base_w));
+        phf_map.build(&mut base_w)?;
 
-        try!(writeln!(base_w, ";\n\npub fn lookup(input: &str) -> Option<&'static StaticTimeZone<'static>> {{"));
-        try!(writeln!(base_w, "    ZONES.get(input).cloned()"));
-        try!(writeln!(base_w, "}}"));
+        writeln!(base_w, ";\n\npub fn lookup(input: &str) -> Option<&'static StaticTimeZone<'static>> {{")?;
+        writeln!(base_w, "    ZONES.get(input).cloned()")?;
+        writeln!(base_w, "}}")?;
 
         Ok(())
     }
@@ -186,37 +186,38 @@ impl DataCrate {
         for name in self.table.zonesets.keys().chain(self.table.links.keys()) {
             let components: PathBuf = name.split('/').map(sanitise_name).collect();
             let zoneset_path = self.base_path.join(components).with_extension("rs");
-            let mut w = try!(OpenOptions::new().write(true).create(true).truncate(true).open(zoneset_path));
-            try!(writeln!(w, "{}", WARNING_HEADER));
-            try!(writeln!(w, "{}", ZONEINFO_HEADER));
+            let mut w = OpenOptions::new().write(true).create(true).truncate(true).open(zoneset_path);
+            writeln!(w, "{}", WARNING_HEADER)?;
+            writeln!(w, "{}", ZONEINFO_HEADER)?;
 
-            try!(writeln!(w, "pub static ZONE: StaticTimeZone<'static> = StaticTimeZone {{"));
-            try!(writeln!(w, "    name: {:?},", name));
-            try!(writeln!(w, "    fixed_timespans: FixedTimespanSet {{"));
+            writeln!(w, "pub static ZONE: StaticTimeZone<'static> = StaticTimeZone {{")?;
+            writeln!(w, "    name: {:?},", name)?;
+            writeln!(w, "    fixed_timespans: FixedTimespanSet {{")?;
 
             let set = self.table.timespans(&*name).unwrap();
 
-            try!(writeln!(w, "        first: FixedTimespan {{"));
-            try!(writeln!(w, "            offset: {:?},  // UTC offset {:?}, DST offset {:?}", set.first.total_offset(), set.first.utc_offset, set.first.dst_offset));
-            try!(writeln!(w, "            is_dst: {:?},", set.first.dst_offset != 0));
-            try!(writeln!(w, "            name:   Cow::Borrowed({:?}),", set.first.name));
-            try!(writeln!(w, "        }},"));
+            writeln!(w, "        first: FixedTimespan {{")?;
+            writeln!(w, "            offset: {:?},  // UTC offset {:?}, DST offset {:?}", set.first.total_offset(), set.first.utc_offset, set.first.dst_offset)?;
+            writeln!(w, "            is_dst: {:?},", set.first.dst_offset != 0)?;
+            writeln!(w, "            name:   Cow::Borrowed({:?}),", set.first.name)?;
+            writeln!(w, "        }},")?;
 
-            try!(writeln!(w, "        rest: &["));
+            writeln!(w, "        rest: &[")?;
 
             for t in &set.rest {
-                try!(writeln!(w, "        ({:?}, FixedTimespan {{  // {} UTC", t.0, LocalDateTime::at(t.0).iso()));
+                writeln!(w, "        ({:?}, FixedTimespan {{  // {} UTC", t.0, LocalDateTime::at(t.0).iso())?;
 
                 // Write the total offset (the only value that gets used)
                 // and both the offsets that get added together, as a
                 // comment in the data crate.
-                try!(writeln!(w, "            offset: {:?},  // UTC offset {:?}, DST offset {:?}", t.1.total_offset(), t.1.utc_offset, t.1.dst_offset));
-                try!(writeln!(w, "            is_dst: {:?},", t.1.dst_offset != 0));
-                try!(writeln!(w, "            name:   Cow::Borrowed({:?}),", t.1.name));
-                try!(writeln!(w, "        }}),"));
+                writeln!(w, "            offset: {:?},  // UTC offset {:?}, DST offset {:?}", t.1.total_offset(), t.1.utc_offset, t.1.dst_offset)?;
+                writeln!(w, "            is_dst: {:?},", t.1.dst_offset != 0)?;
+                writeln!(w, "            name:   Cow::Borrowed({:?}),", t.1.name)?;
+                writeln!(w, "        }}),")?;
             }
-            try!(writeln!(w, "    ]}},"));
-            try!(writeln!(w, "}};\n\n"));
+            writeln!(w, "    ]}},")?;
+
+            writeln!(w, "}};\n\n")?;
         }
 
         Ok(())

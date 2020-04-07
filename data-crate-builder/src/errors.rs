@@ -56,8 +56,9 @@ pub struct Errors(Vec<ParseError>);
 impl fmt::Display for Errors {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         for err in &self.0 {
-            try!(write!(f, "{}:{}: {}\n", err.filename, err.line, err.error));
+            write!(f, "{}:{}: {}\n", err.filename, err.line, err.error)?;
         }
+
         Ok(())
     }
 }

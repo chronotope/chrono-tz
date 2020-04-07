@@ -217,13 +217,13 @@ impl<'line> Rule<'line> {
     pub fn from_str(input: &str) -> Result<Rule, Error> {
         if let Some(caps) = RULE_LINE.captures(input) {
             let name      = caps.name("name").unwrap().as_str();
-            let from_year = try!(caps.name("from").unwrap().as_str().parse());
+            let from_year = caps.name("from").unwrap().as_str().parse()?;
 
             // The end year can be ‘only’ to indicate that this rule only
             // takes place on that year.
             let to_year = match caps.name("to").unwrap().as_str() {
                 "only"  => None,
-                to      => Some(try!(to.parse())),
+                to      => Some(to.parse()?),
             };
 
             // According to the spec, the only value inside the ‘type’ column
@@ -235,10 +235,10 @@ impl<'line> Rule<'line> {
                 return Err(Error::Fail);
             }
 
-            let month        = try!(caps.name("in").unwrap().as_str().parse());
-            let day          = try!(caps.name("on").unwrap().as_str().parse());
-            let time         = try!(caps.name("at").unwrap().as_str().parse());
-            let time_to_add  = try!(caps.name("save").unwrap().as_str().parse());
+            let month        = caps.name("in").unwrap().as_str().parse()?;
+            let day          = caps.name("on").unwrap().as_str().parse()?;
+            let time         = caps.name("at").unwrap().as_str().parse()?;
+            let time_to_add  = caps.name("save").unwrap().as_str().parse()?;
             let letters      = match caps.name("letters").unwrap().as_str() {
                 "-"  => None,
                 l    => Some(l),
@@ -288,7 +288,7 @@ impl<'line> Zone<'line> {
     pub fn from_str(input: &str) -> Result<Zone, Error> {
         if let Some(caps) = ZONE_LINE.captures(input) {
             let name = caps.name("name").unwrap().as_str();
-            let info = try!(ZoneInfo::from_captures(caps));
+            let info = ZoneInfo::from_captures(caps)?;
 
             Ok(Zone { name, info })
         }
@@ -321,18 +321,18 @@ pub struct ZoneInfo<'line> {
 
 impl<'line> ZoneInfo<'line> {
     fn from_captures(caps: Captures<'line>) -> Result<ZoneInfo<'line>, Error> {
-        let utc_offset    = try!(caps.name("gmtoff").unwrap().as_str().parse());
-        let saving        = try!(Saving::from_str(caps.name("rulessave").unwrap().as_str()));
+        let utc_offset    = caps.name("gmtoff").unwrap().as_str().parse()?;
+        let saving        = Saving::from_str(caps.name("rulessave").unwrap().as_str())?;
         let format        = caps.name("format").unwrap().as_str();
 
         // The year, month, day, and time fields are all optional, meaning
         // that it should be impossible to, say, have a defined month but not
         // a defined year.
         let time = match (caps.name("year"), caps.name("month"), caps.name("day"), caps.name("time")) {
-            (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime  (try!(y.as_str().parse()), try!(m.as_str().parse()), try!(d.as_str().parse()), try!(t.as_str().parse()))),
-            (Some(y), Some(m), Some(d), _      ) => Some(ChangeTime::UntilDay   (try!(y.as_str().parse()), try!(m.as_str().parse()), try!(d.as_str().parse()))),
-            (Some(y), Some(m), _      , _      ) => Some(ChangeTime::UntilMonth (try!(y.as_str().parse()), try!(m.as_str().parse()))),
-            (Some(y), _      , _      , _      ) => Some(ChangeTime::UntilYear  (try!(y.as_str().parse()))),
+            (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime  (y.as_str().parse()?, m.as_str().parse()?, d.as_str().parse()?, t.as_str().parse()?)),
+            (Some(y), Some(m), Some(d), _      ) => Some(ChangeTime::UntilDay   (y.as_str().parse()?, m.as_str().parse()?, d.as_str().parse()?)),
+            (Some(y), Some(m), _      , _      ) => Some(ChangeTime::UntilMonth (y.as_str().parse()?, m.as_str().parse()?)),
+            (Some(y), _      , _      , _      ) => Some(ChangeTime::UntilYear  (y.as_str().parse()?)),
             (None   , None   , None   , None   ) => None,
             _                                    => unreachable!("Out-of-order capturing groups!"),
         };
@@ -375,7 +375,7 @@ impl<'line> Saving<'line> {
             Ok(Saving::Multiple(input))
         }
         else if HM_FIELD.is_match(input) {
-            let time = try!(input.parse());
+            let time = input.parse()?;
             Ok(Saving::OneOff(time))
         }
         else {
@@ -624,7 +624,7 @@ impl FromStr for DaySpec {
         // Check if it stars with ‘last’, and trim off the first four bytes if
         // it does. (Luckily, the file is ASCII, so ‘last’ is four bytes)
         else if input.starts_with("last") {
-            let weekday = try!(input[4..].parse());
+            let weekday = input[4..].parse()?;
             Ok(DaySpec::Last(weekday))
         }
 
@@ -810,7 +810,7 @@ impl<'line> Line<'line> {
             Ok(Line::Zone(zone))
         }
         else if let Some(caps) = CONTINUATION_LINE.captures(input) {
-            Ok(Line::Continuation(try!(ZoneInfo::from_captures(caps))))
+            Ok(Line::Continuation(ZoneInfo::from_captures(caps)?))
         }
         else if let Ok(rule) = Rule::from_str(input) {
             Ok(Line::Rule(rule))
