@@ -97,10 +97,7 @@ impl<'table> IntoIterator for TableStructure<'table> {
         let mut keys: Vec<_> = self.mappings.keys().cloned().collect();
         keys.sort_by(|a, b| b.cmp(a));
 
-        Iter {
-            structure: self,
-            keys: keys,
-        }
+        Iter { structure: self, keys }
     }
 }
 

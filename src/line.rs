@@ -244,16 +244,7 @@ impl<'line> Rule<'line> {
                 l    => Some(l),
             };
 
-            Ok(Rule {
-                name:         name,
-                from_year:    from_year,
-                to_year:      to_year,
-                month:        month,
-                day:          day,
-                time:         time,
-                time_to_add:  time_to_add,
-                letters:      letters,
-            })
+            Ok(Rule { name, from_year, to_year, month, day, time, time_to_add, letters })
         }
         else {
             Err(Error::Fail)
@@ -299,10 +290,7 @@ impl<'line> Zone<'line> {
             let name = caps.name("name").unwrap().as_str();
             let info = try!(ZoneInfo::from_captures(caps));
 
-            Ok(Zone {
-                name: name,
-                info: info,
-            })
+            Ok(Zone { name, info })
         }
         else {
             Err(Error::Fail)
