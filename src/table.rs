@@ -324,7 +324,7 @@ impl TableBuilder {
             }
         }
 
-        let mut zoneset = match self.table.zonesets.entry(zone_line.name.to_owned()) {
+        let zoneset = match self.table.zonesets.entry(zone_line.name.to_owned()) {
             Entry::Occupied(_)  => return Err(Error::DuplicateZone),
             Entry::Vacant(e)    => e.insert(Vec::new()),
         };
@@ -339,7 +339,7 @@ impl TableBuilder {
     /// Returns an error if the builder wasn’t expecting a continuation line
     /// (meaning, the previous line wasn’t a zone line)
     pub fn add_continuation_line(&mut self, continuation_line: line::ZoneInfo) -> Result<(), Error> {
-        let mut zoneset = match self.current_zoneset_name {
+        let zoneset = match self.current_zoneset_name {
             Some(ref name) => self.table.zonesets.get_mut(name).unwrap(),
             None => return Err(Error::SurpriseContinuationLine),
         };
