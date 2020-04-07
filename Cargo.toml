@@ -2,12 +2,13 @@
 name = "zoneinfo_parse"
 description = "Library for parsing zoneinfo time zone files"
 
-version = "0.1.4"
+authors = ["Ben S <ogham@bsago.me>"]
 documentation = "https://docs.rs/zoneinfo_parse"
-homepage = "https://github.com/rust-datetime/zoneinfo-compiled"
+exclude = ["/README.md", "/LICENCE", "/.rustfmt.toml", "/.travis.yml"]
 license = "MIT"
 readme = "README.md"
-authors = ["Ben S <ogham@bsago.me>"]
+repository = "https://github.com/rust-datetime/zoneinfo-compiled"
+version = "0.1.4"
 
 [dependencies]
 datetime = "0.4.4"
