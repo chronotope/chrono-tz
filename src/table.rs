@@ -112,8 +112,8 @@ pub struct RuleInfo {
 }
 
 impl<'line> From<line::Rule<'line>> for RuleInfo {
-    fn from(info: line::Rule) -> RuleInfo {
-        RuleInfo {
+    fn from(info: line::Rule) -> Self {
+        Self {
             from_year:    info.from_year,
             to_year:      info.to_year,
             month:        info.month,
@@ -184,8 +184,8 @@ pub struct ZoneInfo {
 }
 
 impl<'line> From<line::ZoneInfo<'line>> for ZoneInfo {
-    fn from(info: line::ZoneInfo) -> ZoneInfo {
-        ZoneInfo {
+    fn from(info: line::ZoneInfo) -> Self {
+        Self {
             offset: info.utc_offset.as_seconds(),
             saving: match info.saving {
                 line::Saving::NoSaving     => Saving::NoSaving,
@@ -250,7 +250,7 @@ impl Format {
     /// Convert the template into one of the `Format` variants. This can’t
     /// fail, as any syntax that doesn’t match one of the two formats will
     /// just be a ‘constant’ format.
-    pub fn new(template: &str) -> Format {
+    pub fn new(template: &str) -> Self {
         if let Some(pos) = template.find('/') {
             Format::Alternate {
                 standard:  template[.. pos].to_owned(),
@@ -306,8 +306,8 @@ pub struct TableBuilder {
 impl TableBuilder {
 
     /// Creates a new builder with an empty table.
-    pub fn new() -> TableBuilder {
-        TableBuilder {
+    pub fn new() -> Self {
+        Self {
             table: Table::default(),
             current_zoneset_name: None,
         }

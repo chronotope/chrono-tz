@@ -510,7 +510,7 @@ impl FromStr for MonthSpec {
     type Err = Error;
 
     /// Attempts to parse the given string into a value of this type.
-    fn from_str(input: &str) -> Result<MonthSpec, Self::Err> {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
         Ok(match &*input.to_ascii_lowercase() {
             "jan" | "january"    => MonthSpec(Month::January),
             "feb" | "february"   => MonthSpec(Month::February),
@@ -538,7 +538,7 @@ pub struct WeekdaySpec(pub Weekday);
 impl FromStr for WeekdaySpec {
     type Err = Error;
 
-    fn from_str(input: &str) -> Result<WeekdaySpec, Self::Err> {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
 
         Ok(match &*input.to_ascii_lowercase() {
             "mon" | "monday"     => WeekdaySpec(Weekday::Monday),
@@ -609,7 +609,7 @@ impl DaySpec {
 impl FromStr for DaySpec {
     type Err = Error;
 
-    fn from_str(input: &str) -> Result<DaySpec, Self::Err> {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
 
         // Parse the field as a number if it vaguely resembles one.
         if input.chars().all(|c| c.is_digit(10)) {
@@ -694,7 +694,7 @@ impl TimeSpec {
 impl FromStr for TimeSpecAndType {
     type Err = Error;
 
-    fn from_str(input: &str) -> Result<TimeSpecAndType, Self::Err> {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
         if input == "-" {
             Ok(TimeSpecAndType(TimeSpec::Zero, TimeType::Wall))
         }
@@ -729,7 +729,7 @@ impl FromStr for TimeSpecAndType {
 impl FromStr for TimeSpec {
     type Err = Error;
 
-    fn from_str(input: &str) -> Result<TimeSpec, Self::Err> {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
         match input.parse() {
             Ok(TimeSpecAndType(spec, TimeType::Wall)) => Ok(spec),
             Ok(TimeSpecAndType(_   , _             )) => Err(Error::Fail),
