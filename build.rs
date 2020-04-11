@@ -60,8 +60,14 @@ fn convert_bad_chars(name: &str) -> String {
 fn write_timezone_file(timezone_file: &mut File, table: &Table) {
     let zones = table.zonesets.keys().chain(table.links.keys()).collect::<BTreeSet<_>>();
     write!(timezone_file, "use ::timezone_impl::{{TimeSpans, FixedTimespanSet, FixedTimespan}};\n",).unwrap();
+    write!(timezone_file, "#[cfg(feature = \"std\")]\n",).unwrap();
     write!(timezone_file, "use std::fmt::{{Debug, Formatter, Error}};\n\n",).unwrap();
+    write!(timezone_file, "#[cfg(feature = \"std\")]\n",).unwrap();
     write!(timezone_file, "use std::str::FromStr;\n\n",).unwrap();
+    write!(timezone_file, "#[cfg(not(feature = \"std\"))]\n",).unwrap();
+    write!(timezone_file, "use core::fmt::{{Debug, Formatter, Error}};\n\n",).unwrap();
+    write!(timezone_file, "#[cfg(not(feature = \"std\"))]\n",).unwrap();
+    write!(timezone_file, "use core::str::FromStr;\n\n",).unwrap();
     write!(timezone_file, "#[derive(Clone, Copy, PartialEq, Eq, Hash)]\npub enum Tz {{\n").unwrap();
     for zone in &zones {
         let zone_name = convert_bad_chars(zone);
@@ -71,8 +77,11 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) {
 
     write!(timezone_file,
 "impl FromStr for Tz {{
+    #[cfg(feature = \"std\")]
     type Err = String;
-    fn from_str(s: &str) -> Result<Self, String> {{
+    #[cfg(not(feature = \"std\"))]
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {{
         match s {{\n").unwrap();
     for zone in &zones {
         let zone_name = convert_bad_chars(zone);
@@ -82,7 +91,10 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) {
                raw_zone_name = zone).unwrap();
     }
     write!(timezone_file,
-"             s => Err(format!(\"'{{}}' is not a valid timezone\", s.to_string()))
+"            #[cfg(feature = \"std\")]
+            s => Err(format!(\"'{{}}' is not a valid timezone\", s.to_string())),
+            #[cfg(not(feature = \"std\"))]
+            _ => Err(\"received invalid timezone\"),
         }}
     }}
 }}\n\n").unwrap();
