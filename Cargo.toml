@@ -15,7 +15,7 @@ chrono = { version = "0.4", default-features = false }
 serde = { version = "1", optional = true }
 
 [build-dependencies]
-parse-zoneinfo = { git = "https://github.com/chronotope/parse-zoneinfo.git", branch = "support-overflowing-weekdays" }
+parse-zoneinfo = { git = "https://github.com/chronotope/parse-zoneinfo.git" }
 
 [dev-dependencies]
 serde_test = "1"
