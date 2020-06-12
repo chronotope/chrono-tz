@@ -1,6 +1,3 @@
-#[cfg(feature = "std")]
-use std::cmp::Ordering;
-#[cfg(not(feature = "std"))]
 use core::cmp::Ordering;
 
 /// An implementation of binary search on indices only

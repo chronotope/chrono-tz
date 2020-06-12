@@ -60,13 +60,7 @@ fn convert_bad_chars(name: &str) -> String {
 fn write_timezone_file(timezone_file: &mut File, table: &Table) {
     let zones = table.zonesets.keys().chain(table.links.keys()).collect::<BTreeSet<_>>();
     write!(timezone_file, "use ::timezone_impl::{{TimeSpans, FixedTimespanSet, FixedTimespan}};\n",).unwrap();
-    write!(timezone_file, "#[cfg(feature = \"std\")]\n",).unwrap();
-    write!(timezone_file, "use std::fmt::{{Debug, Formatter, Error}};\n\n",).unwrap();
-    write!(timezone_file, "#[cfg(feature = \"std\")]\n",).unwrap();
-    write!(timezone_file, "use std::str::FromStr;\n\n",).unwrap();
-    write!(timezone_file, "#[cfg(not(feature = \"std\"))]\n",).unwrap();
     write!(timezone_file, "use core::fmt::{{Debug, Formatter, Error}};\n\n",).unwrap();
-    write!(timezone_file, "#[cfg(not(feature = \"std\"))]\n",).unwrap();
     write!(timezone_file, "use core::str::FromStr;\n\n",).unwrap();
     write!(timezone_file, "#[derive(Clone, Copy, PartialEq, Eq, Hash)]\npub enum Tz {{\n").unwrap();
     for zone in &zones {
