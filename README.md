@@ -117,6 +117,31 @@ let utc = dt.with_timezone(&UTC);
 assert_eq!(utc.to_string(), "2016-10-21 23:00:00 UTC");
 ```
 
+## `no_std` Support
+
+To use this library without depending on the Rust standard library, put this
+in your `Cargo.toml`:
+```toml
+[dependencies]
+chrono = { version = "0.4", default-features = false }
+chrono-tz = { version = "0.5", default-features = false }
+```
+
+If you are using this library in an environment with limited program
+space, such as a microcontroller, take note that you will also likely
+need to enable optimizations and Link Time Optimization:
+```toml
+[profile.dev]
+opt-level = 2
+lto = true
+
+[profile.release]
+lto = true
+```
+
+Otherwise, the additional binary size added by this library may overflow
+available program space and trigger a linker error.
+
 ## Future Improvements
 
 - Handle leap seconds
