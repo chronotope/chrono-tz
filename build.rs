@@ -139,6 +139,27 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) {
 "         }}
     }}
 }}\n").unwrap();
+write!(timezone_file,
+"/// An array of every known variant
+///
+/// Useful for iterating over known timezones:
+///
+/// ```
+/// use chrono_tz::{{TZ_VARIANTS, Tz}};
+/// assert!(TZ_VARIANTS.iter().any(|v| *v == Tz::UTC));
+/// ```
+pub static TZ_VARIANTS: [Tz; {num}] = [
+",
+    num=zones.len()).unwrap();
+    for zone in &zones {
+        write!(timezone_file,
+"    Tz::{zone},\n",
+            zone = convert_bad_chars(zone)
+        ).unwrap();
+    }
+    write!(timezone_file, 
+"];").unwrap();
+
 }
 
 // Create a file containing nice-looking re-exports such as Europe::London
