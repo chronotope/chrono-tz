@@ -144,6 +144,12 @@
 //! assert_eq!(utc.to_string(), "2016-10-21 23:00:00 UTC");
 //! # }
 //! ```
+//! 
+//! If you need to iterate over all variants you can use the TZ_VARIANTS array
+//! ```
+//! use chrono_tz::{TZ_VARIANTS, Tz};
+//! assert!(TZ_VARIANTS.iter().any(|v| *v == Tz::UTC));
+//! ```
 
 extern crate chrono;
 
@@ -157,6 +163,7 @@ mod directory;
 
 pub use directory::*;
 pub use timezones::Tz;
+pub use timezones::TZ_VARIANTS;
 
 #[cfg(test)]
 mod tests {
