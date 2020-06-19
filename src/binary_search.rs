@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 
 /// An implementation of binary search on indices only
 /// that does not require slices to be constructed. Mirrors

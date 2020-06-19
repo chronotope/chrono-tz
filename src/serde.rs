@@ -1,6 +1,6 @@
 extern crate serde;
 
-use std::fmt;
+use core::fmt;
 use self::serde::{de, Serialize, Serializer, Deserialize, Deserializer};
 
 use timezones::Tz;
@@ -23,7 +23,7 @@ impl<'de> Deserialize<'de> for Tz {
             }
 
             fn visit_str<E: de::Error>(self, value: &str) -> Result<Tz, E> {
-                value.parse::<Tz>().map_err(|e| E::custom(e.to_string()))
+                value.parse::<Tz>().map_err(|e| E::custom(e))
             }
         }
 

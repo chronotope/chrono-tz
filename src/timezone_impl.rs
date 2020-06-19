@@ -1,6 +1,6 @@
 use chrono::{Offset, TimeZone, NaiveDate, NaiveDateTime, LocalResult, FixedOffset};
-use std::fmt::{Debug, Display, Formatter, Error};
-use std::cmp::Ordering;
+use core::fmt::{Debug, Display, Formatter, Error};
+use core::cmp::Ordering;
 use binary_search::binary_search;
 use super::timezones::Tz;
 

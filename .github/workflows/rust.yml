@@ -3,9 +3,16 @@ name: Rust
 on: [push, pull_request]
 
 jobs:
-  build:
+  test:
 
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-16.04, ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            run_no_std: true
+
+    runs-on: ${{ matrix.os }}
 
     env:
       RUST_BACKTRACE: 1
@@ -18,7 +25,29 @@ jobs:
         auth_header="$(git config --local --get http.https://github.com/.extraheader)"
         git submodule sync --recursive
         git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
-    - name: Build
-      run: cargo build --verbose --color=always
     - name: Run tests
-      run: cargo test --verbose --color=always -- --color=always
+      run: cargo test --color=always -- --color=always
+    - name: Run tests serde
+      run: cargo test --features serde --color=always -- --color=always
+    - name: Check with no default features
+      run: cargo check --no-default-features --color=always
+
+    - name: Install no_std toolchain
+      if: ${{ matrix.run_no_std }}
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        target: thumbv7m-none-eabi
+    - name: Verify builds on no_std no features
+      if: ${{ matrix.run_no_std }}
+      working-directory: ./tests/check-nostd
+      run: |
+        cargo clean
+        cargo build --no-default-features
+    - name: Verify builds on no_std with serde
+      if: ${{ matrix.run_no_std }}
+      working-directory: ./tests/check-nostd
+      run: |
+        cargo clean
+        cargo build --features serde1
