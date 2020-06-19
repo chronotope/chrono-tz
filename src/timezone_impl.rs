@@ -45,8 +45,8 @@ pub struct TzOffset {
 impl TzOffset {
     fn new(tz: Tz, offset: FixedTimespan) -> Self {
         TzOffset {
-            tz: tz,
-            offset: offset,
+            tz,
+            offset,
         }
     }
 

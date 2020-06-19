@@ -11,6 +11,7 @@ jobs:
         include:
           - os: ubuntu-latest
             run_no_std: true
+            run_clippy: true
 
     runs-on: ${{ matrix.os }}
 
@@ -31,6 +32,10 @@ jobs:
       run: cargo test --features serde --color=always -- --color=always
     - name: Check with no default features
       run: cargo check --no-default-features --color=always
+
+    - name: Clippy
+      if: ${{ matrix.run_clippy }}
+      run: cargo clippy --color=always
 
     - name: Install no_std toolchain
       if: ${{ matrix.run_no_std }}
