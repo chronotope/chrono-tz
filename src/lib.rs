@@ -151,7 +151,7 @@
 //! assert!(TZ_VARIANTS.iter().any(|v| *v == Tz::UTC));
 //! ```
 
-#![cfg_attr(not(feature="std"), no_std)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(feature = "std")]
 extern crate std as core;
@@ -161,10 +161,10 @@ extern crate chrono;
 #[cfg(feature = "serde")]
 mod serde;
 
-mod timezone_impl;
 mod binary_search;
-mod timezones;
 mod directory;
+mod timezone_impl;
+mod timezones;
 
 pub use directory::*;
 pub use timezones::Tz;
@@ -175,7 +175,6 @@ mod tests {
     use super::America::Danmarkshavn;
     use super::Asia::Dhaka;
     use super::Australia::Adelaide;
-    use super::UTC;
     use super::Europe::Amsterdam;
     use super::Europe::Berlin;
     use super::Europe::London;
@@ -185,9 +184,10 @@ mod tests {
     use super::Pacific::Apia;
     use super::Pacific::Noumea;
     use super::Pacific::Tahiti;
-    use super::US::Eastern;
     use super::Tz;
-    use chrono::{TimeZone, Duration};
+    use super::US::Eastern;
+    use super::UTC;
+    use chrono::{Duration, TimeZone};
 
     #[test]
     fn london_to_berlin() {

@@ -9,18 +9,18 @@
 extern crate chrono;
 extern crate chrono_tz;
 
-use chrono::{TimeZone, DateTime};
+use chrono::{DateTime, TimeZone};
 
-use chrono_tz::Europe::London;
-use chrono_tz::America::New_York;
-use chrono_tz::Australia::Adelaide;
-use chrono_tz::Asia::Kathmandu;
-use chrono_tz::Pacific::Apia;
-use chrono_tz::Etc::UTC;
 use chrono_tz::Africa::Tripoli;
-use chrono_tz::Asia::Jerusalem;
+use chrono_tz::America::New_York;
 use chrono_tz::Asia::Gaza;
+use chrono_tz::Asia::Jerusalem;
+use chrono_tz::Asia::Kathmandu;
+use chrono_tz::Australia::Adelaide;
+use chrono_tz::Etc::UTC;
+use chrono_tz::Europe::London;
 use chrono_tz::Europe::Moscow;
+use chrono_tz::Pacific::Apia;
 
 fn seconds<Tz1: TimeZone, Tz2: TimeZone>(from: DateTime<Tz1>, to: DateTime<Tz2>) -> i64 {
     to.signed_duration_since(from).num_seconds()
