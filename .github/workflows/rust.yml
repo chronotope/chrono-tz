@@ -11,7 +11,7 @@ jobs:
         include:
           - os: ubuntu-latest
             run_no_std: true
-            run_clippy: true
+            run_lint: true
 
     runs-on: ${{ matrix.os }}
 
@@ -26,16 +26,20 @@ jobs:
         auth_header="$(git config --local --get http.https://github.com/.extraheader)"
         git submodule sync --recursive
         git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+
+    - name: clippy
+      if: ${{ matrix.run_lint }}
+      run: cargo clippy --color=always
+    - name: rustfmt
+      if: ${{ matrix.run_lint }}
+      run: cargo fmt -- --color=always --check
+
     - name: Run tests
       run: cargo test --color=always -- --color=always
     - name: Run tests serde
       run: cargo test --features serde --color=always -- --color=always
     - name: Check with no default features
       run: cargo check --no-default-features --color=always
-
-    - name: Clippy
-      if: ${{ matrix.run_clippy }}
-      run: cargo clippy --color=always
 
     - name: Install no_std toolchain
       if: ${{ matrix.run_no_std }}

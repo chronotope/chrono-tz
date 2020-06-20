@@ -142,7 +142,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
         match *self {{"
     )?;
     for zone in &zones {
-        let timespans = table.timespans(&zone)?;
+        let timespans = table.timespans(&zone).unwrap();
         let zone_name = convert_bad_chars(zone);
         writeln!(
             timezone_file,
