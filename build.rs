@@ -17,7 +17,9 @@ use std::collections::BTreeSet;
 // ignored in this case, however this never happens in the tz database as it
 // stands.
 fn strip_comments(mut line: String) -> String {
-    line.find('#').map(|pos| line.truncate(pos));
+    if let Some(pos) = line.find('#'){
+        line.truncate(pos);
+    };
     line
 }
 
@@ -27,7 +29,9 @@ fn format_rest(rest: Vec<(i64, FixedTimespan)>) -> String {
     let mut ret = "&[\n".to_string();
     for (start, FixedTimespan { utc_offset, dst_offset, name }) in rest {
         ret.push_str(&format!(
-    "                    ({start}, FixedTimespan {{ utc_offset: {utc}, dst_offset: {dst}, name: \"{name}\" }}),\n",
+            "                    ({start}, FixedTimespan {{ \
+             utc_offset: {utc}, dst_offset: {dst}, name: \"{name}\" \
+             }}),\n",
             start = start,
             utc = utc_offset,
             dst = dst_offset,
@@ -59,72 +63,72 @@ fn convert_bad_chars(name: &str) -> String {
 // TimeZone for any contained struct that implements `Timespans`.
 fn write_timezone_file(timezone_file: &mut File, table: &Table) {
     let zones = table.zonesets.keys().chain(table.links.keys()).collect::<BTreeSet<_>>();
-    write!(timezone_file, "use ::timezone_impl::{{TimeSpans, FixedTimespanSet, FixedTimespan}};\n",).unwrap();
-    write!(timezone_file, "use core::fmt::{{Debug, Formatter, Error}};\n\n",).unwrap();
-    write!(timezone_file, "use core::str::FromStr;\n\n",).unwrap();
-    write!(timezone_file, "#[derive(Clone, Copy, PartialEq, Eq, Hash)]\npub enum Tz {{\n").unwrap();
+    writeln!(timezone_file, "use ::timezone_impl::{{TimeSpans, FixedTimespanSet, FixedTimespan}};",).unwrap();
+    writeln!(timezone_file, "use core::fmt::{{Debug, Formatter, Error}};\n",).unwrap();
+    writeln!(timezone_file, "use core::str::FromStr;\n",).unwrap();
+    writeln!(timezone_file, "#[derive(Clone, Copy, PartialEq, Eq, Hash)]\npub enum Tz {{").unwrap();
     for zone in &zones {
         let zone_name = convert_bad_chars(zone);
-        write!(timezone_file, "    {zone},\n", zone = zone_name).unwrap();
+        writeln!(timezone_file, "    {zone},", zone = zone_name).unwrap();
     }
-    write!(timezone_file, "}}\n\n").unwrap();
+    writeln!(timezone_file, "}}").unwrap();
 
-    write!(timezone_file,
+    writeln!(timezone_file,
 "impl FromStr for Tz {{
     #[cfg(feature = \"std\")]
     type Err = String;
     #[cfg(not(feature = \"std\"))]
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {{
-        match s {{\n").unwrap();
+        match s {{").unwrap();
     for zone in &zones {
         let zone_name = convert_bad_chars(zone);
-        write!(timezone_file,
-               "            \"{raw_zone_name}\" => Ok(Tz::{zone}),\n",
+        writeln!(timezone_file,
+               "            \"{raw_zone_name}\" => Ok(Tz::{zone}),",
                zone = zone_name,
                raw_zone_name = zone).unwrap();
     }
-    write!(timezone_file,
+    writeln!(timezone_file,
 "            #[cfg(feature = \"std\")]
             s => Err(format!(\"'{{}}' is not a valid timezone\", s.to_string())),
             #[cfg(not(feature = \"std\"))]
             _ => Err(\"received invalid timezone\"),
         }}
     }}
-}}\n\n").unwrap();
+}}\n").unwrap();
 
-    write!(timezone_file,
+    writeln!(timezone_file,
 "impl Tz {{
-    pub fn name(self: &Tz) -> &'static str {{
-        match *self {{\n").unwrap();
+    pub fn name(self) -> &'static str {{
+        match self {{").unwrap();
     for zone in &zones {
         let zone_name = convert_bad_chars(zone);
-        write!(timezone_file,
-               "            Tz::{zone} => \"{raw_zone_name}\",\n",
-               zone = zone_name,
-               raw_zone_name = zone).unwrap();
+        writeln!(timezone_file,
+                 "            Tz::{zone} => \"{raw_zone_name}\",",
+                 zone = zone_name,
+                 raw_zone_name = zone).unwrap();
     }
-    write!(timezone_file,
+    writeln!(timezone_file,
 "        }}
     }}
-}}\n\n").unwrap();
-    write!(timezone_file,
+}}\n").unwrap();
+    writeln!(timezone_file,
 "impl Debug for Tz {{
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {{
         write!(f, \"{{}}\", self.name())
     }}
-}}\n\n").unwrap();
-    write!(timezone_file,
+}}\n").unwrap();
+    writeln!(timezone_file,
 "impl TimeSpans for Tz {{
     fn timespans(&self) -> FixedTimespanSet {{
-        match *self {{\n").unwrap();
+        match *self {{").unwrap();
     for zone in &zones {
         let timespans = table.timespans(&zone).unwrap();
         let zone_name = convert_bad_chars(zone);
-        write!(
+        writeln!(
             timezone_file,
 "            Tz::{zone} => {{
-                const REST: &'static [(i64, FixedTimespan)] = {rest};
+                const REST: &[(i64, FixedTimespan)] = {rest};
                 FixedTimespanSet {{
                     first: FixedTimespan {{
                         utc_offset: {utc},
@@ -133,7 +137,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) {
                     }},
                     rest: REST
                 }}
-            }},\n\n",
+            }},\n",
             zone = zone_name,
             rest = format_rest(timespans.rest),
             utc = timespans.first.utc_offset,
@@ -158,12 +162,12 @@ pub static TZ_VARIANTS: [Tz; {num}] = [
 ",
     num=zones.len()).unwrap();
     for zone in &zones {
-        write!(timezone_file,
-"    Tz::{zone},\n",
-            zone = convert_bad_chars(zone)
+        writeln!(timezone_file,
+                 "    Tz::{zone},",
+                 zone = convert_bad_chars(zone)
         ).unwrap();
     }
-    write!(timezone_file, 
+    write!(timezone_file,
 "];").unwrap();
 
 }
@@ -173,30 +177,30 @@ pub static TZ_VARIANTS: [Tz; {num}] = [
 fn write_directory_file(directory_file: &mut File, table: &Table) {
 
     // add the `loose' zone definitions first at the top of the file
-    write!(directory_file, "use timezones::Tz;\n\n").unwrap();
+    writeln!(directory_file, "use timezones::Tz;\n").unwrap();
     let zones = table.zonesets.keys().chain(table.links.keys())
                 .filter(|zone| !zone.contains('/'))
                 .collect::<BTreeSet<_>>();
     for zone in zones {
         let zone = convert_bad_chars(zone);
-        write!(directory_file,
-              "pub const {name} : Tz = Tz::{name};\n",
-              name = zone).unwrap();
+        writeln!(directory_file,
+                 "pub const {name} : Tz = Tz::{name};",
+                 name = zone).unwrap();
     }
-    write!(directory_file, "\n").unwrap();
+    writeln!(directory_file).unwrap();
 
     // now add the `structured' zone names in submodules
     for entry in table.structure() {
         if entry.name.contains('/') { continue; }
         let module_name = convert_bad_chars(entry.name);
-        write!(directory_file, "pub mod {name} {{\n", name = module_name).unwrap();
-        write!(directory_file, "    use timezones::Tz;\n\n",).unwrap();
+        writeln!(directory_file, "pub mod {name} {{", name = module_name).unwrap();
+        writeln!(directory_file, "    use timezones::Tz;\n",).unwrap();
         for child in entry.children {
             match child {
                 Child::Submodule(name) => {
                     let submodule_name = convert_bad_chars(name);
-                    write!(directory_file, "    pub mod {name} {{\n", name = submodule_name).unwrap();
-                    write!(directory_file, "        use timezones::Tz;\n\n",).unwrap();
+                    writeln!(directory_file, "    pub mod {name} {{", name = submodule_name).unwrap();
+                    writeln!(directory_file, "        use timezones::Tz;\n",).unwrap();
                     let full_name = entry.name.to_string() + "/" + name;
                     for entry in table.structure() {
                         if entry.name == full_name {
@@ -205,8 +209,8 @@ fn write_directory_file(directory_file: &mut File, table: &Table) {
                                     Child::Submodule(_) => panic!("Depth of > 3 nested submodules not implemented!"),
                                     Child::TimeZone(name) => {
                                         let converted_name = convert_bad_chars(name);
-                                        write!(directory_file,
-                                    "        pub const {name} : Tz = Tz::{module_name}__{submodule_name}__{name};\n",
+                                        writeln!(directory_file,
+                                    "        pub const {name} : Tz = Tz::{module_name}__{submodule_name}__{name};",
                                             module_name = module_name,
                                             submodule_name = submodule_name,
                                             name = converted_name,
@@ -216,18 +220,18 @@ fn write_directory_file(directory_file: &mut File, table: &Table) {
                             }
                         }
                     }
-                    write!(directory_file, "    }}\n\n").unwrap();
+                    writeln!(directory_file, "    }}\n").unwrap();
                 },
                 Child::TimeZone(name) => {
                     let name = convert_bad_chars(name);
-                    write!(directory_file,
-                          "    pub const {name} : Tz = Tz::{module_name}__{name};\n",
-                          module_name = module_name,
-                          name = name).unwrap();
+                    writeln!(directory_file,
+                             "    pub const {name} : Tz = Tz::{module_name}__{name};",
+                             module_name = module_name,
+                             name = name).unwrap();
                 }
             }
         }
-        write!(directory_file, "}}\n\n").unwrap();
+        writeln!(directory_file, "}}\n").unwrap();
     }
 }
 
