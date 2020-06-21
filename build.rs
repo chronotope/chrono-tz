@@ -72,7 +72,12 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
     writeln!(timezone_file, "#[derive(Clone, Copy, PartialEq, Eq, Hash)]\npub enum Tz {{")?;
     for zone in &zones {
         let zone_name = convert_bad_chars(zone);
-        writeln!(timezone_file, "    {zone},", zone = zone_name)?;
+        writeln!(
+            timezone_file,
+            "    /// {raw_zone_name}\n    {zone},",
+            zone = zone_name,
+            raw_zone_name = zone
+        )?;
     }
     writeln!(timezone_file, "}}")?;
 
