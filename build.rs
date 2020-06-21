@@ -63,12 +63,20 @@ fn convert_bad_chars(name: &str) -> String {
 // TimeZone for any contained struct that implements `Timespans`.
 fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()> {
     let zones = table.zonesets.keys().chain(table.links.keys()).collect::<BTreeSet<_>>();
+    writeln!(timezone_file, "use core::fmt::{{Debug, Formatter, Error}};",)?;
+    writeln!(timezone_file, "use core::str::FromStr;\n",)?;
     writeln!(
         timezone_file,
-        "use ::timezone_impl::{{TimeSpans, FixedTimespanSet, FixedTimespan}};",
+        "use ::timezone_impl::{{TimeSpans, FixedTimespanSet, FixedTimespan}};\n",
     )?;
-    writeln!(timezone_file, "use core::fmt::{{Debug, Formatter, Error}};\n",)?;
-    writeln!(timezone_file, "use core::str::FromStr;\n",)?;
+    writeln!(
+        timezone_file,
+        "/// TimeZones built at compile time from the tz database
+///
+/// This implements [`chrono::TimeZone`] so that it may be used in and to
+/// construct chrono's DateTime type. See the root module documentation
+/// for details."
+    )?;
     writeln!(timezone_file, "#[derive(Clone, Copy, PartialEq, Eq, Hash)]\npub enum Tz {{")?;
     for zone in &zones {
         let zone_name = convert_bad_chars(zone);
