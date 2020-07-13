@@ -1,6 +1,6 @@
 use super::timezones::Tz;
 use binary_search::binary_search;
-use chrono::{FixedOffset, LocalResult, NaiveDate, NaiveDateTime, Offset, TimeZone};
+use chrono::{Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, Offset, TimeZone};
 use core::cmp::Ordering;
 use core::fmt::{Debug, Display, Error, Formatter};
 
@@ -10,9 +10,9 @@ use core::fmt::{Debug, Display, Error, Formatter};
 /// `FixedTimespan`s: `EST` and `EDT`, that are variously in effect.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct FixedTimespan {
-    /// The base offset from UTC, usually doesn't change unless the government changes something
+    /// The base offset from UTC; this usually doesn't change unless the government changes something
     pub utc_offset: i32,
-    /// The additional offset from UTC for this timespan
+    /// The additional offset from UTC for this timespan; typically for daylight saving time
     pub dst_offset: i32,
     /// The name of this timezone, for example the difference between `EDT`/`EST`
     pub name: &'static str,
@@ -42,6 +42,14 @@ pub struct TzOffset {
     offset: FixedTimespan,
 }
 
+/// Detailed timezone offset components that expose any special conditions currently in effect.
+pub trait OffsetComponents {
+    /// The base offset from UTC; this usually doesn't change unless the government changes something
+    fn base_utc_offset(&self) -> Duration;
+    /// The additional offset from UTC that is currently in effect; typically for daylight saving time
+    fn dst_offset(&self) -> Duration;
+}
+
 impl TzOffset {
     fn new(tz: Tz, offset: FixedTimespan) -> Self {
         TzOffset { tz, offset }
@@ -55,6 +63,16 @@ impl TzOffset {
                 LocalResult::Ambiguous(TzOffset::new(tz, a), TzOffset::new(tz, b))
             }
         }
+    }
+}
+
+impl OffsetComponents for TzOffset {
+    fn base_utc_offset(&self) -> Duration {
+        Duration::seconds(self.offset.utc_offset as i64)
+    }
+
+    fn dst_offset(&self) -> Duration {
+        Duration::seconds(self.offset.dst_offset as i64)
     }
 }
 
