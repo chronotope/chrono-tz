@@ -82,28 +82,6 @@
 //! # }
 //! ```
 //!
-//! You can get the raw offsets as well if you want to see the standard
-//! UTC offset as well as any special offsets in effect (such as DST)
-//! at a given time. Note that you need to import the [`OffsetComponents`]
-//! trait.
-//!
-//! ```
-//! # extern crate chrono;
-//! # extern crate chrono_tz;
-//! use chrono::{Duration, TimeZone};
-//! use chrono_tz::Europe::London;
-//! use chrono_tz::OffsetComponents;
-//!
-//! # fn main() {
-//! let london_time = London.ymd(2016, 5, 10).and_hms(12, 0, 0);
-//!
-//! // London typically has zero offset from UTC, but has a 1h adjustment forward
-//! // when summer time is in effect.
-//! assert_eq!(london_time.offset().base_utc_offset(), Duration::hours(0));
-//! assert_eq!(london_time.offset().dst_offset(), Duration::hours(1));
-//! # }
-//! ```
-//!
 //! Adding 24 hours across a daylight savings change causes a change
 //! in local time
 //!
