@@ -160,6 +160,25 @@ lto = true
 Otherwise, the additional binary size added by this library may overflow
 available program space and trigger a linker error.
 
+## Limiting the Timezone Table to Zones of Interest
+
+`Chrono-tz` by default generates timezones for all entries in the
+[IANA database](http://www.iana.org/time-zones). If you are interested
+in only a few timezones you can use an environment variable to
+select them. The environment variable is called CHRONO_TZ_BUILD_TIMEZONES
+and is a regular expression. It should be specified in your top-level build:
+
+```sh
+CHRONO_TZ_BUILD_TIMEZONES="(Europe/London|US/.*)" cargo build
+```
+
+This can significantly reduce the size of the generated database, depending
+on how many timezones you are interested in. Wikipedia has an [article
+listing the timezone names](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
+
+The filtering applied is liberal; if you use a pattern such as "US/.*" then `chrono-tz` will
+include all the zones that are linked, such as 'America/Denver', not just 'US/Mountain'.
+
 ## Future Improvements
 
 - Handle leap seconds
