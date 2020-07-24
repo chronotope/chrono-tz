@@ -167,7 +167,7 @@ mod timezone_impl;
 mod timezones;
 
 pub use directory::*;
-pub use timezone_impl::OffsetComponents;
+pub use timezone_impl::{OffsetComponents, OffsetName};
 pub use timezones::Tz;
 pub use timezones::TZ_VARIANTS;
 
