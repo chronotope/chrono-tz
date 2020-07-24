@@ -20,6 +20,7 @@ std = []
 
 [build-dependencies]
 parse-zoneinfo = { version = "0.3" }
+regex = { default-features = false, version = "1"  }
 
 [dev-dependencies]
 serde_test = "1"
