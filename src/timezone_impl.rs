@@ -105,9 +105,11 @@ pub trait OffsetComponents {
 pub trait OffsetName {
     /// The IANA TZDB identifier (ex: America/New_York)
     fn tz_id(&self) -> &str;
-    /// The abbreviation to use in a longer timestamp (ex: EST), taking into
-    /// account any special offsets that may be in effect. For example, at a given instant,
-    /// the time zone with ID America/New_York may be either EST or EDT.
+    /// The abbreviation to use in a longer timestamp (ex: EST)
+    ///
+    /// This takes into account any special offsets that may be in effect.
+    /// For example, at a given instant, the time zone with ID *America/New_York*
+    /// may be either *EST* or *EDT*.
     fn abbreviation(&self) -> &str;
 }
 
