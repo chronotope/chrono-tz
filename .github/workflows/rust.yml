@@ -42,14 +42,14 @@ jobs:
       run: cargo test --color=always -- --color=always
     - name: Run tests serde
       run: cargo test --features serde --color=always -- --color=always
-    - name: Check with no default features
-      run: cargo check --no-default-features --color=always
-
     - name: Run regex tests
       working-directory: ./tests/check-regex-filtering
       env:
         CHRONO_TZ_BUILD_TIMEZONES: (Europe/London|GMT)
       run: cargo test --color=always -- --color=always
+
+    - name: Check with no default features
+      run: cargo check --no-default-features --color=always
 
     - name: Install no_std toolchain
       if: ${{ matrix.run_no_std }}
