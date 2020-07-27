@@ -291,14 +291,14 @@ fn get_filter_regex() -> Option<Regex> {
                 return None;
             }
             match Regex::new(val) {
-                Ok(regex) => return Some(regex),
+                Ok(regex) => Some(regex),
                 Err(err) => panic!(
                     "The value '{:?}' for environment variable {} is not a valid regex, err={}",
                     val, FILTER_ENV_VAR_NAME, err
                 ),
             }
         }
-        Err(env::VarError::NotPresent) => return None,
+        Err(env::VarError::NotPresent) => None,
         Err(env::VarError::NotUnicode(s)) => panic!(
             "The value '{:?}' for environment variable {} is not valid Unicode",
             s, FILTER_ENV_VAR_NAME
