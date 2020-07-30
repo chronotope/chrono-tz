@@ -407,6 +407,14 @@ mod tests {
     }
 
     #[test]
+    fn test_display() {
+        assert_eq!(format!("{}", London), "Europe/London");
+        assert_eq!(format!("{}", Tz::Africa__Abidjan), "Africa/Abidjan");
+        assert_eq!(format!("{}", Tz::UTC), "UTC");
+        assert_eq!(format!("{}", Tz::Zulu), "Zulu");
+    }
+
+    #[test]
     fn test_impl_hash() {
         #[allow(dead_code)]
         #[derive(Hash)]
