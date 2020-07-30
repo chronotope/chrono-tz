@@ -77,6 +77,42 @@ pub trait OffsetComponents {
     fn dst_offset(&self) -> Duration;
 }
 
+/// Timezone offset name information.
+///
+/// This trait exposes display names that describe an offset in
+/// various situations.
+///
+/// ```
+/// # extern crate chrono;
+/// # extern crate chrono_tz;
+/// use chrono::{Duration, Offset, TimeZone};
+/// use chrono_tz::Europe::London;
+/// use chrono_tz::OffsetName;
+///
+/// # fn main() {
+/// let london_time = London.ymd(2016, 2, 10).and_hms(12, 0, 0);
+/// assert_eq!(london_time.offset().tz_id(), "Europe/London");
+/// // London is normally on GMT
+/// assert_eq!(london_time.offset().abbreviation(), "GMT");
+///
+/// let london_summer_time = London.ymd(2016, 5, 10).and_hms(12, 0, 0);
+/// // The TZ ID remains constant year round
+/// assert_eq!(london_summer_time.offset().tz_id(), "Europe/London");
+/// // During the summer, this becomes British Summer Time
+/// assert_eq!(london_summer_time.offset().abbreviation(), "BST");
+/// # }
+/// ```
+pub trait OffsetName {
+    /// The IANA TZDB identifier (ex: America/New_York)
+    fn tz_id(&self) -> &str;
+    /// The abbreviation to use in a longer timestamp (ex: EST)
+    ///
+    /// This takes into account any special offsets that may be in effect.
+    /// For example, at a given instant, the time zone with ID *America/New_York*
+    /// may be either *EST* or *EDT*.
+    fn abbreviation(&self) -> &str;
+}
+
 impl TzOffset {
     fn new(tz: Tz, offset: FixedTimespan) -> Self {
         TzOffset { tz, offset }
@@ -100,6 +136,16 @@ impl OffsetComponents for TzOffset {
 
     fn dst_offset(&self) -> Duration {
         Duration::seconds(self.offset.dst_offset as i64)
+    }
+}
+
+impl OffsetName for TzOffset {
+    fn tz_id(&self) -> &str {
+        self.tz.name()
+    }
+
+    fn abbreviation(&self) -> &str {
+        self.offset.name
     }
 }
 
