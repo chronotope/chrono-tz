@@ -63,7 +63,7 @@ fn convert_bad_chars(name: &str) -> String {
 // TimeZone for any contained struct that implements `Timespans`.
 fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()> {
     let zones = table.zonesets.keys().chain(table.links.keys()).collect::<BTreeSet<_>>();
-    writeln!(timezone_file, "use core::fmt::{{Debug, Formatter, Error}};",)?;
+    writeln!(timezone_file, "use core::fmt::{{self, Debug, Display, Formatter}};",)?;
     writeln!(timezone_file, "use core::str::FromStr;\n",)?;
     writeln!(
         timezone_file,
@@ -143,8 +143,16 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
     writeln!(
         timezone_file,
         "impl Debug for Tz {{
-    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {{
-        write!(f, \"{{}}\", self.name())
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {{
+        f.write_str(self.name().as_ref())
+    }}
+}}\n"
+    )?;
+    writeln!(
+        timezone_file,
+        "impl Display for Tz {{
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {{
+        f.write_str(self.name().as_ref())
     }}
 }}\n"
     )?;
