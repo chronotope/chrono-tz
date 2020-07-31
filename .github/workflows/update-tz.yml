@@ -41,9 +41,13 @@ jobs:
               git checkout -b "$tz_branch"
               git config user.name "GitHub Actions"
               git config user.email "quodlibetor@gmail.com"
-              git commit -m "Update tz $orig_tag -> $new_tag"
+              msg="Update tz $orig_tag -> $new_tag"
+              git commit -m "$msg"
               echo "::set-output name=did_update::yes"
               echo "::set-env name=PULL_REQUEST_FROM_BRANCH::${tz_branch}"
+              echo "::set-env name=PULL_REQUEST_TITLE::'$msg'"
+              echo "::set-env name=PULL_REQUEST_BODY=''"
+              echo "::set-env name=PULL_REQUEST_REVIEWERS='quodlibetor djzin'"
           else
               echo "::set-output name=did_update::no"
           fi
