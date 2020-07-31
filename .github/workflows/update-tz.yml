@@ -52,11 +52,12 @@ jobs:
               echo "::set-output name=did_update::no"
           fi
       - name: pull-request-action
-        uses: vsoch/pull-request-action@1.0.6
+        uses: quodlibetor/pull-request-action@fail-curl
         if: ${{ steps.update_tz.outputs.did_update == 'yes' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PULL_REQUEST_BRANCH: master
+          FAIL_ON_ERROR: 'yes'
       - name: no_update
         if: ${{ steps.update_tz.outputs.did_update == 'no' }}
         shell: sh
