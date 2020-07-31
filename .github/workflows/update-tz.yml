@@ -51,8 +51,8 @@ jobs:
           else
               echo "::set-output name=did_update::no"
           fi
-      - name: pull-request-action
-        uses: quodlibetor/pull-request-action@fail-curl
+      - name: Create Pull Request
+        uses: quodlibetor/pull-request-action@failcurl14
         if: ${{ steps.update_tz.outputs.did_update == 'yes' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
