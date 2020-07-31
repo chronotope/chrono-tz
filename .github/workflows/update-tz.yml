@@ -1,6 +1,8 @@
 name: Update TZ submodule
 
 on:
+  pull_request:
+    branches: [ tzchron, master ]
   schedule:
     - cron: "0 0 * * *"
 
@@ -41,16 +43,16 @@ jobs:
               git config user.email "quodlibetor@gmail.com"
               git commit -m "Update tz $orig_tag -> $new_tag"
               echo "::set-output name=did_update::yes"
-              echo "::set-output name=source_branch::$tz_branch"
+              echo "::set-env name=PULL_REQUEST_FROM_BRANCH::${tz_branch}"
           else
               echo "::set-output name=did_update::no"
           fi
-      - name: pull-request
-        uses: repo-sync/pull-request@v2.2
+      - name: pull-request-action
+        uses: vsoch/pull-request-action@1.0.6
         if: ${{ steps.update_tz.outputs.did_update == 'yes' }}
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          source_branch: ${{ steps.update_tz.outputs.source_branch }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PULL_REQUEST_BRANCH: master
       - name: no_update
         if: ${{ steps.update_tz.outputs.did_update == 'no' }}
         shell: sh
