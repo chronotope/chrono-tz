@@ -4,7 +4,6 @@ on:
   schedule:
     - cron: "0 0 * * *"
 
-
 jobs:
   check-for-update:
     runs-on: ubuntu-latest
@@ -37,21 +36,23 @@ jobs:
               git add tz
               tz_branch="update-tz-${new_tag}"
               git checkout -b "$tz_branch"
-              git config user.name "GitHub Actions"
+              git config user.name "Brandon W Maister"
               git config user.email "quodlibetor@gmail.com"
-              git commit -m "Update tz $orig_tag -> $new_tag"
+              msg="Update tz $orig_tag -> $new_tag"
+              git commit -m "$msg"
+              git push -u origin "$tz_branch"
               echo "::set-output name=did_update::yes"
-              echo "::set-output name=source_branch::$tz_branch"
+              echo "::set-env name=PULL_REQUEST_FROM_BRANCH::${tz_branch}"
+              echo "::set-env name=PULL_REQUEST_TITLE::$msg"
+              echo "::set-env name=PULL_REQUEST_BODY=''"
+              echo "::set-env name=PULL_REQUEST_REVIEWERS='quodlibetor djzin'"
           else
               echo "::set-output name=did_update::no"
           fi
-      - name: pull-request
-        uses: repo-sync/pull-request@v2.2
+      - name: Create Pull Request
+        uses: quodlibetor/pull-request-action@1.0.6-patch1
         if: ${{ steps.update_tz.outputs.did_update == 'yes' }}
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          source_branch: ${{ steps.update_tz.outputs.source_branch }}
-      - name: no_update
-        if: ${{ steps.update_tz.outputs.did_update == 'no' }}
-        shell: sh
-        run: echo nope
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PULL_REQUEST_BRANCH: master
+          FAIL_ON_ERROR: 'yes'
