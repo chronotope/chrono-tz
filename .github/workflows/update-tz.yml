@@ -43,9 +43,10 @@ jobs:
               git config user.email "quodlibetor@gmail.com"
               msg="Update tz $orig_tag -> $new_tag"
               git commit -m "$msg"
+              git push -u origin "$tz_branch"
               echo "::set-output name=did_update::yes"
               echo "::set-env name=PULL_REQUEST_FROM_BRANCH::${tz_branch}"
-              echo "::set-env name=PULL_REQUEST_TITLE::'$msg'"
+              echo "::set-env name=PULL_REQUEST_TITLE::$msg"
               echo "::set-env name=PULL_REQUEST_BODY=''"
               echo "::set-env name=PULL_REQUEST_REVIEWERS='quodlibetor djzin'"
           else
