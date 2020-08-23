@@ -209,15 +209,15 @@ mod tests {
     }
 
     #[test]
-    fn test_addition_across_tzs() {
+    fn test_addition_across_dst_boundary() {
         use chrono::TimeZone;
-        let three_hours = Duration::hours(2);
+        let two_hours = Duration::hours(2);
         let edt = Eastern.ymd(2019, 11, 3).and_hms(0, 0, 0);
-        let est = edt + three_hours;
+        let est = edt + two_hours;
 
         assert_eq!(edt.to_string(), "2019-11-03 00:00:00 EDT".to_string());
         assert_eq!(est.to_string(), "2019-11-03 01:00:00 EST".to_string());
-        assert_eq!(est.timestamp(), edt.timestamp() + three_hours.num_seconds());
+        assert_eq!(est.timestamp(), edt.timestamp() + two_hours.num_seconds());
     }
 
     #[test]
