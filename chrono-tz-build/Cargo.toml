@@ -1,6 +1,6 @@
 [package]
 name = "chrono-tz-build"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Brandon W Maister <quodlibetor@gmail.com>"]
 edition = "2018"
 description = "internal build script for chrono-tz"

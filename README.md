@@ -1,4 +1,4 @@
-# Chrono-TZ 0.5.3
+# Chrono-TZ 0.6
 
 `Chrono-TZ` is a library that provides implementors of the
 [`TimeZone`][timezone] trait for [`rust-chrono`][chrono]. The
@@ -23,7 +23,7 @@ Put this in your `Cargo.toml`:
 ```toml
 [dependencies]
 chrono = "0.4"
-chrono-tz = "0.5"
+chrono-tz = "0.6"
 ```
 
 Then you will need to write (in your crate root):
