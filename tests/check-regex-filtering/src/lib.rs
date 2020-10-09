@@ -1,5 +1,5 @@
 /// This test is compiled by the Github workflows with the
-/// filter regex set thusly: CHRONO_TZ_BUILD_TIMEZONES="(Europe/London|GMT)"
+/// filter regex set thusly: CHRONO_TZ_TIMEZONE_FILTER="(Europe/London|GMT)"
 ///
 /// We use it to check two things:
 /// 1) That the compiled chrono-tz contains the correct timezones (a compilation

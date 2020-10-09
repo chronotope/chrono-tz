@@ -6,4 +6,4 @@ edition = "2018"
 
 [dependencies]
 chrono = "0.4"
-chrono-tz = { path = "../../", default-features = false }
+chrono-tz = { path = "../../", default-features = false, features = [ "filter-by-regex" ] }

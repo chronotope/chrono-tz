@@ -1,7 +1,8 @@
 extern crate parse_zoneinfo;
+#[cfg(feature = "filter-by-regex")]
 extern crate regex;
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::BTreeSet;
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
@@ -13,7 +14,8 @@ use parse_zoneinfo::table::{Table, TableBuilder};
 use parse_zoneinfo::transitions::FixedTimespan;
 use parse_zoneinfo::transitions::TableTransitions;
 
-use regex::Regex;
+/// The name of the environment variable which possibly holds the filter regex.
+const FILTER_ENV_VAR_NAME: &str = "CHRONO_TZ_TIMEZONE_FILTER";
 
 // This function is needed until zoneinfo_parse handles comments correctly.
 // Technically a '#' symbol could occur between double quotes and should be
@@ -285,99 +287,121 @@ fn write_directory_file(directory_file: &mut File, table: &Table) -> io::Result<
     Ok(())
 }
 
-/// The name of the environment variable which possibly holds the filter regex.
-const FILTER_ENV_VAR_NAME: &str = "CHRONO_TZ_BUILD_TIMEZONES";
-
-/// Checks the CHRONO_TZ_BUILD_TIMEZONES environment variable.
-/// Converts it to a regex if set. Panics if the regex is not valid, as we want
-/// to fail the build if that happens.
-fn get_filter_regex() -> Option<Regex> {
-    match env::var(FILTER_ENV_VAR_NAME) {
-        Ok(val) => {
-            let val = val.trim();
-            if val.is_empty() {
-                return None;
-            }
-            match Regex::new(val) {
-                Ok(regex) => Some(regex),
-                Err(err) => panic!(
-                    "The value '{:?}' for environment variable {} is not a valid regex, err={}",
-                    val, FILTER_ENV_VAR_NAME, err
-                ),
-            }
-        }
-        Err(env::VarError::NotPresent) => None,
-        Err(env::VarError::NotUnicode(s)) => panic!(
-            "The value '{:?}' for environment variable {} is not valid Unicode",
-            s, FILTER_ENV_VAR_NAME
-        ),
-    }
+/// Stub module because filter-by-regex feature is not enabled
+#[cfg(not(feature = "filter-by-regex"))]
+mod filter {
+    /// stub function because filter-by-regex feature is not enabled
+    pub(crate) fn maybe_filter_timezone_table(_table: &mut super::Table) {}
 }
 
-/// Insert a new name in the list of names to keep. If the name has 3
-/// parts, then also insert the 2-part prefix. If we don't do this we will lose
-/// half of Indiana in `directory.rs`. But we *don't* want to keep one-part names,
-/// otherwise we will inevitably end up with 'America' and include too much as
-/// a consequence.
-fn insert_keep_entry(keep: &mut HashSet<String>, new_value: &str) {
-    let mut parts = new_value.split('/');
-    if let (Some(p1), Some(p2), Some(_), None) =
-        (parts.next(), parts.next(), parts.next(), parts.next())
-    {
-        keep.insert(format!("{}/{}", p1, p2));
-    }
+/// Module containing code supporting filter-by-regex feature
+#[cfg(feature = "filter-by-regex")]
+mod filter {
+    use std::collections::HashSet;
+    use std::env;
 
-    keep.insert(new_value.to_string());
-}
+    use regex::Regex;
 
-/// Filter `table` by applying `filter_regex`.
-fn filter_timezone_table(table: &mut Table, filter_regex: Regex) {
-    // Compute the transitive closure of things to keep.
-    // Doing this, instead of just filtering `zonesets` and `links` by the
-    // regiex, helps to keep the `structure()` intact.
-    let mut keep = HashSet::new();
-    for (k, v) in &table.links {
-        if filter_regex.is_match(k) {
-            insert_keep_entry(&mut keep, k);
-        }
-        if filter_regex.is_match(v) {
-            insert_keep_entry(&mut keep, v);
+    use crate::{Table, FILTER_ENV_VAR_NAME};
+
+    /// Filter `table` by applying [`FILTER_ENV_VAR_NAME`].
+    pub(crate) fn maybe_filter_timezone_table(table: &mut Table) {
+        if let Some(filter_regex) = get_filter_regex() {
+            filter_timezone_table(table, filter_regex);
         }
     }
 
-    let mut n = 0;
-    loop {
-        let len = keep.len();
+    /// Checks the `CHRONO_TZ_TIMEZONE_FILTER` environment variable.
+    /// Converts it to a regex if set. Panics if the regex is not valid, as we want
+    /// to fail the build if that happens.
+    fn get_filter_regex() -> Option<Regex> {
+        match env::var(FILTER_ENV_VAR_NAME) {
+            Ok(val) => {
+                let val = val.trim();
+                if val.is_empty() {
+                    return None;
+                }
+                match Regex::new(val) {
+                    Ok(regex) => Some(regex),
+                    Err(err) => panic!(
+                        "The value '{:?}' for environment variable {} is not a valid regex, err={}",
+                        val, FILTER_ENV_VAR_NAME, err
+                    ),
+                }
+            }
+            Err(env::VarError::NotPresent) => None,
+            Err(env::VarError::NotUnicode(s)) => panic!(
+                "The value '{:?}' for environment variable {} is not valid Unicode",
+                s, FILTER_ENV_VAR_NAME
+            ),
+        }
+    }
 
+    /// Insert a new name in the list of names to keep. If the name has 3
+    /// parts, then also insert the 2-part prefix. If we don't do this we will lose
+    /// half of Indiana in `directory.rs`. But we *don't* want to keep one-part names,
+    /// otherwise we will inevitably end up with 'America' and include too much as
+    /// a consequence.
+    fn insert_keep_entry(keep: &mut HashSet<String>, new_value: &str) {
+        let mut parts = new_value.split('/');
+        if let (Some(p1), Some(p2), Some(_), None) =
+            (parts.next(), parts.next(), parts.next(), parts.next())
+        {
+            keep.insert(format!("{}/{}", p1, p2));
+        }
+
+        keep.insert(new_value.to_string());
+    }
+
+    /// Filter `table` by applying `filter_regex`.
+    fn filter_timezone_table(table: &mut Table, filter_regex: Regex) {
+        // Compute the transitive closure of things to keep.
+        // Doing this, instead of just filtering `zonesets` and `links` by the
+        // regiex, helps to keep the `structure()` intact.
+        let mut keep = HashSet::new();
         for (k, v) in &table.links {
-            if keep.contains(k) && !keep.contains(v) {
-                insert_keep_entry(&mut keep, v);
-            }
-            if keep.contains(v) && !keep.contains(k) {
+            if filter_regex.is_match(k) {
                 insert_keep_entry(&mut keep, k);
             }
+            if filter_regex.is_match(v) {
+                insert_keep_entry(&mut keep, v);
+            }
         }
 
-        if keep.len() == len {
-            break;
+        let mut n = 0;
+        loop {
+            let len = keep.len();
+
+            for (k, v) in &table.links {
+                if keep.contains(k) && !keep.contains(v) {
+                    insert_keep_entry(&mut keep, v);
+                }
+                if keep.contains(v) && !keep.contains(k) {
+                    insert_keep_entry(&mut keep, k);
+                }
+            }
+
+            if keep.len() == len {
+                break;
+            }
+
+            n += 1;
+            if n == 50 {
+                println!("cargo:warning=Recursion limit reached while building filter list");
+                break;
+            }
         }
 
-        n += 1;
-        if n == 50 {
-            println!("cargo:warning=Recursion limit reached while building filter list");
-            break;
-        }
+        // Actually do the filtering.
+        table.links.retain(|k, v| keep.contains(k) || keep.contains(v));
+
+        table
+            .zonesets
+            .retain(|k, _| filter_regex.is_match(&k) || keep.iter().any(|s| k.starts_with(s)));
     }
-
-    // Actually do the filtering.
-    table.links.retain(|k, v| keep.contains(k) || keep.contains(v));
-
-    table
-        .zonesets
-        .retain(|k, _| filter_regex.is_match(&k) || keep.iter().any(|s| k.starts_with(s)));
 }
 
-fn main() {
+pub fn main() {
     println!("cargo:rerun-if-env-changed={}", FILTER_ENV_VAR_NAME);
 
     let parser = LineParser::new();
@@ -420,9 +444,7 @@ fn main() {
     }
 
     let mut table = table.build();
-    if let Some(filter_regex) = get_filter_regex() {
-        filter_timezone_table(&mut table, filter_regex);
-    }
+    filter::maybe_filter_timezone_table(&mut table);
 
     let timezone_path = Path::new(&env::var("OUT_DIR").unwrap()).join("timezones.rs");
     let mut timezone_file = File::create(&timezone_path).unwrap();
