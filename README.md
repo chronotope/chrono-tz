@@ -139,6 +139,7 @@ assert_eq!(utc.to_string(), "2016-10-21 23:00:00 UTC");
 
 To use this library without depending on the Rust standard library, put this
 in your `Cargo.toml`:
+
 ```toml
 [dependencies]
 chrono = { version = "0.4", default-features = false }
@@ -159,6 +160,32 @@ lto = true
 
 Otherwise, the additional binary size added by this library may overflow
 available program space and trigger a linker error.
+
+## Limiting the Timezone Table to Zones of Interest
+
+`Chrono-tz` by default generates timezones for all entries in the [IANA database][]. If you are
+interested in only a few timezones you can use enable the `filter-by-regex` feature and set an
+environment variable to select them. The environment variable is called
+`CHRONO_TZ_TIMEZONE_FILTER` and is a regular expression. It should be specified in your top-level
+build:
+
+```toml
+[dependencies]
+chrono-tz = { version = "0.6", features = [ "filter-by-regex" ] }
+```
+
+```sh
+CHRONO_TZ_TIMEZONE_FILTER="(Europe/London|US/.*)" cargo build
+```
+
+This can significantly reduce the size of the generated database, depending on how many timezones
+you are interested in. Wikipedia has an [article listing the timezone names][wiki-list].
+
+The filtering applied is liberal; if you use a pattern such as "US/.*" then `chrono-tz` will
+include all the zones that are linked, such as "America/Denver", not just "US/Mountain".
+
+[IANA database]: http://www.iana.org/time-zones
+[wiki-list]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
 ## Future Improvements
 

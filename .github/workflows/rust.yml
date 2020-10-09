@@ -30,18 +30,15 @@ jobs:
         git submodule sync --recursive
         git -c "http.extraheader=$auth_header" -c protocol.version=2 \
             submodule update --init --force --recursive --depth=1
-
-    - name: clippy
-      if: ${{ matrix.run_lint }}
-      run: cargo clippy --color=always
-    - name: rustfmt
-      if: ${{ matrix.run_lint }}
-      run: cargo fmt -- --color=always --check
-
     - name: Run tests
       run: cargo test --color=always -- --color=always
+
     - name: Run tests serde
       run: cargo test --features serde --color=always -- --color=always
+
+    - name: Run regex tests
+      run: bin/test-regex-filtering.sh
+
     - name: Check with no default features
       run: cargo check --no-default-features --color=always
 
@@ -64,3 +61,36 @@ jobs:
       run: |
         cargo clean
         cargo build --features serde1
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Checkout submodules
+      shell: bash
+      run: |
+        auth_header="$(git config --local --get http.https://github.com/.extraheader)"
+        git submodule sync --recursive
+        git -c "http.extraheader=$auth_header" -c protocol.version=2 \
+            submodule update --init --force --recursive --depth=1
+
+    - name: clippy
+      run: cargo clippy --color=always
+
+    - name: rustfmt
+      run: cargo fmt -- --color=always --check
+
+    # chrono-tz-build
+
+    - name: clippy chrono-tz-build
+      working-directory: ./chrono-tz-build
+      run: cargo clippy --color=always
+
+    - name: clippy chrono-tz-build filter-by-regex
+      working-directory: ./chrono-tz-build
+      run: cargo clippy --features filter-by-regex --color=always
+
+    - name: rustfmt
+      working-directory: ./chrono-tz-build
+      run: cargo fmt -- --color=always --check
