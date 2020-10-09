@@ -3,10 +3,14 @@ name = "chrono-tz-build"
 version = "0.0.1"
 authors = ["Brandon W Maister <quodlibetor@gmail.com>"]
 edition = "2018"
+description = "internal build script for chrono-tz"
+readme = "README.md"
+license = "MIT/Apache-2.0"
+license_file = "../LICENSE"
+documentation = "https://docs.rs/chrono-tz-build"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default-features = []
 filter-by-regex = ["regex"]
 
 [dependencies]
