@@ -295,7 +295,6 @@ fn main() {
         "tz/etcetera",
         "tz/europe",
         "tz/northamerica",
-        "tz/pacificnew",
         "tz/southamerica",
     ];
 
