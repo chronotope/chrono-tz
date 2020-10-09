@@ -13,12 +13,12 @@ jobs:
         id: update_tz
         shell: sh
         run: |
-          set -xeu
-
           auth_header="$(git config --local --get http.https://github.com/.extraheader)"
           git submodule sync --recursive
           git -c "http.extraheader=$auth_header" -c protocol.version=2 \
               submodule update --init --force --recursive
+
+          set -xeu
 
           cd tz
 
@@ -54,5 +54,5 @@ jobs:
         if: ${{ steps.update_tz.outputs.did_update == 'yes' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PULL_REQUEST_BRANCH: master
+          PULL_REQUEST_BRANCH: main
           FAIL_ON_ERROR: 'yes'
