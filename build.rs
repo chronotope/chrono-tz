@@ -302,7 +302,7 @@ fn main() {
     let lines = tzfiles
         .iter()
         .map(Path::new)
-        .map(|p| Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap_or("".to_string())).join(p))
+        .map(|p| Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap_or_else(String::new)).join(p))
         .map(File::open)
         .map(Result::unwrap)
         .map(BufReader::new)
