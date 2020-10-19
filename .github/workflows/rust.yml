@@ -2,7 +2,7 @@ name: Rust
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'update-tz*' ]
   pull_request:
     branches: [ '*' ]
 
