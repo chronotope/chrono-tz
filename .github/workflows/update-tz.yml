@@ -25,7 +25,7 @@ jobs:
           git fetch --tags --quiet origin
           orig_tag="$(git describe)"
 
-          git checkout master
+          git checkout main
           git pull --ff-only
 
           new_tag="$(git describe --abbrev=0)"
