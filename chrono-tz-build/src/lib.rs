@@ -94,32 +94,26 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
     }
     writeln!(timezone_file, "}}")?;
 
-    writeln!(
-        timezone_file,
-        "impl FromStr for Tz {{
-    #[cfg(feature = \"std\")]
-    type Err = String;
-    #[cfg(not(feature = \"std\"))]
-    type Err = &'static str;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {{
-        match s {{"
-    )?;
+    let mut map = phf_codegen::Map::new();
     for zone in &zones {
-        let zone_name = convert_bad_chars(zone);
-        writeln!(
-            timezone_file,
-            "            \"{raw_zone_name}\" => Ok(Tz::{zone}),",
-            zone = zone_name,
-            raw_zone_name = zone
-        )?;
+        map.entry(zone, &format!("Tz::{}", convert_bad_chars(zone)));
     }
+    writeln!(timezone_file, "static TIMEZONES: ::phf::Map<&'static str, Tz> = \n{};", map.build())?;
+
     writeln!(
         timezone_file,
-        "            #[cfg(feature = \"std\")]
-            s => Err(format!(\"'{{}}' is not a valid timezone\", s.to_string())),
-            #[cfg(not(feature = \"std\"))]
-            _ => Err(\"received invalid timezone\"),
-        }}
+        "#[cfg(feature = \"std\")]
+pub type ParseError = String;
+#[cfg(not(feature = \"std\"))]
+pub type ParseError = &'static str;
+
+impl FromStr for Tz {{
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {{
+        #[cfg(feature = \"std\")]
+        return TIMEZONES.get(s).cloned().ok_or_else(|| format!(\"'{{}}' is not a valid timezone\", s));
+        #[cfg(not(feature = \"std\"))]
+        return TIMEZONES.get(s).cloned().ok_or(\"received invalid timezone\");
     }}
 }}\n"
     )?;

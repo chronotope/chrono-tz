@@ -16,3 +16,5 @@ filter-by-regex = ["regex"]
 [dependencies]
 parse-zoneinfo = { version = "0.3" }
 regex = { default-features = false, version = "1", optional = true }
+phf_codegen = "0.10"
+phf = "0.10"

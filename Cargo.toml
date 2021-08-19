@@ -9,10 +9,12 @@ repository = "https://github.com/chronotope/chrono-tz"
 documentation = "https://docs.rs/chrono-tz"
 readme = "README.md"
 license = "MIT/Apache-2.0"
+resolver = "2"
 
 [dependencies]
 chrono = { version = "0.4", default-features = false }
 serde = { version = "1", optional = true, default-features = false }
+phf = { version = "0.10", default-features = false }
 
 [features]
 default = ["std"]
