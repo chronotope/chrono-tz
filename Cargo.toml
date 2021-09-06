@@ -14,12 +14,14 @@ resolver = "2"
 [dependencies]
 chrono = { version = "0.4", default-features = false }
 serde = { version = "1", optional = true, default-features = false }
-phf = { version = "0.10", default-features = false }
+phf = { version = "0.10", default-features = false, features = ["uncased"] }
+uncased = { version = "0.9", optional = true, default-features = false }
 
 [features]
 default = ["std"]
 std = []
 filter-by-regex = ["chrono-tz-build/filter-by-regex"]
+uncased_09 = ["uncased", "chrono-tz-build/uncased_09"]
 
 [build-dependencies]
 chrono-tz-build = { path = "./chrono-tz-build", version = "0.0.1" }

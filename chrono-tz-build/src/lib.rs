@@ -100,6 +100,21 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
     }
     writeln!(timezone_file, "static TIMEZONES: ::phf::Map<&'static str, Tz> = \n{};", map.build())?;
 
+    #[cfg(feature = "uncased_09")]
+    {
+        writeln!(timezone_file, "use uncased::UncasedStr;\n",)?;
+        let mut map = phf_codegen::Map::new();
+        for zone in &zones {
+            map.entry(uncased::UncasedStr::new(zone), &format!("Tz::{}", convert_bad_chars(zone)));
+        }
+        writeln!(
+            timezone_file,
+            "static TIMEZONES_UNCASED: ::phf::Map<&'static uncased::UncasedStr, Tz> = \n{};",
+            // FIXME(petrosagg): remove this once rust-phf/rust-phf#232 is released
+            map.build().to_string().replace("::std::mem::transmute", "::core::mem::transmute")
+        )?;
+    }
+
     writeln!(
         timezone_file,
         "#[cfg(feature = \"std\")]
@@ -136,9 +151,27 @@ impl FromStr for Tz {{
     writeln!(
         timezone_file,
         "        }}
-    }}
-}}\n"
+    }}"
     )?;
+
+    #[cfg(feature = "uncased_09")]
+    {
+        writeln!(
+            timezone_file,
+            r#"
+    #[cfg(feature = "uncased_09")]
+    /// Parses a timezone string in a case-insensitive way
+    pub fn from_str_insensitive(s: &str) -> Result<Self, ParseError> {{
+        #[cfg(feature = "std")]
+        return TIMEZONES_UNCASED.get(s.into()).cloned().ok_or_else(|| format!("'{{}}' is not a valid timezone", s));
+        #[cfg(not(feature = "std"))]
+        return TIMEZONES_UNCASED.get(s.into()).cloned().ok_or("received invalid timezone");
+    }}"#
+        )?;
+    }
+
+    writeln!(timezone_file, "}}")?;
+
     writeln!(
         timezone_file,
         "impl Debug for Tz {{
