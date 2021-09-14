@@ -11,3 +11,4 @@ chrono-tz = { path = "../../", default-features = false }
 
 [features]
 serde1 = ["chrono-tz/serde"]
+case_insensitive = ["chrono-tz/case_insensitive"]

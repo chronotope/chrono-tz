@@ -158,7 +158,7 @@ extern crate std as core;
 
 extern crate chrono;
 extern crate phf;
-#[cfg(feature = "uncased_09")]
+#[cfg(feature = "case_insensitive")]
 extern crate uncased;
 
 #[cfg(feature = "serde")]
