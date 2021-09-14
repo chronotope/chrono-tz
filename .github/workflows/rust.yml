@@ -10,7 +10,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-16.04, macos-latest]
+        os: [ubuntu-latest, ubuntu-18.04, macos-latest]
         include:
           - os: ubuntu-latest
             run_no_std: true
