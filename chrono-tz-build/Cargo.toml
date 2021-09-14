@@ -12,7 +12,7 @@ documentation = "https://docs.rs/chrono-tz-build"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 filter-by-regex = ["regex"]
-case_insensitive = ["uncased"]
+case-insensitive = ["uncased"]
 
 [dependencies]
 parse-zoneinfo = { version = "0.3" }

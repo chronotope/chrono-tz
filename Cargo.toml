@@ -20,7 +20,7 @@ uncased = { version = "0.9", optional = true, default-features = false }
 default = ["std"]
 std = []
 filter-by-regex = ["chrono-tz-build/filter-by-regex"]
-case_insensitive = ["uncased", "chrono-tz-build/case_insensitive"]
+case-insensitive = ["uncased", "chrono-tz-build/case-insensitive"]
 
 [build-dependencies]
 chrono-tz-build = { path = "./chrono-tz-build", version = "0.0.1" }

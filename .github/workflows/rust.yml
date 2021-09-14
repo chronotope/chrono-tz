@@ -64,12 +64,12 @@ jobs:
         cargo clean
         cargo build --features serde1
 
-    - name: Verify builds on no_std with uncased
+    - name: Verify builds on no_std case-insensitive
       if: ${{ matrix.run_no_std }}
       working-directory: ./tests/check-nostd
       run: |
         cargo clean
-        cargo build --features case_insensitive
+        cargo build --features case-insensitive
 
   lint:
     runs-on: ubuntu-latest
@@ -96,13 +96,9 @@ jobs:
       working-directory: ./chrono-tz-build
       run: cargo clippy --color=always
 
-    - name: clippy chrono-tz-build filter-by-regex
+    - name: clippy chrono-tz-build all features
       working-directory: ./chrono-tz-build
-      run: cargo clippy --features filter-by-regex --color=always
-
-    - name: clippy chrono-tz-build case_insensitive
-      working-directory: ./chrono-tz-build
-      run: cargo clippy --features case_insensitive --color=always
+      run: cargo clippy --all-features --color=always
 
     - name: rustfmt
       working-directory: ./chrono-tz-build
