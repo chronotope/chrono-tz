@@ -157,6 +157,9 @@
 extern crate std as core;
 
 extern crate chrono;
+extern crate phf;
+#[cfg(feature = "case_insensitive")]
+extern crate uncased;
 
 #[cfg(feature = "serde")]
 mod serde;
@@ -168,6 +171,7 @@ mod timezones;
 
 pub use directory::*;
 pub use timezone_impl::{OffsetComponents, OffsetName};
+pub use timezones::ParseError;
 pub use timezones::Tz;
 pub use timezones::TZ_VARIANTS;
 

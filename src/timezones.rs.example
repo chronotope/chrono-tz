@@ -12,17 +12,13 @@ pub enum Tz {
     Europe__Rome,
 }
 
+// Perfect hash table of timezone string -> Tz
+static TIMEZONES: phf::Map<&'static str, Tz> = /* ... */
+
 impl FromStr for Tz {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, String> {
-        match s {
-            "America/New_York" => Ok(Tz::America__New_York),
-            "America/Toronto" => Ok(Tz::America__Toronto),
-            "Europe/London" => Ok(Tz::Europe__London),
-            "Europe/Moscow" => Ok(Tz::Europe__Moscow),
-            "Europe/Rome" => Ok(Tz::Europe__Rome),
-             s => Err(s.to_string())
-        }
+        TIMEZONES.get(s).cloned().ok_or(s.to_string())
     }
 }
 

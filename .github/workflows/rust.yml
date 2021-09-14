@@ -33,8 +33,8 @@ jobs:
     - name: Run tests
       run: cargo test --color=always -- --color=always
 
-    - name: Run tests serde
-      run: cargo test --features serde --color=always -- --color=always
+    - name: Run tests with all features
+      run: cargo test --all-features --color=always -- --color=always
 
     - name: Run regex tests
       run: bin/test-regex-filtering.sh
@@ -49,18 +49,27 @@ jobs:
         toolchain: stable
         override: true
         target: thumbv7m-none-eabi
+
     - name: Verify builds on no_std no features
       if: ${{ matrix.run_no_std }}
       working-directory: ./tests/check-nostd
       run: |
         cargo clean
         cargo build --no-default-features
+
     - name: Verify builds on no_std with serde
       if: ${{ matrix.run_no_std }}
       working-directory: ./tests/check-nostd
       run: |
         cargo clean
         cargo build --features serde1
+
+    - name: Verify builds on no_std with uncased
+      if: ${{ matrix.run_no_std }}
+      working-directory: ./tests/check-nostd
+      run: |
+        cargo clean
+        cargo build --features case_insensitive
 
   lint:
     runs-on: ubuntu-latest
@@ -90,6 +99,10 @@ jobs:
     - name: clippy chrono-tz-build filter-by-regex
       working-directory: ./chrono-tz-build
       run: cargo clippy --features filter-by-regex --color=always
+
+    - name: clippy chrono-tz-build case_insensitive
+      working-directory: ./chrono-tz-build
+      run: cargo clippy --features case_insensitive --color=always
 
     - name: rustfmt
       working-directory: ./chrono-tz-build
