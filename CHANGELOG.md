@@ -9,3 +9,6 @@ Chrono-tz Changelog
 * **feature** Add support for filtering the set of timezones with a new `filter-by-regex` feature
   which uses `CHRONO_TZ_TIMEZONE_FILTER` env var. It should be set to a regular expression of
   timezones to include.
+
+* **feature** Add support for case-insensitive timezone matching via the `case-insensitive`
+  feature.

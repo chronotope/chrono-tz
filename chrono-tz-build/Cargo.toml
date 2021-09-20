@@ -1,6 +1,6 @@
 [package]
 name = "chrono-tz-build"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Brandon W Maister <quodlibetor@gmail.com>"]
 edition = "2018"
 description = "internal build script for chrono-tz"
@@ -12,7 +12,7 @@ documentation = "https://docs.rs/chrono-tz-build"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 filter-by-regex = ["regex"]
-case_insensitive = ["uncased"]
+case-insensitive = ["uncased"]
 
 [dependencies]
 parse-zoneinfo = { version = "0.3" }

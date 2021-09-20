@@ -100,7 +100,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
     }
     writeln!(timezone_file, "static TIMEZONES: ::phf::Map<&'static str, Tz> = \n{};", map.build())?;
 
-    #[cfg(feature = "case_insensitive")]
+    #[cfg(feature = "case-insensitive")]
     {
         writeln!(timezone_file, "use uncased::UncasedStr;\n",)?;
         let mut map = phf_codegen::Map::new();
@@ -154,12 +154,12 @@ impl FromStr for Tz {{
     }}"
     )?;
 
-    #[cfg(feature = "case_insensitive")]
+    #[cfg(feature = "case-insensitive")]
     {
         writeln!(
             timezone_file,
             r#"
-    #[cfg(feature = "case_insensitive")]
+    #[cfg(feature = "case-insensitive")]
     /// Parses a timezone string in a case-insensitive way
     pub fn from_str_insensitive(s: &str) -> Result<Self, ParseError> {{
         #[cfg(feature = "std")]
