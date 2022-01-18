@@ -4,6 +4,12 @@ use chrono::{Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, Offse
 use core::cmp::Ordering;
 use core::fmt::{Debug, Display, Error, Formatter};
 
+impl Default for Tz {
+    fn default() -> Self {
+       Tz::UTC
+    }
+}
+
 /// An Offset that applies for a period of time
 ///
 /// For example, [`::US::Eastern`] is composed of at least two
