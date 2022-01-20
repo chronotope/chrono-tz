@@ -1,6 +1,9 @@
 use super::timezones::Tz;
+#[cfg(feature = "chrono")]
 use binary_search::binary_search;
+#[cfg(feature = "chrono")]
 use chrono::{Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, Offset, TimeZone};
+#[cfg(feature = "chrono")]
 use core::cmp::Ordering;
 use core::fmt::{Debug, Display, Error, Formatter};
 
@@ -18,6 +21,7 @@ pub struct FixedTimespan {
     pub name: &'static str,
 }
 
+#[cfg(feature = "chrono")]
 impl Offset for FixedTimespan {
     fn fix(&self) -> FixedOffset {
         FixedOffset::east(self.utc_offset + self.dst_offset)
@@ -70,6 +74,7 @@ pub struct TzOffset {
 /// assert_eq!(total_offset.num_seconds(), london_time.offset().fix().local_minus_utc() as i64);
 /// # }
 /// ```
+#[cfg(feature = "chrono")]
 pub trait OffsetComponents {
     /// The base offset from UTC; this usually doesn't change unless the government changes something
     fn base_utc_offset(&self) -> Duration;
@@ -82,26 +87,31 @@ pub trait OffsetComponents {
 /// This trait exposes display names that describe an offset in
 /// various situations.
 ///
-/// ```
-/// # extern crate chrono;
-/// # extern crate chrono_tz;
-/// use chrono::{Duration, Offset, TimeZone};
-/// use chrono_tz::Europe::London;
-/// use chrono_tz::OffsetName;
-///
-/// # fn main() {
-/// let london_time = London.ymd(2016, 2, 10).and_hms(12, 0, 0);
-/// assert_eq!(london_time.offset().tz_id(), "Europe/London");
-/// // London is normally on GMT
-/// assert_eq!(london_time.offset().abbreviation(), "GMT");
-///
-/// let london_summer_time = London.ymd(2016, 5, 10).and_hms(12, 0, 0);
-/// // The TZ ID remains constant year round
-/// assert_eq!(london_summer_time.offset().tz_id(), "Europe/London");
-/// // During the summer, this becomes British Summer Time
-/// assert_eq!(london_summer_time.offset().abbreviation(), "BST");
-/// # }
-/// ```
+#[cfg_attr(
+    feature = "chrono",
+    doc = "
+```
+# extern crate chrono;
+# extern crate chrono_tz;
+use chrono::{Duration, Offset, TimeZone};
+use chrono_tz::Europe::London;
+use chrono_tz::OffsetName;
+
+# fn main() {
+let london_time = London.ymd(2016, 2, 10).and_hms(12, 0, 0);
+assert_eq!(london_time.offset().tz_id(), \"Europe/London\");
+// London is normally on GMT
+assert_eq!(london_time.offset().abbreviation(), \"GMT\");
+
+let london_summer_time = London.ymd(2016, 5, 10).and_hms(12, 0, 0);
+// The TZ ID remains constant year round
+assert_eq!(london_summer_time.offset().tz_id(), \"Europe/London\");
+// During the summer, this becomes British Summer Time
+assert_eq!(london_summer_time.offset().abbreviation(), \"BST\");
+# }
+```
+"
+)]
 pub trait OffsetName {
     /// The IANA TZDB identifier (ex: America/New_York)
     fn tz_id(&self) -> &str;
@@ -113,6 +123,7 @@ pub trait OffsetName {
     fn abbreviation(&self) -> &str;
 }
 
+#[cfg(feature = "chrono")]
 impl TzOffset {
     fn new(tz: Tz, offset: FixedTimespan) -> Self {
         TzOffset { tz, offset }
@@ -129,6 +140,7 @@ impl TzOffset {
     }
 }
 
+#[cfg(feature = "chrono")]
 impl OffsetComponents for TzOffset {
     fn base_utc_offset(&self) -> Duration {
         Duration::seconds(self.offset.utc_offset as i64)
@@ -149,6 +161,7 @@ impl OffsetName for TzOffset {
     }
 }
 
+#[cfg(feature = "chrono")]
 impl Offset for TzOffset {
     fn fix(&self) -> FixedOffset {
         self.offset.fix()
@@ -176,11 +189,13 @@ impl Debug for TzOffset {
 /// at 2am, the clock goes from 01:59:59 to 01:00:00. This is
 /// an arbitrary choice, and I could not find a source to
 /// confirm whether or not this is correct.
+#[cfg(feature = "chrono")]
 struct Span {
     begin: Option<i64>,
     end: Option<i64>,
 }
 
+#[cfg(feature = "chrono")]
 impl Span {
     fn contains(&self, x: i64) -> bool {
         match (self.begin, self.end) {
@@ -212,6 +227,7 @@ pub struct FixedTimespanSet {
     pub rest: &'static [(i64, FixedTimespan)],
 }
 
+#[cfg(feature = "chrono")]
 impl FixedTimespanSet {
     fn len(&self) -> usize {
         1 + self.rest.len()
@@ -266,6 +282,7 @@ pub trait TimeSpans {
     fn timespans(&self) -> FixedTimespanSet;
 }
 
+#[cfg(feature = "chrono")]
 impl TimeZone for Tz {
     type Offset = TzOffset;
 
