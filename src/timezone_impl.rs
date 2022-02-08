@@ -4,6 +4,7 @@ use chrono::{Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, Offse
 use core::cmp::Ordering;
 use core::fmt::{Debug, Display, Error, Formatter};
 
+/// Returns [`Tz::UTC`].
 impl Default for Tz {
     fn default() -> Self {
        Tz::UTC
