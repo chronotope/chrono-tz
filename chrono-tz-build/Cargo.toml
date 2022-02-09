@@ -17,6 +17,6 @@ case-insensitive = ["uncased"]
 [dependencies]
 parse-zoneinfo = { version = "0.3" }
 regex = { default-features = false, version = "1", optional = true }
-phf = { version = "0.10", default-features = false, features = ["uncased"] }
+phf = { version = "0.10.1", default-features = false, features = ["uncased"] }
 phf_codegen = { version = "0.10", default-features = false }
 uncased = { version = "0.9", optional = true, default-features = false }

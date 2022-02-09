@@ -13,7 +13,7 @@ license = "MIT/Apache-2.0"
 [dependencies]
 chrono = { version = "0.4", default-features = false }
 serde = { version = "1", optional = true, default-features = false }
-phf = { version = "0.10", default-features = false, features = ["uncased"] }
+phf = { version = "0.10.1", default-features = false, features = ["uncased"] }
 uncased = { version = "0.9", optional = true, default-features = false }
 
 [features]

@@ -110,8 +110,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
         writeln!(
             timezone_file,
             "static TIMEZONES_UNCASED: ::phf::Map<&'static uncased::UncasedStr, Tz> = \n{};",
-            // FIXME(petrosagg): remove this once rust-phf/rust-phf#232 is released
-            map.build().to_string().replace("::std::mem::transmute", "::core::mem::transmute")
+            map.build()
         )?;
     }
 
