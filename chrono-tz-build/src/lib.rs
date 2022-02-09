@@ -98,7 +98,11 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
     for zone in &zones {
         map.entry(zone, &format!("Tz::{}", convert_bad_chars(zone)));
     }
-    writeln!(timezone_file, "static TIMEZONES: ::phf::Map<&'static str, Tz> = \n{};", map.build())?;
+    writeln!(
+        timezone_file,
+        "pub static TIMEZONES: ::phf::Map<&'static str, Tz> = \n{};",
+        map.build()
+    )?;
 
     #[cfg(feature = "case-insensitive")]
     {
