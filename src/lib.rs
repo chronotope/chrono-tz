@@ -173,7 +173,7 @@ pub use directory::*;
 pub use timezone_impl::{OffsetComponents, OffsetName};
 pub use timezones::ParseError;
 pub use timezones::Tz;
-pub use timezones::TIMEZONES;
+pub use timezones::TIME_ZONES;
 pub use timezones::TZ_VARIANTS;
 
 #[cfg(test)]

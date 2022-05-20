@@ -100,7 +100,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
     }
     writeln!(
         timezone_file,
-        "pub static TIMEZONES: ::phf::Map<&'static str, Tz> = \n{};",
+        "pub static TIME_ZONES: ::phf::Map<&'static str, Tz> = \n{};",
         map.build()
     )?;
 
@@ -113,7 +113,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
         }
         writeln!(
             timezone_file,
-            "static TIMEZONES_UNCASED: ::phf::Map<&'static uncased::UncasedStr, Tz> = \n{};",
+            "static TIME_ZONES_UNCASED: ::phf::Map<&'static uncased::UncasedStr, Tz> = \n{};",
             // FIXME(petrosagg): remove this once rust-phf/rust-phf#232 is released
             map.build().to_string().replace("::std::mem::transmute", "::core::mem::transmute")
         )?;
@@ -130,9 +130,9 @@ impl FromStr for Tz {{
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {{
         #[cfg(feature = \"std\")]
-        return TIMEZONES.get(s).cloned().ok_or_else(|| format!(\"'{{}}' is not a valid timezone\", s));
+        return TIME_ZONES.get(s).cloned().ok_or_else(|| format!(\"'{{}}' is not a valid timezone\", s));
         #[cfg(not(feature = \"std\"))]
-        return TIMEZONES.get(s).cloned().ok_or(\"received invalid timezone\");
+        return TIME_ZONES.get(s).cloned().ok_or(\"received invalid timezone\");
     }}
 }}\n"
     )?;
@@ -167,9 +167,9 @@ impl FromStr for Tz {{
     /// Parses a timezone string in a case-insensitive way
     pub fn from_str_insensitive(s: &str) -> Result<Self, ParseError> {{
         #[cfg(feature = "std")]
-        return TIMEZONES_UNCASED.get(s.into()).cloned().ok_or_else(|| format!("'{{}}' is not a valid timezone", s));
+        return TIME_ZONES_UNCASED.get(s.into()).cloned().ok_or_else(|| format!("'{{}}' is not a valid timezone", s));
         #[cfg(not(feature = "std"))]
-        return TIMEZONES_UNCASED.get(s.into()).cloned().ok_or("received invalid timezone");
+        return TIME_ZONES_UNCASED.get(s.into()).cloned().ok_or("received invalid timezone");
     }}"#
         )?;
     }
