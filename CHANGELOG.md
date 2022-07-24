@@ -1,6 +1,17 @@
 Chrono-tz Changelog
 ===================
 
+## 0.6.2
+
+* **tzdb** Update tzdb to 2022a.
+
+* Bump the [`phf`](https://github.com/rust-phf/rust-phf) family of dependencies
+  to v0.11.
+
+## 0.6.1
+
+* **tzdb** Update tzdb to 2021e.
+
 ## 0.6.0
 
 * **tzdb** [breaking change] Update tzdb to 2020b, which removes the `US/Pacific-New` timezone.
