@@ -1,6 +1,6 @@
 [package]
 name = "chrono-tz"
-version = "0.6.2"
+version = "0.6.3"
 authors = ["Djzin"]
 build = "build.rs"
 description = "TimeZone implementations for rust-chrono from the IANA database"
