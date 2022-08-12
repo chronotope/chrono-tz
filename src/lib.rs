@@ -180,7 +180,6 @@ mod tests {
     use super::America::Danmarkshavn;
     use super::Asia::Dhaka;
     use super::Australia::Adelaide;
-    use super::Europe::Amsterdam;
     use super::Europe::Berlin;
     use super::Europe::London;
     use super::Europe::Moscow;
@@ -332,23 +331,6 @@ mod tests {
         assert_eq!(before, Tahiti.ymd(1912, 9, 30).and_hms(23, 0, 0));
         let after = dt + Duration::hours(1);
         assert_eq!(after, Tahiti.ymd(1912, 10, 1).and_hms(0, 58, 16));
-    }
-
-    #[test]
-    fn second_offsets() {
-        let dt = UTC.ymd(1914, 1, 1).and_hms(13, 40, 28).with_timezone(&Amsterdam);
-        assert_eq!(dt.to_string(), "1914-01-01 14:00:00 AMT");
-
-        // NOTE: pytz will give a different result here. The actual offset is +00:19:32.
-        //       The implementation of RFC3339 formatting in chrono rounds down the
-        //       number of minutes, whereas pytz rounds to nearest in cases such as this.
-        //       RFC3339 specifies that precision is not required in this case, and that
-        //       to retain precision, the time should be converted to a representable
-        //       format.
-        //       In any case, the actual datetime objects themselves always retain full
-        //       precision in this implementation (unlike pytz). It is only (some) string
-        //       representations that lack precision.
-        assert_eq!(dt.to_rfc3339(), "1914-01-01T14:00:00+00:19");
     }
 
     #[test]
