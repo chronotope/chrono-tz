@@ -4,8 +4,7 @@ version = "0.0.3"
 edition = "2018"
 description = "internal build script for chrono-tz"
 readme = "README.md"
-license = "MIT/Apache-2.0"
-license_file = "../LICENSE"
+license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/chrono-tz-build"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
