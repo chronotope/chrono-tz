@@ -2,7 +2,7 @@
 name = "chrono-tz"
 version = "0.7.0"
 build = "build.rs"
-description = "TimeZone implementations for rust-chrono from the IANA database"
+description = "TimeZone implementations for chrono from the IANA database"
 keywords = ["date", "time", "timezone", "zone", "calendar"]
 repository = "https://github.com/chronotope/chrono-tz"
 documentation = "https://docs.rs/chrono-tz"

@@ -7,7 +7,6 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/chrono-tz-build"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 filter-by-regex = ["regex"]
 case-insensitive = ["uncased", "phf/uncased"]
