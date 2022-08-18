@@ -1,2 +1,2 @@
 [workspace]
-members = ["chrono-tz", "chrono-tz-build"]
+members = ["chrono-tz", "chrono-tz-build", "check-nostd", "check-regex-filtering"]
