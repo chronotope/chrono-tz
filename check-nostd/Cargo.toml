@@ -4,14 +4,11 @@ edition = "2018"
 readme = "README.md"
 name = "check-nostd"
 version = "0.1.0"
-resolver = "2"
 
 [dependencies]
 cortex-m-rt = "0.7.0"
-chrono-tz = { path = "../../", default-features = false }
+chrono-tz = { path = "../chrono-tz", default-features = false }
 
 [features]
 serde1 = ["chrono-tz/serde"]
 case-insensitive = ["chrono-tz/case-insensitive"]
-
-[workspace]
