@@ -1,6 +1,12 @@
 Chrono-tz Changelog
 ===================
 
+## 0.7
+
+* **tzdb** Update tzdb from 2022a to 2022e, some timezones have been removed for
+    the full list check
+    [here](https://mm.icann.org/pipermail/tz-announce/2022-August/000071.html).
+
 ## 0.6.2
 
 * **tzdb** Update tzdb to 2022a.
