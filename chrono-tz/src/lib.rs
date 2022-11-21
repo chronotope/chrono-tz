@@ -140,7 +140,7 @@ mod timezone_impl;
 mod timezones;
 
 pub use crate::directory::*;
-pub use crate::timezone_impl::{OffsetComponents, OffsetName};
+pub use crate::timezone_impl::{OffsetComponents, OffsetName, TzOffset};
 pub use crate::timezones::ParseError;
 pub use crate::timezones::Tz;
 pub use crate::timezones::TZ_VARIANTS;
