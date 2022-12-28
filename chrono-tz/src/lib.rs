@@ -138,6 +138,9 @@ extern crate phf;
 #[cfg(feature = "case-insensitive")]
 extern crate uncased;
 
+#[cfg(test)]
+extern crate alloc;
+
 #[cfg(feature = "serde")]
 mod serde;
 
@@ -168,6 +171,7 @@ mod tests {
     use super::Tz;
     use super::US::Eastern;
     use super::UTC;
+    use alloc::string::ToString;
     use chrono::{Duration, TimeZone};
 
     #[test]
@@ -292,6 +296,7 @@ mod tests {
         test_inverse(Tahiti, 1911, 1914);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn string_representation() {
         let dt = UTC.ymd(2000, 9, 1).and_hms(12, 30, 15).with_timezone(&Adelaide);
@@ -371,10 +376,10 @@ mod tests {
 
     #[test]
     fn test_display() {
-        assert_eq!(format!("{}", London), "Europe/London");
-        assert_eq!(format!("{}", Tz::Africa__Abidjan), "Africa/Abidjan");
-        assert_eq!(format!("{}", Tz::UTC), "UTC");
-        assert_eq!(format!("{}", Tz::Zulu), "Zulu");
+        assert_eq!(London.to_string(), "Europe/London");
+        assert_eq!(Tz::Africa__Abidjan.to_string(), "Africa/Abidjan");
+        assert_eq!(Tz::UTC.to_string(), "UTC");
+        assert_eq!(Tz::Zulu.to_string(), "Zulu");
     }
 
     #[test]
