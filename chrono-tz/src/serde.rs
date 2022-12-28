@@ -49,8 +49,11 @@ mod tests {
     fn serde_de_error() {
         assert_de_tokens_error::<Tz>(
             &[Token::Str("Europe/L")],
-            "'Europe/L' is not a valid timezone",
+            "failed to parse timezone: invalid timezone: 'Europe/L'",
         );
-        assert_de_tokens_error::<Tz>(&[Token::Str("")], "'' is not a valid timezone");
+        assert_de_tokens_error::<Tz>(
+            &[Token::Str("")],
+            "failed to parse timezone: invalid timezone: ''",
+        );
     }
 }
