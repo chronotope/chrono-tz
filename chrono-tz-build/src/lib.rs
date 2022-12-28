@@ -119,20 +119,25 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
 
     writeln!(
         timezone_file,
-        "#[cfg(feature = \"std\")]
-pub type ParseError = String;
-#[cfg(not(feature = \"std\"))]
-pub type ParseError = &'static str;
+        r#"#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct ParseError(());
+
+impl Display for ParseError {{
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {{
+        f.write_str("failed to parse timezone")
+    }}
+}}
+
+#[cfg(feature = "std")]
+impl std::error::Error for ParseError {{}}
 
 impl FromStr for Tz {{
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {{
-        #[cfg(feature = \"std\")]
-        return TIMEZONES.get(s).cloned().ok_or_else(|| format!(\"'{{}}' is not a valid timezone\", s));
-        #[cfg(not(feature = \"std\"))]
-        return TIMEZONES.get(s).cloned().ok_or(\"received invalid timezone\");
+        return TIMEZONES.get(s).cloned().ok_or(ParseError(()));
     }}
-}}\n"
+}}
+"#
     )?;
 
     writeln!(
@@ -164,10 +169,7 @@ impl FromStr for Tz {{
     #[cfg(feature = "case-insensitive")]
     /// Parses a timezone string in a case-insensitive way
     pub fn from_str_insensitive(s: &str) -> Result<Self, ParseError> {{
-        #[cfg(feature = "std")]
-        return TIMEZONES_UNCASED.get(s.into()).cloned().ok_or_else(|| format!("'{{}}' is not a valid timezone", s));
-        #[cfg(not(feature = "std"))]
-        return TIMEZONES_UNCASED.get(s.into()).cloned().ok_or("received invalid timezone");
+        return TIMEZONES_UNCASED.get(s.into()).cloned().ok_or(ParseError(()));
     }}"#
         )?;
     }
