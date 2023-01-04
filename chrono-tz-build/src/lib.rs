@@ -82,7 +82,9 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
 /// construct chrono's DateTime type. See the root module documentation
 /// for details."
     )?;
-    writeln!(timezone_file, "#[derive(Clone, Copy, PartialEq, Eq, Hash)]\npub enum Tz {{")?;
+    writeln!(timezone_file, "#[derive(Clone, Copy, PartialEq, Eq, Hash)]")?;
+    writeln!(timezone_file, r#"#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]"#)?;
+    writeln!(timezone_file, "pub enum Tz {{")?;
     for zone in &zones {
         let zone_name = convert_bad_chars(zone);
         writeln!(
