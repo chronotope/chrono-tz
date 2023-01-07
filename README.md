@@ -170,6 +170,11 @@ include all the zones that are linked, such as "America/Denver", not just "US/Mo
 [IANA database]: http://www.iana.org/time-zones
 [wiki-list]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
+## Developing
+
+`chrono-tz` uses git submodules, so in order to build locally you will need to
+run `git submodule init` and `git submodule update`.
+
 ## Future Improvements
 
 - Handle leap seconds
