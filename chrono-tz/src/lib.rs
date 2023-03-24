@@ -165,6 +165,7 @@ mod tests {
     use super::Pacific::Apia;
     use super::Pacific::Noumea;
     use super::Pacific::Tahiti;
+    use super::Asia::Beirut;
     use super::Tz;
     use super::US::Eastern;
     use super::UTC;
@@ -230,6 +231,18 @@ mod tests {
         let later = dt + Duration::days(180);
         let expected = London.ymd(2016, 9, 6).and_hms(6, 0, 0);
         assert_eq!(later, expected);
+    }
+
+    #[test]
+    fn lebanon_dst_2023b() {
+        let dt = Beirut.ymd(2023, 3, 24).and_hms(5, 0, 0);
+        let later_norm = dt + Duration::days(3);
+        let expected_norm = Beirut.ymd(2023, 3, 27).and_hms(5, 0, 0);
+        assert_eq!(later_norm, expected_norm);
+
+        let later_dst = dt + Duration::days(30);
+        let expected_dst = Beirut.ymd(2023, 4, 23).and_hms(6, 0, 0);
+        assert_eq!(later_dst, expected_dst);
     }
 
     #[test]
