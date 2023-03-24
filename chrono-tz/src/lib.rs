@@ -155,6 +155,7 @@ pub use timezones::TZ_VARIANTS;
 #[cfg(test)]
 mod tests {
     use super::America::Danmarkshavn;
+    use super::Asia::Beirut;
     use super::Asia::Dhaka;
     use super::Australia::Adelaide;
     use super::Europe::Berlin;
@@ -165,7 +166,6 @@ mod tests {
     use super::Pacific::Apia;
     use super::Pacific::Noumea;
     use super::Pacific::Tahiti;
-    use super::Asia::Beirut;
     use super::Tz;
     use super::US::Eastern;
     use super::UTC;
