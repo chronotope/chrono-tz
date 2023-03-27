@@ -1,6 +1,13 @@
 Chrono-tz Changelog
 ===================
 
+## 0.8.1
+
+* **tzdb** Update tzdb from 2022f to 2023b. Some timezones have been linked. For
+  the full list, check the 
+  [2023a](https://mm.icann.org/pipermail/tz-announce/2023-March/000077.html) and
+  [2023b](https://mm.icann.org/pipermail/tz-announce/2023-March/000078.html) announcements.
+
 ## 0.8.0
 
 * **tzdb** Update tzdb from 2022e to 2022f. Some timezones have been removed. For
