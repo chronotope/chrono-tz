@@ -1,6 +1,6 @@
 [package]
 name = "chrono-tz"
-version = "0.8.3"
+version = "0.8.2"
 build = "build.rs"
 description = "TimeZone implementations for chrono from the IANA database"
 keywords = ["date", "time", "timezone", "zone", "calendar"]
