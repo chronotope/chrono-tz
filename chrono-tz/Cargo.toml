@@ -1,6 +1,7 @@
 [package]
 name = "chrono-tz"
 version = "0.8.2"
+edition = "2018"
 build = "build.rs"
 description = "TimeZone implementations for chrono from the IANA database"
 keywords = ["date", "time", "timezone", "zone", "calendar"]
@@ -23,7 +24,7 @@ filter-by-regex = ["chrono-tz-build/filter-by-regex"]
 case-insensitive = ["uncased", "chrono-tz-build/case-insensitive", "phf/uncased"]
 
 [build-dependencies]
-chrono-tz-build = { path = "../chrono-tz-build", version = "0.1" }
+chrono-tz-build = { path = "../chrono-tz-build", version = "0.2" }
 
 [dev-dependencies]
 serde_test = "1"

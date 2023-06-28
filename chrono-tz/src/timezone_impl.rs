@@ -1,8 +1,10 @@
-use super::timezones::Tz;
-use binary_search::binary_search;
-use chrono::{Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, Offset, TimeZone};
 use core::cmp::Ordering;
 use core::fmt::{Debug, Display, Error, Formatter};
+
+use chrono::{Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, Offset, TimeZone};
+
+use crate::binary_search::binary_search;
+use crate::timezones::Tz;
 
 /// An Offset that applies for a period of time
 ///
@@ -25,13 +27,13 @@ impl Offset for FixedTimespan {
 }
 
 impl Display for FixedTimespan {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         write!(f, "{}", self.name)
     }
 }
 
 impl Debug for FixedTimespan {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         write!(f, "{}", self.name)
     }
 }
@@ -156,13 +158,13 @@ impl Offset for TzOffset {
 }
 
 impl Display for TzOffset {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         Display::fmt(&self.offset, f)
     }
 }
 
 impl Debug for TzOffset {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         Debug::fmt(&self.offset, f)
     }
 }
