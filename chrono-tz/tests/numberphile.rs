@@ -6,9 +6,6 @@
 //!
 //! [video]: https://www.youtube.com/watch?v=-5wpm-gesOY
 
-extern crate chrono;
-extern crate chrono_tz;
-
 use chrono::{DateTime, TimeZone};
 
 use chrono_tz::Africa::Tripoli;

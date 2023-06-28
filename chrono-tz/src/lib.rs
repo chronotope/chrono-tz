@@ -130,14 +130,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(feature = "std")]
-extern crate std as core;
-
-extern crate chrono;
-extern crate phf;
-#[cfg(feature = "case-insensitive")]
-extern crate uncased;
-
 #[cfg(feature = "serde")]
 mod serde;
 
@@ -146,11 +138,11 @@ mod directory;
 mod timezone_impl;
 mod timezones;
 
-pub use directory::*;
-pub use timezone_impl::{OffsetComponents, OffsetName};
-pub use timezones::ParseError;
-pub use timezones::Tz;
-pub use timezones::TZ_VARIANTS;
+pub use crate::directory::*;
+pub use crate::timezone_impl::{OffsetComponents, OffsetName};
+pub use crate::timezones::ParseError;
+pub use crate::timezones::Tz;
+pub use crate::timezones::TZ_VARIANTS;
 
 #[cfg(test)]
 mod tests {
