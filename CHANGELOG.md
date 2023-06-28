@@ -1,6 +1,39 @@
 Chrono-tz Changelog
 ===================
 
+## 0.8.2
+
+* **tzdb** Update tzdb from 2022f to 2023c. All changes in 2023b have been
+    reverted back to 2023a. The full list of changes can be found
+    [here](https://mm.icann.org/pipermail/tz-announce/2023-March/000079.html)
+
+## 0.8.1
+
+* **tzdb** Update tzdb from 2022f to 2022g.
+
+## 0.8.0
+
+* **tzdb** Update tzdb from 2022e to 2022f. Some timezones have been removed. For
+  the full list, check
+  [here](https://mm.icann.org/pipermail/tz-announce/2022-October/000075.html).
+
+## 0.7
+
+* **tzdb** Update tzdb from 2022a to 2022e, some timezones have been removed for
+    the full list check
+    [here](https://mm.icann.org/pipermail/tz-announce/2022-August/000071.html).
+
+## 0.6.2
+
+* **tzdb** Update tzdb to 2022a.
+
+* Bump the [`phf`](https://github.com/rust-phf/rust-phf) family of dependencies
+  to v0.11.
+
+## 0.6.1
+
+* **tzdb** Update tzdb to 2021e.
+
 ## 0.6.0
 
 * **tzdb** [breaking change] Update tzdb to 2020b, which removes the `US/Pacific-New` timezone.

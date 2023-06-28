@@ -10,7 +10,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-18.04, macos-latest]
+        os: [ubuntu-latest, ubuntu-20.04, macos-latest]
         include:
           - os: ubuntu-latest
             run_no_std: true
@@ -52,21 +52,21 @@ jobs:
 
     - name: Verify builds on no_std no features
       if: ${{ matrix.run_no_std }}
-      working-directory: ./tests/check-nostd
+      working-directory: chrono-tz/tests/check-nostd
       run: |
         cargo clean
         cargo build --no-default-features
 
     - name: Verify builds on no_std with serde
       if: ${{ matrix.run_no_std }}
-      working-directory: ./tests/check-nostd
+      working-directory: chrono-tz/tests/check-nostd
       run: |
         cargo clean
         cargo build --features serde1
 
     - name: Verify builds on no_std case-insensitive
       if: ${{ matrix.run_no_std }}
-      working-directory: ./tests/check-nostd
+      working-directory: chrono-tz/tests/check-nostd
       run: |
         cargo clean
         cargo build --features case-insensitive

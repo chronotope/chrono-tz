@@ -72,7 +72,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
     writeln!(timezone_file, "use core::str::FromStr;\n",)?;
     writeln!(
         timezone_file,
-        "use ::timezone_impl::{{TimeSpans, FixedTimespanSet, FixedTimespan}};\n",
+        "use crate::timezone_impl::{{TimeSpans, FixedTimespanSet, FixedTimespan}};\n",
     )?;
     writeln!(
         timezone_file,
@@ -82,7 +82,9 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
 /// construct chrono's DateTime type. See the root module documentation
 /// for details."
     )?;
-    writeln!(timezone_file, "#[derive(Clone, Copy, PartialEq, Eq, Hash)]\npub enum Tz {{")?;
+    writeln!(timezone_file, "#[derive(Clone, Copy, PartialEq, Eq, Hash)]")?;
+    writeln!(timezone_file, r#"#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]"#)?;
+    writeln!(timezone_file, "pub enum Tz {{")?;
     for zone in &zones {
         let zone_name = convert_bad_chars(zone);
         writeln!(
@@ -248,7 +250,7 @@ pub static TZ_VARIANTS: [Tz; {num}] = [
 // instead of having to use chrono_tz::timezones::Europe__London
 fn write_directory_file(directory_file: &mut File, table: &Table) -> io::Result<()> {
     // add the `loose' zone definitions first at the top of the file
-    writeln!(directory_file, "use timezones::Tz;\n")?;
+    writeln!(directory_file, "use crate::timezones::Tz;\n")?;
     let zones = table
         .zonesets
         .keys()
@@ -268,13 +270,13 @@ fn write_directory_file(directory_file: &mut File, table: &Table) -> io::Result<
         }
         let module_name = convert_bad_chars(entry.name);
         writeln!(directory_file, "pub mod {name} {{", name = module_name)?;
-        writeln!(directory_file, "    use timezones::Tz;\n",)?;
+        writeln!(directory_file, "    use crate::timezones::Tz;\n",)?;
         for child in entry.children {
             match child {
                 Child::Submodule(name) => {
                     let submodule_name = convert_bad_chars(name);
                     writeln!(directory_file, "    pub mod {name} {{", name = submodule_name)?;
-                    writeln!(directory_file, "        use timezones::Tz;\n",)?;
+                    writeln!(directory_file, "        use crate::timezones::Tz;\n",)?;
                     let full_name = entry.name.to_string() + "/" + name;
                     for entry in table.structure() {
                         if entry.name == full_name {
