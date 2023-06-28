@@ -1,7 +1,7 @@
 [package]
 name = "chrono-tz-build"
 version = "0.2.0"
-edition = "2018"
+edition = "2021"
 description = "internal build script for chrono-tz"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
