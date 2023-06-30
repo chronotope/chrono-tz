@@ -9,7 +9,7 @@ use crate::timezones::Tz;
 /// Returns [`Tz::UTC`].
 impl Default for Tz {
     fn default() -> Self {
-       Tz::UTC
+        Tz::UTC
     }
 }
 
