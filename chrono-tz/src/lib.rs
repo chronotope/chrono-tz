@@ -105,7 +105,7 @@
 //! # }
 //! ```
 //!
-//! You can convert a timezone string to a timezone using the FromStr trait
+//! You can convert a timezone string to a timezone using the `FromStr` trait
 //!
 //! ```
 //! # extern crate chrono;
@@ -122,7 +122,7 @@
 //! # }
 //! ```
 //!
-//! If you need to iterate over all variants you can use the TZ_VARIANTS array
+//! If you need to iterate over all variants you can use the `TZ_VARIANTS` array
 //! ```
 //! use chrono_tz::{TZ_VARIANTS, Tz};
 //! assert!(TZ_VARIANTS.iter().any(|v| *v == Tz::UTC));

@@ -6,6 +6,13 @@ use chrono::{Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, Offse
 use crate::binary_search::binary_search;
 use crate::timezones::Tz;
 
+/// Returns [`Tz::UTC`].
+impl Default for Tz {
+    fn default() -> Self {
+        Tz::UTC
+    }
+}
+
 /// An Offset that applies for a period of time
 ///
 /// For example, [`::US::Eastern`] is composed of at least two
