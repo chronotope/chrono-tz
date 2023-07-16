@@ -17,6 +17,9 @@ use parse_zoneinfo::transitions::TableTransitions;
 /// The name of the environment variable which possibly holds the filter regex.
 const FILTER_ENV_VAR_NAME: &str = "CHRONO_TZ_TIMEZONE_FILTER";
 
+/// The version of the underlying IANA Timezone Database.
+const IANA_TZDB_VERSION: &str = "2023c";
+
 // This function is needed until zoneinfo_parse handles comments correctly.
 // Technically a '#' symbol could occur between double quotes and should be
 // ignored in this case, however this never happens in the tz database as it
@@ -249,7 +252,9 @@ pub static TZ_VARIANTS: [Tz; {num}] = [
 // Create a file containing nice-looking re-exports such as Europe::London
 // instead of having to use chrono_tz::timezones::Europe__London
 fn write_directory_file(directory_file: &mut File, table: &Table) -> io::Result<()> {
-    // add the `loose' zone definitions first at the top of the file
+    // expose the underlying IANA TZDB version
+    writeln!(directory_file, "pub const IANA_TZDB_VERSION : &str = \"{IANA_TZDB_VERSION}\";\n")?;
+    // add the `loose' zone definitions first
     writeln!(directory_file, "use crate::timezones::Tz;\n")?;
     let zones = table
         .zonesets
