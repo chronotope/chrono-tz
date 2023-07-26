@@ -1,7 +1,9 @@
 use core::cmp::Ordering;
 use core::fmt::{Debug, Display, Error, Formatter};
 
-use chrono::{Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, Offset, TimeZone};
+use chrono::{
+    Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, Offset, TimeZone,
+};
 
 use crate::binary_search::binary_search;
 use crate::timezones::Tz;
@@ -29,7 +31,7 @@ pub struct FixedTimespan {
 
 impl Offset for FixedTimespan {
     fn fix(&self) -> FixedOffset {
-        FixedOffset::east(self.utc_offset + self.dst_offset)
+        FixedOffset::east_opt(self.utc_offset + self.dst_offset).unwrap()
     }
 }
 
@@ -282,9 +284,10 @@ impl TimeZone for Tz {
         offset.tz
     }
 
+    #[allow(deprecated)]
     fn offset_from_local_date(&self, local: &NaiveDate) -> LocalResult<Self::Offset> {
-        let earliest = self.offset_from_local_datetime(&local.and_hms(0, 0, 0));
-        let latest = self.offset_from_local_datetime(&local.and_hms(23, 59, 59));
+        let earliest = self.offset_from_local_datetime(&local.and_time(NaiveTime::MIN));
+        let latest = self.offset_from_local_datetime(&local.and_hms_opt(23, 59, 59).unwrap());
         // From the chrono docs:
         //
         // > This type should be considered ambiguous at best, due to the inherent lack of
@@ -349,9 +352,10 @@ impl TimeZone for Tz {
         )
     }
 
+    #[allow(deprecated)]
     fn offset_from_utc_date(&self, utc: &NaiveDate) -> Self::Offset {
         // See comment above for why it is OK to just take any arbitrary time in the day
-        self.offset_from_utc_datetime(&utc.and_hms(12, 0, 0))
+        self.offset_from_utc_datetime(&utc.and_time(NaiveTime::MIN))
     }
 
     // Binary search for the required timespan. Any i64 is guaranteed to fall within
