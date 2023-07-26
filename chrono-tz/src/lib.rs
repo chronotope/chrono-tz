@@ -319,27 +319,53 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn ambiguous_time() {
-        let _ = London.with_ymd_and_hms(2016, 10, 30, 1, 0, 0).unwrap();
+        let ambiguous = London.with_ymd_and_hms(2016, 10, 30, 1, 0, 0);
+        let earliest_utc =
+            NaiveDate::from_ymd_opt(2016, 10, 30).unwrap().and_hms_opt(0, 0, 0).unwrap();
+        assert_eq!(ambiguous.earliest().unwrap(), London.from_utc_datetime(&earliest_utc));
+        let latest_utc =
+            NaiveDate::from_ymd_opt(2016, 10, 30).unwrap().and_hms_opt(1, 0, 0).unwrap();
+        assert_eq!(ambiguous.latest().unwrap(), London.from_utc_datetime(&latest_utc));
     }
 
     #[test]
-    #[should_panic]
     fn ambiguous_time_2() {
-        let _ = London.with_ymd_and_hms(2016, 10, 30, 1, 30, 0).unwrap();
+        let ambiguous = London.with_ymd_and_hms(2016, 10, 30, 1, 30, 0);
+        let earliest_utc =
+            NaiveDate::from_ymd_opt(2016, 10, 30).unwrap().and_hms_opt(0, 30, 0).unwrap();
+        assert_eq!(ambiguous.earliest().unwrap(), London.from_utc_datetime(&earliest_utc));
+        let latest_utc =
+            NaiveDate::from_ymd_opt(2016, 10, 30).unwrap().and_hms_opt(1, 30, 0).unwrap();
+        assert_eq!(ambiguous.latest().unwrap(), London.from_utc_datetime(&latest_utc));
     }
 
     #[test]
-    #[should_panic]
     fn ambiguous_time_3() {
-        let _ = Moscow.with_ymd_and_hms(2014, 10, 26, 1, 30, 0).unwrap();
+        let ambiguous = Moscow.with_ymd_and_hms(2014, 10, 26, 1, 30, 0);
+        let earliest_utc =
+            NaiveDate::from_ymd_opt(2014, 10, 25).unwrap().and_hms_opt(21, 30, 0).unwrap();
+        assert_eq!(
+            ambiguous.earliest().unwrap().fixed_offset(),
+            Moscow.from_utc_datetime(&earliest_utc).fixed_offset()
+        );
+        let latest_utc =
+            NaiveDate::from_ymd_opt(2014, 10, 25).unwrap().and_hms_opt(22, 30, 0).unwrap();
+        assert_eq!(ambiguous.latest().unwrap(), Moscow.from_utc_datetime(&latest_utc));
     }
 
     #[test]
-    #[should_panic]
     fn ambiguous_time_4() {
-        let _ = Moscow.with_ymd_and_hms(2014, 10, 26, 1, 0, 0).unwrap();
+        let ambiguous = Moscow.with_ymd_and_hms(2014, 10, 26, 1, 0, 0);
+        let earliest_utc =
+            NaiveDate::from_ymd_opt(2014, 10, 25).unwrap().and_hms_opt(21, 0, 0).unwrap();
+        assert_eq!(
+            ambiguous.earliest().unwrap().fixed_offset(),
+            Moscow.from_utc_datetime(&earliest_utc).fixed_offset()
+        );
+        let latest_utc =
+            NaiveDate::from_ymd_opt(2014, 10, 25).unwrap().and_hms_opt(22, 0, 0).unwrap();
+        assert_eq!(ambiguous.latest().unwrap(), Moscow.from_utc_datetime(&latest_utc));
     }
 
     #[test]
