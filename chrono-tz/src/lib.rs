@@ -129,6 +129,7 @@
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
 #[cfg(feature = "serde")]
 mod serde;
