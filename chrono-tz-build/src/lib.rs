@@ -54,12 +54,12 @@ fn format_rest(rest: Vec<(i64, FixedTimespan)>) -> String {
 // it's a hyphen, in which case remove it. This is so the names can be used
 // as rust identifiers.
 fn convert_bad_chars(name: &str) -> String {
-    let name = name.replace("/", "__").replace("+", "Plus");
+    let name = name.replace('/', "__").replace('+', "Plus");
     if let Some(pos) = name.find('-') {
         if name[pos + 1..].chars().next().map(char::is_numeric).unwrap_or(false) {
-            name.replace("-", "Minus")
+            name.replace('-', "Minus")
         } else {
-            name.replace("-", "")
+            name.replace('-', "")
         }
     } else {
         name
@@ -200,7 +200,7 @@ impl FromStr for Tz {{
         match *self {{"
     )?;
     for zone in &zones {
-        let timespans = table.timespans(&zone).unwrap();
+        let timespans = table.timespans(zone).unwrap();
         let zone_name = convert_bad_chars(zone);
         writeln!(
             timezone_file,
@@ -431,7 +431,7 @@ mod filter {
 
         table
             .zonesets
-            .retain(|k, _| filter_regex.is_match(&k) || keep.iter().any(|s| k.starts_with(s)));
+            .retain(|k, _| filter_regex.is_match(k) || keep.iter().any(|s| k.starts_with(s)));
     }
 }
 
@@ -481,10 +481,10 @@ pub fn main() {
     filter::maybe_filter_timezone_table(&mut table);
 
     let timezone_path = Path::new(&env::var("OUT_DIR").unwrap()).join("timezones.rs");
-    let mut timezone_file = File::create(&timezone_path).unwrap();
+    let mut timezone_file = File::create(timezone_path).unwrap();
     write_timezone_file(&mut timezone_file, &table).unwrap();
 
     let directory_path = Path::new(&env::var("OUT_DIR").unwrap()).join("directory.rs");
-    let mut directory_file = File::create(&directory_path).unwrap();
+    let mut directory_file = File::create(directory_path).unwrap();
     write_directory_file(&mut directory_file, &table).unwrap();
 }

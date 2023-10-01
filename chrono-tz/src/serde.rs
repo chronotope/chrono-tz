@@ -7,7 +7,7 @@ use crate::timezones::Tz;
 
 impl Serialize for Tz {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&self.name())
+        serializer.serialize_str(self.name())
     }
 }
 
