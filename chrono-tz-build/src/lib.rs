@@ -7,6 +7,7 @@ use std::env;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
+use std::process::Command;
 
 use parse_zoneinfo::line::{Line, LineParser};
 use parse_zoneinfo::structure::{Child, Structure};
@@ -432,6 +433,18 @@ mod filter {
     }
 }
 
+fn detect_iana_db_version() -> String {
+    let path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::new()))
+        .join(Path::new("tz"));
+    let output = Command::new("git")
+        .current_dir(path)
+        .arg("describe")
+        .output()
+        .expect("`git describe` failed to run");
+
+    std::str::from_utf8(&output.stdout).expect("failed to convert version").trim().to_string()
+}
+
 pub fn main() {
     println!("cargo:rerun-if-env-changed={}", FILTER_ENV_VAR_NAME);
 
@@ -439,7 +452,6 @@ pub fn main() {
     let mut table = TableBuilder::new();
 
     let tzfiles = [
-        "tz/version",
         "tz/africa",
         "tz/antarctica",
         "tz/asia",
@@ -451,7 +463,7 @@ pub fn main() {
         "tz/southamerica",
     ];
 
-    let mut lines = tzfiles
+    let lines = tzfiles
         .iter()
         .map(Path::new)
         .map(|p| {
@@ -464,8 +476,6 @@ pub fn main() {
         .flat_map(BufRead::lines)
         .map(Result::unwrap)
         .map(strip_comments);
-
-    let version = lines.next().unwrap_or_else(|| "unknown".into());
 
     for line in lines {
         match parser.parse_str(&line).unwrap() {
@@ -486,5 +496,6 @@ pub fn main() {
 
     let directory_path = Path::new(&env::var("OUT_DIR").unwrap()).join("directory.rs");
     let mut directory_file = File::create(directory_path).unwrap();
+    let version = detect_iana_db_version();
     write_directory_file(&mut directory_file, &table, &version).unwrap();
 }
