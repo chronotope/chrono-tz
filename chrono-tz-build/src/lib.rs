@@ -17,9 +17,6 @@ use parse_zoneinfo::transitions::TableTransitions;
 /// The name of the environment variable which possibly holds the filter regex.
 const FILTER_ENV_VAR_NAME: &str = "CHRONO_TZ_TIMEZONE_FILTER";
 
-/// The version of the underlying IANA Timezone Database.
-const IANA_TZDB_VERSION: &str = "2023c";
-
 // This function is needed until zoneinfo_parse handles comments correctly.
 // Technically a '#' symbol could occur between double quotes and should be
 // ignored in this case, however this never happens in the tz database as it
@@ -251,9 +248,9 @@ pub static TZ_VARIANTS: [Tz; {num}] = [
 
 // Create a file containing nice-looking re-exports such as Europe::London
 // instead of having to use chrono_tz::timezones::Europe__London
-fn write_directory_file(directory_file: &mut File, table: &Table) -> io::Result<()> {
+fn write_directory_file(directory_file: &mut File, table: &Table, version: &str) -> io::Result<()> {
     // expose the underlying IANA TZDB version
-    writeln!(directory_file, "pub const IANA_TZDB_VERSION : &str = \"{IANA_TZDB_VERSION}\";\n")?;
+    writeln!(directory_file, "pub const IANA_TZDB_VERSION : &str = \"{version}\";\n")?;
     // add the `loose' zone definitions first
     writeln!(directory_file, "use crate::timezones::Tz;\n")?;
     let zones = table
@@ -442,6 +439,7 @@ pub fn main() {
     let mut table = TableBuilder::new();
 
     let tzfiles = [
+        "tz/version",
         "tz/africa",
         "tz/antarctica",
         "tz/asia",
@@ -453,7 +451,7 @@ pub fn main() {
         "tz/southamerica",
     ];
 
-    let lines = tzfiles
+    let mut lines = tzfiles
         .iter()
         .map(Path::new)
         .map(|p| {
@@ -466,6 +464,8 @@ pub fn main() {
         .flat_map(BufRead::lines)
         .map(Result::unwrap)
         .map(strip_comments);
+
+    let version = lines.next().unwrap_or_else(|| "unknown".into());
 
     for line in lines {
         match parser.parse_str(&line).unwrap() {
@@ -486,5 +486,5 @@ pub fn main() {
 
     let directory_path = Path::new(&env::var("OUT_DIR").unwrap()).join("directory.rs");
     let mut directory_file = File::create(directory_path).unwrap();
-    write_directory_file(&mut directory_file, &table).unwrap();
+    write_directory_file(&mut directory_file, &table, &version).unwrap();
 }
