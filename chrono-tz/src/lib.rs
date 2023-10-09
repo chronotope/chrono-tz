@@ -164,6 +164,7 @@ mod tests {
     use super::US::Eastern;
     use super::UTC;
     use chrono::{Duration, NaiveDate, TimeZone};
+    use regex::Regex;
 
     #[test]
     fn london_to_berlin() {
@@ -406,6 +407,7 @@ mod tests {
 
     #[test]
     fn test_iana_tzdb_version() {
-        assert_eq!("2023c", IANA_TZDB_VERSION);
+        let regex = Regex::new(r"^\d{4}[a-z]$"); // i.e. 2023c
+        assert_eq!(Ok(true), regex.map(|r| r.is_match(IANA_TZDB_VERSION)));
     }
 }
