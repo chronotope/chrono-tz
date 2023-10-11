@@ -406,9 +406,10 @@ mod tests {
 
     #[test]
     fn test_iana_tzdb_version() {
+        // Format should be something like 2023c.
         assert_eq!(5, IANA_TZDB_VERSION.len());
         let numbers: Vec<&str> = IANA_TZDB_VERSION.matches(char::is_numeric).collect();
         assert_eq!(4, numbers.len());
-        assert!(IANA_TZDB_VERSION.chars().last().unwrap().is_ascii_lowercase());
+        assert!(IANA_TZDB_VERSION.ends_with(|c: char| c.is_ascii_lowercase()));
     }
 }
