@@ -436,6 +436,14 @@ mod filter {
 fn detect_iana_db_version() -> String {
     let path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::new()))
         .join(Path::new("tz"));
+    // fetch latest git tag
+    Command::new("git")
+        .current_dir(&path)
+        .arg("fetch")
+        .arg("--tags")
+        .output()
+        .expect("`git fetch` failed to run");
+
     let output = Command::new("git")
         .current_dir(path)
         .arg("describe")
