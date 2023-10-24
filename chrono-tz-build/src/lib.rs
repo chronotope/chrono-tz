@@ -438,7 +438,7 @@ fn detect_iana_db_version() -> String {
     let file = File::open(path).expect("failed to open file");
     let mut lines = BufReader::new(file).lines();
     while let Some(Ok(line)) = lines.next() {
-        if line.starts_with("Release ") {
+        if line.len() >= 13 && line.starts_with("Release ") {
             return line[8..13].to_string();
         }
     }
