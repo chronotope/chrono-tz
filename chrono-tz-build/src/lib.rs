@@ -7,7 +7,6 @@ use std::env;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
-use std::process::Command;
 
 use parse_zoneinfo::line::{Line, LineParser};
 use parse_zoneinfo::structure::{Child, Structure};
@@ -435,22 +434,15 @@ mod filter {
 
 fn detect_iana_db_version() -> String {
     let path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::new()))
-        .join(Path::new("tz"));
-    // fetch latest git tag
-    Command::new("git")
-        .current_dir(&path)
-        .arg("fetch")
-        .arg("--tags")
-        .output()
-        .expect("`git fetch` failed to run");
-
-    let output = Command::new("git")
-        .current_dir(path)
-        .arg("describe")
-        .output()
-        .expect("`git describe` failed to run");
-
-    std::str::from_utf8(&output.stdout).expect("failed to convert version").trim().to_string()
+        .join(Path::new("tz/NEWS"));
+    let file = File::open(path).expect("failed to open file");
+    let mut lines = BufReader::new(file).lines();
+    while let Some(Ok(line)) = lines.next() {
+        if line.starts_with("Release ") {
+            return line[8..13].to_string();
+        }
+    }
+    String::new()
 }
 
 pub fn main() {
