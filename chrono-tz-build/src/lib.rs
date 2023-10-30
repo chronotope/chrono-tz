@@ -433,16 +433,24 @@ mod filter {
 }
 
 fn detect_iana_db_version() -> String {
-    let path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::new()))
-        .join(Path::new("tz/NEWS"));
+    let root = env::var("CARGO_MANIFEST_DIR").expect("no Cargo build context");
+    let path = Path::new(&root).join(Path::new("tz/NEWS"));
     let file = File::open(path).expect("failed to open file");
+
     let mut lines = BufReader::new(file).lines();
     while let Some(Ok(line)) = lines.next() {
-        if line.len() >= 13 && line.starts_with("Release ") {
-            return line[8..13].to_string();
+        let line = match line.strip_prefix("Release ") {
+            Some(line) => line,
+            _ => continue,
+        };
+
+        match line.split_once(" - ") {
+            Some((version, _)) => return version.to_owned(),
+            _ => continue,
         }
     }
-    String::new()
+
+    unreachable!("no version found")
 }
 
 pub fn main() {
