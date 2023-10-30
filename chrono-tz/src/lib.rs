@@ -144,6 +144,7 @@ pub use crate::timezone_impl::{OffsetComponents, OffsetName};
 pub use crate::timezones::ParseError;
 pub use crate::timezones::Tz;
 pub use crate::timezones::TZ_VARIANTS;
+pub use crate::IANA_TZDB_VERSION;
 
 #[cfg(test)]
 mod tests {
@@ -159,6 +160,7 @@ mod tests {
     use super::Pacific::Noumea;
     use super::Pacific::Tahiti;
     use super::Tz;
+    use super::IANA_TZDB_VERSION;
     use super::US::Eastern;
     use super::UTC;
     use chrono::{Duration, NaiveDate, TimeZone};
@@ -400,5 +402,14 @@ mod tests {
         #[allow(dead_code)]
         #[derive(Hash)]
         struct Foo(Tz);
+    }
+
+    #[test]
+    fn test_iana_tzdb_version() {
+        // Format should be something like 2023c.
+        assert_eq!(5, IANA_TZDB_VERSION.len());
+        let numbers: Vec<&str> = IANA_TZDB_VERSION.matches(char::is_numeric).collect();
+        assert_eq!(4, numbers.len());
+        assert!(IANA_TZDB_VERSION.ends_with(|c: char| c.is_ascii_lowercase()));
     }
 }

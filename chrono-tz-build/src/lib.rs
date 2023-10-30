@@ -248,8 +248,10 @@ pub static TZ_VARIANTS: [Tz; {num}] = [
 
 // Create a file containing nice-looking re-exports such as Europe::London
 // instead of having to use chrono_tz::timezones::Europe__London
-fn write_directory_file(directory_file: &mut File, table: &Table) -> io::Result<()> {
-    // add the `loose' zone definitions first at the top of the file
+fn write_directory_file(directory_file: &mut File, table: &Table, version: &str) -> io::Result<()> {
+    // expose the underlying IANA TZDB version
+    writeln!(directory_file, "pub const IANA_TZDB_VERSION : &str = \"{version}\";\n")?;
+    // add the `loose' zone definitions first
     writeln!(directory_file, "use crate::timezones::Tz;\n")?;
     let zones = table
         .zonesets
@@ -430,6 +432,19 @@ mod filter {
     }
 }
 
+fn detect_iana_db_version() -> String {
+    let path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::new()))
+        .join(Path::new("tz/NEWS"));
+    let file = File::open(path).expect("failed to open file");
+    let mut lines = BufReader::new(file).lines();
+    while let Some(Ok(line)) = lines.next() {
+        if line.len() >= 13 && line.starts_with("Release ") {
+            return line[8..13].to_string();
+        }
+    }
+    String::new()
+}
+
 pub fn main() {
     println!("cargo:rerun-if-env-changed={}", FILTER_ENV_VAR_NAME);
 
@@ -481,5 +496,6 @@ pub fn main() {
 
     let directory_path = Path::new(&env::var("OUT_DIR").unwrap()).join("directory.rs");
     let mut directory_file = File::create(directory_path).unwrap();
-    write_directory_file(&mut directory_file, &table).unwrap();
+    let version = detect_iana_db_version();
+    write_directory_file(&mut directory_file, &table, &version).unwrap();
 }
