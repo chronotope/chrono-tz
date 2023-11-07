@@ -13,7 +13,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 arbitrary = { version = "1.2", optional = true, features = ["derive"] }
-chrono = { version = "0.4", default-features = false }
+chrono = { version = "0.4.24", default-features = false }
 serde = { version = "1", optional = true, default-features = false }
 phf = { version = "0.11", default-features = false }
 uncased = { version = "0.9", optional = true, default-features = false }
