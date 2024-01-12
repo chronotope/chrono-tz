@@ -134,6 +134,9 @@
 #[cfg(feature = "serde")]
 mod serde;
 
+#[cfg(feature = "schemars")]
+mod schemars;
+
 mod binary_search;
 mod directory;
 mod timezone_impl;

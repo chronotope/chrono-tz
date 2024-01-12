@@ -17,13 +17,19 @@ chrono = { version = "0.4.24", default-features = false }
 serde = { version = "1", optional = true, default-features = false }
 phf = { version = "0.11", default-features = false }
 uncased = { version = "0.9", optional = true, default-features = false }
+schemars = { version = "0.8.16", optional = true, default-features = false }
 
 [features]
 default = ["std"]
 std = []
 serde = ["dep:serde"]
 filter-by-regex = ["chrono-tz-build/filter-by-regex"]
-case-insensitive = ["dep:uncased", "chrono-tz-build/case-insensitive", "phf/uncased"]
+case-insensitive = [
+    "dep:uncased",
+    "chrono-tz-build/case-insensitive",
+    "phf/uncased",
+]
+schemars = ["dep:schemars"]
 
 [build-dependencies]
 chrono-tz-build = { path = "../chrono-tz-build", version = "0.2.1" }
@@ -31,6 +37,10 @@ chrono-tz-build = { path = "../chrono-tz-build", version = "0.2.1" }
 [dev-dependencies]
 serde_test = "1"
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
+serde_json = { version = "1.0.25", default-features = false, features = [
+    "alloc",
+] }
+jsonschema = { version = "0.17.1", default-features = false }
 
 [package.metadata.docs.rs]
 all-features = true
