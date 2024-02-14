@@ -19,10 +19,14 @@ main() {
     new_tag="$(git describe --abbrev=0)"
 
     if [ "$new_tag" != "$orig_tag" ]; then
+        tz_branch="update-tz-${new_tag}"
+        if (git branch -r | grep "origin/$tz_branch")>/dev/null 2>&1 ; then
+            echo "::set-output name=did_update::already_done"
+            return 0
+        fi
         git reset --hard "$new_tag"
         cd ..
         git add tz
-        tz_branch="update-tz-${new_tag}"
         git checkout -b "$tz_branch"
         git config user.name "Brandon W Maister"
         git config user.email "quodlibetor@gmail.com"
