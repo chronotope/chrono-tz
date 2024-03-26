@@ -4,6 +4,7 @@ use core::fmt::{Debug, Display, Error, Formatter};
 use chrono::{
     Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, Offset, TimeZone,
 };
+use chrono::MappedLocalTime::{Ambiguous, Single};
 
 use crate::binary_search::binary_search;
 use crate::timezones::Tz;
@@ -315,13 +316,12 @@ impl TimeZone for Tz {
         // technically correct and returning Ambiguous(_,_) on days when the clock changes. The
         // alternative is painful errors when computing unambiguous times such as
         // `TimeZone.ymd(ambiguous_date).hms(unambiguous_time)`.
-        use chrono::LocalResult::*;
         match (earliest, latest) {
             (result @ Single(_), _) => result,
             (_, result @ Single(_)) => result,
             (Ambiguous(offset, _), _) => Single(offset),
             (_, Ambiguous(offset, _)) => Single(offset),
-            (None, None) => None,
+            (LocalResult::None, LocalResult::None) => LocalResult::None,
         }
     }
 
