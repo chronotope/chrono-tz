@@ -71,6 +71,11 @@ jobs:
         cargo clean
         cargo build --features case-insensitive
 
+    - name: Verify cargo publish includes all files needed to build
+      run: |
+        cargo package --list -p chrono-tz
+        cargo publish --dry-run -p chrono-tz
+
   lint:
     runs-on: ubuntu-latest
 
