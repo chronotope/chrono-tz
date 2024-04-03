@@ -10,6 +10,22 @@ repository = "https://github.com/chronotope/chrono-tz"
 documentation = "https://docs.rs/chrono-tz"
 readme = "../README.md"
 license = "MIT OR Apache-2.0"
+include = [
+  "src/*.rs",
+  "tests/*.rs",
+  "build.rs",
+  "LICENSE",
+  "tz/africa",
+  "tz/antarctica",
+  "tz/asia",
+  "tz/australasia",
+  "tz/backward",
+  "tz/etcetera",
+  "tz/europe",
+  "tz/northamerica",
+  "tz/southamerica",
+  "tz/NEWS",
+]
 
 [dependencies]
 arbitrary = { version = "1.2", optional = true, features = ["derive"] }
