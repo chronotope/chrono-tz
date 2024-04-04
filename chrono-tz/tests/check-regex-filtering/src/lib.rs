@@ -19,7 +19,7 @@ mod tests {
     fn london_compiles() {
         // This line will be a compilation failure if the code generation
         // mistakenly excluded Europe::London.
-        let _london_time = London.ymd(2013, 12, 25).and_hms(14, 0, 0);
+        let _london_time = London.with_ymd_and_hms(2013, 12, 25, 14, 0, 0);
         assert_eq!("Europe/London", London.name());
 
         // Since London is included, converting from the corresponding

@@ -328,7 +328,7 @@ impl TimeZone for Tz {
     // First search for a timespan that the local datetime falls into, then, if it exists,
     // check the two surrounding timespans (if they exist) to see if there is any ambiguity.
     fn offset_from_local_datetime(&self, local: &NaiveDateTime) -> LocalResult<Self::Offset> {
-        let timestamp = local.timestamp();
+        let timestamp = local.and_utc().timestamp();
         let timespans = self.timespans();
         let index = binary_search(0, timespans.len(), |i| timespans.local_span(i).cmp(timestamp));
         TzOffset::map_localresult(
@@ -360,8 +360,8 @@ impl TimeZone for Tz {
 
     // Binary search for the required timespan. Any i64 is guaranteed to fall within
     // exactly one timespan, no matter what (so the `unwrap` is safe).
-    fn offset_from_utc_datetime(&self, utc: &NaiveDateTime) -> Self::Offset {
-        let timestamp = utc.timestamp();
+    fn offset_from_utc_datetime(&self, dt: &NaiveDateTime) -> Self::Offset {
+        let timestamp = dt.and_utc().timestamp();
         let timespans = self.timespans();
         let index =
             binary_search(0, timespans.len(), |i| timespans.utc_span(i).cmp(timestamp)).unwrap();
