@@ -5,7 +5,8 @@ edition = "2021"
 rust-version = "1.60"
 build = "build.rs"
 description = "TimeZone implementations for chrono from the IANA database"
-keywords = ["date", "time", "timezone", "zone", "calendar"]
+keywords = ["date", "time", "timezone", "zone", "iana"]
+categories = ["date-and-time"]
 repository = "https://github.com/chronotope/chrono-tz"
 documentation = "https://docs.rs/chrono-tz"
 readme = "../README.md"
@@ -30,7 +31,7 @@ include = [
 [dependencies]
 arbitrary = { version = "1.2", optional = true, features = ["derive"] }
 chrono = { version = "0.4.24", default-features = false }
-serde = { version = "1", optional = true, default-features = false }
+serde = { version = "1.0.99", optional = true, default-features = false }
 phf = { version = "0.11", default-features = false }
 uncased = { version = "0.9", optional = true, default-features = false }
 
