@@ -6,12 +6,15 @@ rust-version = "1.60"
 description = "internal build script for chrono-tz"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
+keywords = ["script", "chrono-tz", "timezone", "iana"]
+categories = ["development-tools::build-utils"]
 repository = "https://github.com/chronotope/chrono-tz"
 documentation = "https://docs.rs/chrono-tz-build"
 
 [features]
 filter-by-regex = ["regex"]
 case-insensitive = ["uncased", "phf/uncased"]
+regex = ["dep:regex"]
 
 [dependencies]
 parse-zoneinfo = { version = "0.3" }
