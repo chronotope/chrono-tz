@@ -328,6 +328,8 @@ mod filter {
 }
 
 /// Module containing code supporting filter-by-regex feature
+///
+/// The "GMT" and "UTC" time zones are always included.
 #[cfg(feature = "filter-by-regex")]
 mod filter {
     use std::collections::HashSet;
@@ -390,13 +392,13 @@ mod filter {
     fn filter_timezone_table(table: &mut Table, filter_regex: Regex) {
         // Compute the transitive closure of things to keep.
         // Doing this, instead of just filtering `zonesets` and `links` by the
-        // regiex, helps to keep the `structure()` intact.
+        // regex, helps to keep the `structure()` intact.
         let mut keep = HashSet::new();
         for (k, v) in &table.links {
-            if filter_regex.is_match(k) {
+            if filter_regex.is_match(k) || k == "GMT" || k == "UTC" {
                 insert_keep_entry(&mut keep, k);
             }
-            if filter_regex.is_match(v) {
+            if filter_regex.is_match(v) || k == "GMT" || k == "UTC" {
                 insert_keep_entry(&mut keep, v);
             }
         }
