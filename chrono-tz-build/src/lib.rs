@@ -34,12 +34,9 @@ fn format_rest(rest: Vec<(i64, FixedTimespan)>, abbreviations: &str) -> String {
     let mut ret = "&[\n".to_string();
     for (start, FixedTimespan { utc_offset, dst_offset, name }) in rest {
         ret.push_str(&format!(
-            "                    ({start}, FixedTimespan {{ \
-             utc_offset: {utc}, dst_offset: {dst}, abbreviation: {index_len} \
-             }}),\n",
+            "                    ({start}, FixedTimespan {{ offset: {offset}, abbreviation: {index_len} }}),\n",
             start = start,
-            utc = utc_offset,
-            dst = dst_offset,
+            offset = utc_offset << 14 | (dst_offset & ((1 << 14) - 1)),
             index_len = (abbreviations.find(&name).unwrap() << 3) | name.len(),
         ));
     }
@@ -222,18 +219,14 @@ impl FromStr for Tz {{
             "            Tz::{zone} => {{
                 const REST: &[(i64, FixedTimespan)] = {rest};
                 FixedTimespanSet {{
-                    first: FixedTimespan {{
-                        utc_offset: {utc},
-                        dst_offset: {dst},
-                        abbreviation: {index_len},
-                    }},
+                    first: FixedTimespan {{ offset: {offset}, abbreviation: {index_len} }},
                     rest: REST
                 }}
             }},\n",
             zone = zone_name,
             rest = format_rest(timespans.rest, &abbreviations_str),
-            utc = timespans.first.utc_offset,
-            dst = timespans.first.dst_offset,
+            offset =
+                timespans.first.utc_offset << 14 | (timespans.first.dst_offset & ((1 << 14) - 1)),
             index_len = (abbreviations_str.find(&timespans.first.name).unwrap() << 3)
                 | timespans.first.name.len(),
         )?;

@@ -20,11 +20,10 @@ impl Default for Tz {
 /// For example, [`::US::Eastern`] is composed of at least two
 /// `FixedTimespan`s: `EST` and `EDT`, that are variously in effect.
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub struct FixedTimespan {
-    /// The base offset from UTC; this usually doesn't change unless the government changes something
-    pub utc_offset: i32,
-    /// The additional offset from UTC for this timespan; typically for daylight saving time
-    pub dst_offset: i32,
+pub(crate) struct FixedTimespan {
+    /// We encode two values in the offset: the base offset from utc and the extra offset due to
+    /// DST. It is encoded as `(utc_offset << 14) | (dst_offset & ((1 << 14) - 1))`.
+    pub(crate) offset: i32,
     /// The abbreviation of this offset, for example the difference between `EDT`/`EST`.
     /// Stored as a slice of the `ABBREVIATIONS` static as `index << 3 | len`.
     pub(crate) abbreviation: i16,
@@ -36,11 +35,19 @@ impl FixedTimespan {
         let len = (self.abbreviation & 0b111) as usize;
         &ABBREVIATIONS[index..index + len]
     }
+
+    fn base_offset(&self) -> i32 {
+        self.offset >> 14
+    }
+
+    fn saving(&self) -> i32 {
+        (self.offset << 18) >> 18
+    }
 }
 
 impl Offset for FixedTimespan {
     fn fix(&self) -> FixedOffset {
-        FixedOffset::east_opt(self.utc_offset + self.dst_offset).unwrap()
+        FixedOffset::east_opt(self.base_offset() + self.saving()).unwrap()
     }
 }
 
@@ -151,11 +158,11 @@ impl TzOffset {
 
 impl OffsetComponents for TzOffset {
     fn base_utc_offset(&self) -> Duration {
-        Duration::seconds(self.offset.utc_offset as i64)
+        Duration::seconds(self.offset.base_offset() as i64)
     }
 
     fn dst_offset(&self) -> Duration {
-        Duration::seconds(self.offset.dst_offset as i64)
+        Duration::seconds(self.offset.saving() as i64)
     }
 }
 
@@ -252,21 +259,17 @@ impl FixedTimespanSet {
                 None
             } else {
                 let span = self.rest[index - 1];
-                Some(span.0 + span.1.utc_offset as i64 + span.1.dst_offset as i64)
+                Some(span.0 + (span.1.base_offset() + span.1.saving()) as i64)
             },
             end: if index == self.rest.len() {
                 None
             } else if index == 0 {
-                Some(
-                    self.rest[index].0
-                        + self.first.utc_offset as i64
-                        + self.first.dst_offset as i64,
-                )
+                Some(self.rest[index].0 + (self.first.base_offset() + self.first.saving()) as i64)
             } else {
                 Some(
                     self.rest[index].0
-                        + self.rest[index - 1].1.utc_offset as i64
-                        + self.rest[index - 1].1.dst_offset as i64,
+                        + self.rest[index - 1].1.base_offset() as i64
+                        + self.rest[index - 1].1.saving() as i64,
                 )
             },
         }
