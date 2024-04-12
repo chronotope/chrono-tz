@@ -416,7 +416,7 @@ mod tests {
 
     #[test]
     fn test_type_size() {
-        assert_eq!(core::mem::size_of::<TzOffset>(), 12);
-        assert_eq!(core::mem::size_of::<DateTime<Tz>>(), 24);
+        assert_eq!(core::mem::size_of::<TzOffset>(), 8);
+        assert_eq!(core::mem::size_of::<DateTime<Tz>>(), 20);
     }
 }

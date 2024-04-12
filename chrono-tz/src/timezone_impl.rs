@@ -30,12 +30,6 @@ pub(crate) struct FixedTimespan {
 }
 
 impl FixedTimespan {
-    fn abbreviation(&self) -> &'static str {
-        let index = (self.abbreviation >> 3) as usize;
-        let len = (self.abbreviation & 0b111) as usize;
-        &ABBREVIATIONS[index..index + len]
-    }
-
     fn base_offset(&self) -> i32 {
         self.offset >> 14
     }
@@ -45,28 +39,15 @@ impl FixedTimespan {
     }
 }
 
-impl Offset for FixedTimespan {
-    fn fix(&self) -> FixedOffset {
-        FixedOffset::east_opt(self.base_offset() + self.saving()).unwrap()
-    }
-}
-
-impl Display for FixedTimespan {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "{}", self.abbreviation())
-    }
-}
-
-impl Debug for FixedTimespan {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "{}", self.abbreviation())
-    }
-}
-
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct TzOffset {
     tz: Tz,
-    offset: FixedTimespan,
+    /// We encode two values in the offset: the base offset from utc and the extra offset due to
+    /// DST. It is encoded as `(utc_offset << 14) | (saving & ((1 << 14) - 1))`.
+    offset: i32,
+    /// The abbreviation of this offset, for example the difference between `EDT`/`EST`.
+    /// Stored as a slice of the `ABBREVIATIONS` static as `index << 3 | len`.
+    abbreviation: i16,
 }
 
 /// Detailed timezone offset components that expose any special conditions currently in effect.
@@ -142,7 +123,7 @@ pub trait OffsetName {
 
 impl TzOffset {
     fn new(tz: Tz, offset: FixedTimespan) -> Self {
-        TzOffset { tz, offset }
+        TzOffset { tz, offset: offset.offset, abbreviation: offset.abbreviation }
     }
 
     fn map_localresult(tz: Tz, result: LocalResult<FixedTimespan>) -> LocalResult<Self> {
@@ -158,11 +139,11 @@ impl TzOffset {
 
 impl OffsetComponents for TzOffset {
     fn base_utc_offset(&self) -> Duration {
-        Duration::seconds(self.offset.base_offset() as i64)
+        Duration::seconds((self.offset >> 14) as i64)
     }
 
     fn dst_offset(&self) -> Duration {
-        Duration::seconds(self.offset.saving() as i64)
+        Duration::seconds(((self.offset << 18) >> 18) as i64)
     }
 }
 
@@ -172,25 +153,27 @@ impl OffsetName for TzOffset {
     }
 
     fn abbreviation(&self) -> &str {
-        self.offset.abbreviation()
+        let index = (self.abbreviation >> 3) as usize;
+        let len = (self.abbreviation & 0b111) as usize;
+        &ABBREVIATIONS[index..index + len]
     }
 }
 
 impl Offset for TzOffset {
     fn fix(&self) -> FixedOffset {
-        self.offset.fix()
+        FixedOffset::east_opt((self.offset >> 14) + ((self.offset << 18) >> 18)).unwrap()
     }
 }
 
 impl Display for TzOffset {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        Display::fmt(&self.offset, f)
+        f.write_str(self.abbreviation())
     }
 }
 
 impl Debug for TzOffset {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        Debug::fmt(&self.offset, f)
+        f.write_str(self.abbreviation())
     }
 }
 
