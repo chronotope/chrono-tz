@@ -163,7 +163,8 @@ mod tests {
     use super::IANA_TZDB_VERSION;
     use super::US::Eastern;
     use super::UTC;
-    use chrono::{Duration, NaiveDate, TimeZone};
+    use crate::TzOffset;
+    use chrono::{DateTime, Duration, NaiveDate, TimeZone};
 
     #[test]
     fn london_to_berlin() {
@@ -411,5 +412,11 @@ mod tests {
         let numbers: Vec<&str> = IANA_TZDB_VERSION.matches(char::is_numeric).collect();
         assert_eq!(4, numbers.len());
         assert!(IANA_TZDB_VERSION.ends_with(|c: char| c.is_ascii_lowercase()));
+    }
+
+    #[test]
+    fn test_type_size() {
+        assert_eq!(core::mem::size_of::<TzOffset>(), 32);
+        assert_eq!(core::mem::size_of::<DateTime<Tz>>(), 48);
     }
 }
