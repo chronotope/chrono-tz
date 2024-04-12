@@ -2,7 +2,7 @@ extern crate parse_zoneinfo;
 #[cfg(feature = "filter-by-regex")]
 extern crate regex;
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
@@ -30,17 +30,17 @@ fn strip_comments(mut line: String) -> String {
 
 // Generate a list of the time zone periods beyond the first that apply
 // to this zone, as a string representation of a static slice.
-fn format_rest(rest: Vec<(i64, FixedTimespan)>) -> String {
+fn format_rest(rest: Vec<(i64, FixedTimespan)>, abbreviations: &str) -> String {
     let mut ret = "&[\n".to_string();
     for (start, FixedTimespan { utc_offset, dst_offset, name }) in rest {
         ret.push_str(&format!(
             "                    ({start}, FixedTimespan {{ \
-             utc_offset: {utc}, dst_offset: {dst}, name: \"{name}\" \
+             utc_offset: {utc}, dst_offset: {dst}, abbreviation: {index_len} \
              }}),\n",
             start = start,
             utc = utc_offset,
             dst = dst_offset,
-            name = name,
+            index_len = (abbreviations.find(&name).unwrap() << 3) | name.len(),
         ));
     }
     ret.push_str("                ]");
@@ -68,12 +68,29 @@ fn convert_bad_chars(name: &str) -> String {
 // TimeZone for any contained struct that implements `Timespans`.
 fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()> {
     let zones = table.zonesets.keys().chain(table.links.keys()).collect::<BTreeSet<_>>();
+
+    // Collect all unique abbreviations into a HashSet, sort, and concatenate into a string.
+    let mut abbreviations = HashSet::new();
+    for zone in &zones {
+        let timespans = table.timespans(zone).unwrap();
+        for (_, timespan) in timespans.rest.into_iter().chain(Some((0, timespans.first))) {
+            abbreviations.insert(timespan.name.clone());
+        }
+    }
+    let mut abbreviations: Vec<_> = abbreviations.iter().collect();
+    abbreviations.sort();
+    let mut abbreviations_str = String::new();
+    for abbr in abbreviations.drain(..) {
+        abbreviations_str.push_str(abbr)
+    }
+
     writeln!(timezone_file, "use core::fmt::{{self, Debug, Display, Formatter}};",)?;
     writeln!(timezone_file, "use core::str::FromStr;\n",)?;
     writeln!(
         timezone_file,
         "use crate::timezone_impl::{{TimeSpans, FixedTimespanSet, FixedTimespan}};\n",
     )?;
+    writeln!(timezone_file, "pub(crate) const ABBREVIATIONS: &str = \"{}\";\n", abbreviations_str)?;
     writeln!(
         timezone_file,
         "/// TimeZones built at compile time from the tz database
@@ -208,16 +225,17 @@ impl FromStr for Tz {{
                     first: FixedTimespan {{
                         utc_offset: {utc},
                         dst_offset: {dst},
-                        name: \"{name}\",
+                        abbreviation: {index_len},
                     }},
                     rest: REST
                 }}
             }},\n",
             zone = zone_name,
-            rest = format_rest(timespans.rest),
+            rest = format_rest(timespans.rest, &abbreviations_str),
             utc = timespans.first.utc_offset,
             dst = timespans.first.dst_offset,
-            name = timespans.first.name,
+            index_len = (abbreviations_str.find(&timespans.first.name).unwrap() << 3)
+                | timespans.first.name.len(),
         )?;
     }
     write!(

@@ -6,7 +6,7 @@ use chrono::{
 };
 
 use crate::binary_search::binary_search;
-use crate::timezones::Tz;
+use crate::timezones::{Tz, ABBREVIATIONS};
 
 /// Returns [`Tz::UTC`].
 impl Default for Tz {
@@ -25,8 +25,17 @@ pub struct FixedTimespan {
     pub utc_offset: i32,
     /// The additional offset from UTC for this timespan; typically for daylight saving time
     pub dst_offset: i32,
-    /// The name of this timezone, for example the difference between `EDT`/`EST`
-    pub name: &'static str,
+    /// The abbreviation of this offset, for example the difference between `EDT`/`EST`.
+    /// Stored as a slice of the `ABBREVIATIONS` static as `index << 3 | len`.
+    pub(crate) abbreviation: i16,
+}
+
+impl FixedTimespan {
+    fn abbreviation(&self) -> &'static str {
+        let index = (self.abbreviation >> 3) as usize;
+        let len = (self.abbreviation & 0b111) as usize;
+        &ABBREVIATIONS[index..index + len]
+    }
 }
 
 impl Offset for FixedTimespan {
@@ -37,13 +46,13 @@ impl Offset for FixedTimespan {
 
 impl Display for FixedTimespan {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "{}", self.name)
+        write!(f, "{}", self.abbreviation())
     }
 }
 
 impl Debug for FixedTimespan {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "{}", self.name)
+        write!(f, "{}", self.abbreviation())
     }
 }
 
@@ -156,7 +165,7 @@ impl OffsetName for TzOffset {
     }
 
     fn abbreviation(&self) -> &str {
-        self.offset.name
+        self.offset.abbreviation()
     }
 }
 
