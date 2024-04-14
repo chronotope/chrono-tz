@@ -334,9 +334,9 @@ impl FixedTimespanSetBuilder {
 
                 if *insert_start_transition {
                     if earliest_at < self.start_time.unwrap() {
-                        replace(start_utc_offset, timespan.offset);
-                        replace(start_dst_offset, *dst_offset);
-                        replace(
+                        let _ = replace(start_utc_offset, timespan.offset);
+                        let _ = replace(start_dst_offset, *dst_offset);
+                        let _ = replace(
                             start_zone_id,
                             Some(
                                 timespan
@@ -350,7 +350,7 @@ impl FixedTimespanSetBuilder {
                     if start_zone_id.is_none()
                         && *start_utc_offset + *start_dst_offset == timespan.offset + *dst_offset
                     {
-                        replace(
+                        let _ = replace(
                             start_zone_id,
                             Some(
                                 timespan
