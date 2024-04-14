@@ -182,14 +182,14 @@ impl Default for LineParser {
             zone_line: Regex::new(
                 r##"(?x) ^
                 Zone \s+
-                ( ?P<name> [ A-Z a-z 0-9 / _ + - ]+ )  \s+
+                ( ?P<name> [A-Za-z0-9/_+-]+ )  \s+
                 ( ?P<gmtoff>     \S+ )  \s+
                 ( ?P<rulessave>  \S+ )  \s+
                 ( ?P<format>     \S+ )  \s*
-                ( ?P<year>       \S+ )? \s*
-                ( ?P<month>      \S+ )? \s*
-                ( ?P<day>        \S+ )? \s*
-                ( ?P<time>       \S+ )? \s*
+                ( ?P<year>       [0-9]+)? \s*
+                ( ?P<month>      [A-Za-z]+)? \s*
+                ( ?P<day>        [A-Za-z0-9><=]+ )? \s*
+                ( ?P<time>       [0-9:]+[suwz]? )? \s*
                 (\#.*)?
             $ "##,
             )
@@ -201,10 +201,10 @@ impl Default for LineParser {
                 ( ?P<gmtoff>     \S+ )  \s+
                 ( ?P<rulessave>  \S+ )  \s+
                 ( ?P<format>     \S+ )  \s*
-                ( ?P<year>       \S+ )? \s*
-                ( ?P<month>      \S+ )? \s*
-                ( ?P<day>        \S+ )? \s*
-                ( ?P<time>       \S+ )? \s*
+                ( ?P<year>       [0-9]+)? \s*
+                ( ?P<month>      [A-Za-z]+)? \s*
+                ( ?P<day>        [A-Za-z0-9><=]+ )? \s*
+                ( ?P<time>       [0-9:]+[suwz]? )? \s*
                 (\#.*)?
             $ "##,
             )
