@@ -35,7 +35,6 @@
 //! ```
 
 use std::collections::hash_map::{Entry, HashMap};
-use std::error::Error as ErrorTrait;
 use std::fmt;
 
 use crate::line::{self, ChangeTime, DaySpec, Month, TimeType, Year};
@@ -388,12 +387,18 @@ pub enum Error<'line> {
 
 impl<'line> fmt::Display for Error<'line> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.description())
+        match self {
+            Error::SurpriseContinuationLine => write!(
+                f,
+                "continuation line follows line that isn't a zone definition line"
+            ),
+            Error::UnknownRuleset(_) => {
+                write!(f, "zone definition refers to a ruleset that isn't defined")
+            }
+            Error::DuplicateLink(_) => write!(f, "link line with name that already exists"),
+            Error::DuplicateZone => write!(f, "zone line with name that already exists"),
+        }
     }
 }
 
-impl<'line> ErrorTrait for Error<'line> {
-    fn description(&self) -> &str {
-        "interpretation error"
-    }
-}
+impl<'line> std::error::Error for Error<'line> {}
