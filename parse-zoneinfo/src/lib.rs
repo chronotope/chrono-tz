@@ -34,8 +34,6 @@
 #![warn(unreachable_pub)]
 #![warn(unused)]
 
-extern crate regex;
-
 pub mod line;
 pub mod structure;
 pub mod table;

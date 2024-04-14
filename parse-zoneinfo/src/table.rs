@@ -38,9 +38,7 @@ use std::collections::hash_map::{Entry, HashMap};
 use std::error::Error as ErrorTrait;
 use std::fmt;
 
-use line::{self, ChangeTime, DaySpec, Month, Year};
-
-use crate::line::TimeType;
+use crate::line::{self, ChangeTime, DaySpec, Month, TimeType, Year};
 
 /// A **table** of all the data in one or more zoneinfo files.
 #[derive(PartialEq, Debug, Default)]
@@ -391,10 +389,5 @@ impl<'line> fmt::Display for Error<'line> {
 impl<'line> ErrorTrait for Error<'line> {
     fn description(&self) -> &str {
         "interpretation error"
-    }
-
-    #[allow(bare_trait_objects)] // remove when we require edition 2018
-    fn cause(&self) -> Option<&ErrorTrait> {
-        None
     }
 }

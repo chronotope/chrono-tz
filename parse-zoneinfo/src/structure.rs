@@ -32,7 +32,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use table::Table;
+use crate::table::Table;
 
 /// Trait to put the `structure` method on Tables.
 pub trait Structure {
@@ -150,7 +150,7 @@ pub enum Child<'table> {
 #[allow(unused_results)]
 mod test {
     use super::*;
-    use table::Table;
+    use crate::table::Table;
 
     #[test]
     fn empty() {

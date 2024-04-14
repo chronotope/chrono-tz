@@ -101,7 +101,7 @@
 //! The logic in this file is based off of `zic.c`, which comes with the
 //! zoneinfo files and is in the public domain.
 
-use table::{RuleInfo, Saving, Table, ZoneInfo};
+use crate::table::{RuleInfo, Saving, Table, ZoneInfo};
 
 /// A set of timespans, separated by the instances at which the timespans
 /// change over. There will always be one more timespan than transitions.

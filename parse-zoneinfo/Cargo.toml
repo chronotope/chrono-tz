@@ -1,6 +1,8 @@
 [package]
 name = "parse-zoneinfo"
 version = "0.3.0"
+edition = "2021"
+rust-version = "1.56.0"
 description = "Parse zoneinfo files from the IANA database"
 repository = "https://github.com/djzin/parse-zoneinfo"
 readme = "README.md"
