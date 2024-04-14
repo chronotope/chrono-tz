@@ -1192,7 +1192,7 @@ impl LineParser {
         })
     }
 
-    pub fn parse_zone<'a>(&self, input: &'a str) -> Result<Zone<'a>, Error> {
+    fn parse_zone<'a>(&self, input: &'a str) -> Result<Zone<'a>, Error> {
         if let Some(caps) = self.zone_line.captures(input) {
             let name = caps.name("name").unwrap().as_str();
             let info = self.zoneinfo_from_captures(caps)?;
@@ -1202,7 +1202,7 @@ impl LineParser {
         }
     }
 
-    pub fn parse_link<'a>(&self, input: &'a str) -> Result<Link<'a>, Error> {
+    fn parse_link<'a>(&self, input: &'a str) -> Result<Link<'a>, Error> {
         if let Some(caps) = self.link_line.captures(input) {
             let target = caps.name("target").unwrap().as_str();
             let name = caps.name("name").unwrap().as_str();

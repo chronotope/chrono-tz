@@ -17,21 +17,31 @@
 //! ## Example
 //!
 //! ```
-//! use parse_zoneinfo::line::{Zone, Link, LineParser};
+//! use parse_zoneinfo::line::{Zone, Line, LineParser, Link};
 //! use parse_zoneinfo::table::{TableBuilder};
 //!
-//! let parser = LineParser::new();
-//! let zone = parser.parse_zone("Zone  Pacific/Auckland  11:39:04  -  LMT  1868  Nov  2").unwrap();
-//! let link = parser.parse_link("Link  Pacific/Auckland  Antarctica/McMurdo").unwrap();
-//!
+//! let parser = LineParser::default();
 //! let mut builder = TableBuilder::new();
-//! builder.add_zone_line(zone).unwrap();
-//! builder.add_link_line(link).unwrap();
+//!
+//! let zone = "Zone  Pacific/Auckland  11:39:04  -  LMT  1868  Nov  2";
+//! let link = "Link  Pacific/Auckland  Antarctica/McMurdo";
+//!
+//! for line in [zone, link] {
+//!     match parser.parse_str(&line)? {
+//!         Line::Zone(zone) => builder.add_zone_line(zone).unwrap(),
+//!         Line::Continuation(cont) => builder.add_continuation_line(cont).unwrap(),
+//!         Line::Rule(rule) => builder.add_rule_line(rule).unwrap(),
+//!         Line::Link(link) => builder.add_link_line(link).unwrap(),
+//!         Line::Space => {}
+//!     }
+//! }
+//!
 //! let table = builder.build();
 //!
 //! assert!(table.get_zoneset("Pacific/Auckland").is_some());
 //! assert!(table.get_zoneset("Antarctica/McMurdo").is_some());
 //! assert!(table.get_zoneset("UTC").is_none());
+//! # Ok::<(), parse_zoneinfo::line::Error>(())
 //! ```
 
 use std::collections::hash_map::{Entry, HashMap};
