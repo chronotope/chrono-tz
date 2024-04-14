@@ -18,7 +18,7 @@
 //! # fn main() {
 //! use parse_zoneinfo::line::*;
 //!
-//! let parser = LineParser::new();
+//! let parser = LineParser::default();
 //! let line = parser.parse_str("Rule  EU  1977    1980    -   Apr Sun>=1   1:00u  1:00    S");
 //!
 //! assert_eq!(line, Ok(Line::Rule(Rule {
@@ -40,7 +40,7 @@
 //! # fn main() {
 //! use parse_zoneinfo::line::*;
 //!
-//! let parser = LineParser::new();
+//! let parser = LineParser::default();
 //! let line = parser.parse_str("Zone  Australia/Adelaide  9:30  Aus  AC%sT  1971 Oct 31  2:00:00");
 //!
 //! assert_eq!(line, Ok(Line::Zone(Zone {
@@ -65,7 +65,7 @@
 //! ```
 //! use parse_zoneinfo::line::*;
 //!
-//! let parser = LineParser::new();
+//! let parser = LineParser::default();
 //! let line = parser.parse_str("Link  Europe/Istanbul  Asia/Istanbul");
 //! assert_eq!(line, Ok(Line::Link(Link {
 //!     existing:  "Europe/Istanbul",
@@ -107,8 +107,8 @@ pub enum Error {
     NotParsedAsLinkLine,
 }
 
-impl LineParser {
-    pub fn new() -> Self {
+impl Default for LineParser {
+    fn default() -> Self {
         LineParser {
             rule_line: Regex::new(
                 r##"(?x) ^
@@ -969,6 +969,11 @@ fn parse_time_type(c: &str) -> Option<TimeType> {
 }
 
 impl LineParser {
+    #[deprecated]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     fn parse_timespec_and_type(&self, input: &str) -> Result<TimeSpecAndType, Error> {
         if input == "-" {
             Ok(TimeSpecAndType(TimeSpec::Zero, TimeType::Wall))
@@ -1222,7 +1227,7 @@ mod tests {
         ($name:ident: $input:expr => $result:expr) => {
             #[test]
             fn $name() {
-                let parser = LineParser::new();
+                let parser = LineParser::default();
                 assert_eq!(parser.parse_str($input), $result);
             }
         };
@@ -1304,7 +1309,7 @@ mod tests {
     #[test]
     fn negative_offsets() {
         static LINE: &'static str = "Zone    Europe/London   -0:01:15 -  LMT 1847 Dec  1  0:00s";
-        let parser = LineParser::new();
+        let parser = LineParser::default();
         let zone = parser.parse_zone(LINE).unwrap();
         assert_eq!(
             zone.info.utc_offset,
@@ -1316,7 +1321,7 @@ mod tests {
     fn negative_offsets_2() {
         static LINE: &'static str =
             "Zone        Europe/Madrid   -0:14:44 -      LMT     1901 Jan  1  0:00s";
-        let parser = LineParser::new();
+        let parser = LineParser::default();
         let zone = parser.parse_zone(LINE).unwrap();
         assert_eq!(
             zone.info.utc_offset,
@@ -1327,7 +1332,7 @@ mod tests {
     #[test]
     fn negative_offsets_3() {
         static LINE: &'static str = "Zone America/Danmarkshavn -1:14:40 -    LMT 1916 Jul 28";
-        let parser = LineParser::new();
+        let parser = LineParser::default();
         let zone = parser.parse_zone(LINE).unwrap();
         assert_eq!(
             zone.info.utc_offset,
