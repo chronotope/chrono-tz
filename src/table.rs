@@ -1,8 +1,46 @@
+//! Collecting parsed zoneinfo data lines into a set of time zone data.
+//!
+//! This module provides the `Table` struct, which is able to take parsed
+//! lines of input from the `line` module and coalesce them into a single
+//! set of data.
+//!
+//! It’s not as simple as it seems, because the zoneinfo data lines refer to
+//! each other through strings: lines of the form “link zone A to B” could be
+//! *parsed* successfully but still fail to be *interpreted* successfully if
+//! “B” doesn’t exist. So it has to check every step of the way—nothing wrong
+//! with this, it’s just a consequence of reading data from a text file.
+//!
+//! This module only deals with constructing a table from data: any analysis
+//! of the data is done elsewhere.
+//!
+//!
+//! ## Example
+//!
+//! ```
+//! use parse_zoneinfo::line::{Zone, Link, LineParser};
+//! use parse_zoneinfo::table::{TableBuilder};
+//!
+//! let parser = LineParser::new();
+//! let zone = parser.parse_zone("Zone  Pacific/Auckland  11:39:04  -  LMT  1868  Nov  2").unwrap();
+//! let link = parser.parse_link("Link  Pacific/Auckland  Antarctica/McMurdo").unwrap();
+//!
+//! let mut builder = TableBuilder::new();
+//! builder.add_zone_line(zone).unwrap();
+//! builder.add_link_line(link).unwrap();
+//! let table = builder.build();
+//!
+//! assert!(table.get_zoneset("Pacific/Auckland").is_some());
+//! assert!(table.get_zoneset("Antarctica/McMurdo").is_some());
+//! assert!(table.get_zoneset("UTC").is_none());
+//! ```
+
 use std::collections::hash_map::{Entry, HashMap};
 use std::error::Error as ErrorTrait;
 use std::fmt;
 
-use line::{self, ChangeTime, DaySpec, Month, TimeType, Year};
+use line::{self, ChangeTime, DaySpec, Month, Year};
+
+use crate::line::TimeType;
 
 /// A **table** of all the data in one or more zoneinfo files.
 #[derive(PartialEq, Debug, Default)]

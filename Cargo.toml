@@ -1,12 +1,11 @@
 [package]
 name = "parse-zoneinfo"
 version = "0.3.0"
-authors = ["Djzin <djzin@users.noreply.github.com>"]
 description = "Parse zoneinfo files from the IANA database"
-keywords = ["date", "time", "timezone", "zone", "calendar"]
 repository = "https://github.com/djzin/parse-zoneinfo"
 readme = "README.md"
 license = "MIT"
+keywords = ["date", "time", "timezone", "zone", "calendar"]
 
 [dependencies.regex]
 version = "1.3.1"

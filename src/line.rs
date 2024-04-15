@@ -1,3 +1,78 @@
+//! Parsing zoneinfo data files, line-by-line.
+//!
+//! This module provides functions that take a line of input from a zoneinfo
+//! data file and attempts to parse it, returning the details of the line if
+//! it gets parsed successfully. It classifies them as `Rule`, `Link`,
+//! `Zone`, or `Continuation` lines.
+//!
+//! `Line` is the type that parses and holds zoneinfo line data. To try to
+//! parse a string, use the `Line::from_str` constructor. (This isn’t the
+//! `FromStr` trait, so you can’t use `parse` on a string. Sorry!)
+//!
+//! ## Examples
+//!
+//! Parsing a `Rule` line:
+//!
+//! ```
+//! # extern crate parse_zoneinfo;
+//! # fn main() {
+//! use parse_zoneinfo::line::*;
+//!
+//! let parser = LineParser::new();
+//! let line = parser.parse_str("Rule  EU  1977    1980    -   Apr Sun>=1   1:00u  1:00    S");
+//!
+//! assert_eq!(line, Ok(Line::Rule(Rule {
+//!     name:         "EU",
+//!     from_year:    Year::Number(1977),
+//!     to_year:      Some(Year::Number(1980)),
+//!     month:        Month::April,
+//!     day:          DaySpec::FirstOnOrAfter(Weekday::Sunday, 1),
+//!     time:         TimeSpec::HoursMinutes(1, 0).with_type(TimeType::UTC),
+//!     time_to_add:  TimeSpec::HoursMinutes(1, 0),
+//!     letters:      Some("S"),
+//! })));
+//! # }
+//! ```
+//!
+//! Parsing a `Zone` line:
+//!
+//! ```
+//! # fn main() {
+//! use parse_zoneinfo::line::*;
+//!
+//! let parser = LineParser::new();
+//! let line = parser.parse_str("Zone  Australia/Adelaide  9:30  Aus  AC%sT  1971 Oct 31  2:00:00");
+//!
+//! assert_eq!(line, Ok(Line::Zone(Zone {
+//!     name: "Australia/Adelaide",
+//!     info: ZoneInfo {
+//!         utc_offset:  TimeSpec::HoursMinutes(9, 30),
+//!         saving:      Saving::Multiple("Aus"),
+//!         format:      "AC%sT",
+//!         time:        Some(ChangeTime::UntilTime(
+//!                         Year::Number(1971),
+//!                         Month::October,
+//!                         DaySpec::Ordinal(31),
+//!                         TimeSpec::HoursMinutesSeconds(2, 0, 0).with_type(TimeType::Wall))
+//!                      ),
+//!     },
+//! })));
+//! # }
+//! ```
+//!
+//! Parsing a `Link` line:
+//!
+//! ```
+//! use parse_zoneinfo::line::*;
+//!
+//! let parser = LineParser::new();
+//! let line = parser.parse_str("Link  Europe/Istanbul  Asia/Istanbul");
+//! assert_eq!(line, Ok(Line::Link(Link {
+//!     existing:  "Europe/Istanbul",
+//!     new:       "Asia/Istanbul",
+//! })));
+//! ```
+
 use std::str::FromStr;
 // we still support rust that doesn't have the inherent methods
 #[allow(deprecated, unused_imports)]
@@ -131,10 +206,22 @@ impl LineParser {
     }
 }
 
+/// A **year** definition field.
+///
+/// A year has one of the following representations in a file:
+///
+/// - `min` or `minimum`, the minimum year possible, for when a rule needs to
+///   apply up until the first rule with a specific year;
+/// - `max` or `maximum`, the maximum year possible, for when a rule needs to
+///   apply after the last rule with a specific year;
+/// - a year number, referring to a specific year.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Year {
+    /// The minimum year possible: `min` or `minimum`.
     Minimum,
+    /// The maximum year possible: `max` or `maximum`.
     Maximum,
+    /// A specific year number.
     Number(i64),
 }
 
@@ -153,6 +240,8 @@ impl FromStr for Year {
     }
 }
 
+/// A **month** field, which is actually just a wrapper around
+/// `datetime::Month`.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Month {
     January = 1,
@@ -228,6 +317,7 @@ impl Month {
 impl FromStr for Month {
     type Err = Error;
 
+    /// Attempts to parse the given string into a value of this type.
     fn from_str(input: &str) -> Result<Month, Self::Err> {
         Ok(match &*input.to_ascii_lowercase() {
             "jan" | "january" => Month::January,
@@ -247,6 +337,8 @@ impl FromStr for Month {
     }
 }
 
+/// A **weekday** field, which is actually just a wrapper around
+/// `datetime::Weekday`.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Weekday {
     Sunday,
@@ -275,11 +367,25 @@ impl FromStr for Weekday {
     }
 }
 
+/// A **day** definition field.
+///
+/// This can be given in either absolute terms (such as “the fifth day of the
+/// month”), or relative terms (such as “the last Sunday of the month”, or
+/// “the last Friday before or including the 13th”).
+///
+/// Note that in the last example, it’s allowed for that particular Friday to
+/// *be* the 13th in question.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum DaySpec {
+    /// A specific day of the month, given by its number.
     Ordinal(i8),
+    /// The last day of the month with a specific weekday.
     Last(Weekday),
+    /// The **last** day with the given weekday **before** (or including) a
+    /// day with a specific number.
     LastOnOrBefore(Weekday, i8),
+    /// The **first** day with the given weekday **after** (or including) a
+    /// day with a specific number.
     FirstOnOrAfter(Weekday, i8),
 }
 
@@ -371,6 +477,8 @@ fn leap_years() {
 }
 
 impl DaySpec {
+    /// Converts this day specification to a concrete date, given the year and
+    /// month it should occur in.
     pub fn to_concrete_day(&self, year: i64, month: Month) -> (Month, i8) {
         let leap = is_leap(year);
         let length = month.length(leap);
@@ -545,15 +653,28 @@ fn first_sunday_in_toronto() {
     );
 }
 
+/// A **time** definition field.
+///
+/// A time must have an hours component, with optional minutes and seconds
+/// components. It can also be negative with a starting ‘-’.
+///
+/// Hour 0 is midnight at the start of the day, and Hour 24 is midnight at the
+/// end of the day.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum TimeSpec {
+    /// A number of hours.
     Hours(i8),
+    /// A number of hours and minutes.
     HoursMinutes(i8, i8),
+    /// A number of hours, minutes, and seconds.
     HoursMinutesSeconds(i8, i8, i8),
+    /// Zero, or midnight at the start of the day.
     Zero,
 }
 
 impl TimeSpec {
+    /// Returns the number of seconds past midnight that this time spec
+    /// represents.
     pub fn as_seconds(self) -> i64 {
         match self {
             TimeSpec::Hours(h) => h as i64 * 60 * 60,
@@ -580,15 +701,27 @@ impl TimeSpec {
     }
 }
 
+/// The time at which the rules change for a location.
+///
+/// This is described with as few units as possible: a change that occurs at
+/// the beginning of the year lists only the year, a change that occurs on a
+/// particular day has to list the year, month, and day, and one that occurs
+/// at a particular second has to list everything.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum ChangeTime {
+    /// The earliest point in a particular **year**.
     UntilYear(Year),
+    /// The earliest point in a particular **month**.
     UntilMonth(Year, Month),
+    /// The earliest point in a particular **day**.
     UntilDay(Year, Month, DaySpec),
+    /// The earliest point in a particular **hour, minute, or second**.
     UntilTime(Year, Month, DaySpec, TimeSpecAndType),
 }
 
 impl ChangeTime {
+    /// Convert this change time to an absolute timestamp, as the number of
+    /// seconds since the Unix epoch that the change occurs at.
     pub fn to_timestamp(&self) -> i64 {
         fn seconds_in_year(year: i64) -> i64 {
             if is_leap(year) {
@@ -714,36 +847,95 @@ fn to_timestamp() {
     assert_eq!(time.to_timestamp(), 951642000);
 }
 
+/// The information contained in both zone lines *and* zone continuation lines.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct ZoneInfo<'a> {
+    /// The amount of time that needs to be added to UTC to get the standard
+    /// time in this zone.
     pub utc_offset: TimeSpec,
+    /// The name of all the rules that should apply in the time zone, or the
+    /// amount of time to add.
     pub saving: Saving<'a>,
+    /// The format for time zone abbreviations, with `%s` as the string marker.
     pub format: &'a str,
+    /// The time at which the rules change for this location, or `None` if
+    /// these rules are in effect until the end of time (!).
     pub time: Option<ChangeTime>,
 }
 
+/// The amount of daylight saving time (DST) to apply to this timespan. This
+/// is a special type for a certain field in a zone line, which can hold
+/// different types of value.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Saving<'a> {
+    /// Just stick to the base offset.
     NoSaving,
+    /// This amount of time should be saved while this timespan is in effect.
+    /// (This is the equivalent to there being a single one-off rule with the
+    /// given amount of time to save).
     OneOff(TimeSpec),
+    /// All rules with the given name should apply while this timespan is in
+    /// effect.
     Multiple(&'a str),
 }
 
+/// A **rule** definition line.
+///
+/// According to the `zic(8)` man page, a rule line has this form, along with
+/// an example:
+///
+/// ```text
+///     Rule  NAME  FROM  TO    TYPE  IN   ON       AT    SAVE  LETTER/S
+///     Rule  US    1967  1973  ‐     Apr  lastSun  2:00  1:00  D
+/// ```
+///
+/// Apart from the opening `Rule` to specify which kind of line this is, and
+/// the `type` column, every column in the line has a field in this struct.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct Rule<'a> {
+    /// The name of the set of rules that this rule is part of.
     pub name: &'a str,
+    /// The first year in which the rule applies.
     pub from_year: Year,
+    /// The final year, or `None` if’s ‘only’.
     pub to_year: Option<Year>,
+    /// The month in which the rule takes effect.
     pub month: Month,
+    /// The day on which the rule takes effect.
     pub day: DaySpec,
+    /// The time of day at which the rule takes effect.
     pub time: TimeSpecAndType,
+    /// The amount of time to be added when the rule is in effect.
     pub time_to_add: TimeSpec,
+    /// The variable part of time zone abbreviations to be used when this rule
+    /// is in effect, if any.
     pub letters: Option<&'a str>,
 }
 
+/// A **zone** definition line.
+///
+/// According to the `zic(8)` man page, a zone line has this form, along with
+/// an example:
+///
+/// ```text
+///     Zone  NAME                GMTOFF  RULES/SAVE  FORMAT  [UNTILYEAR [MONTH [DAY [TIME]]]]
+///     Zone  Australia/Adelaide  9:30    Aus         AC%sT   1971       Oct    31   2:00
+/// ```
+///
+/// The opening `Zone` identifier is ignored, and the last four columns are
+/// all optional, with their variants consolidated into a `ChangeTime`.
+///
+/// The `Rules/Save` column, if it contains a value, *either* contains the
+/// name of the rules to use for this zone, *or* contains a one-off period of
+/// time to save.
+///
+/// A continuation rule line contains all the same fields apart from the
+/// `Name` column and the opening `Zone` identifier.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct Zone<'a> {
+    /// The name of the time zone.
     pub name: &'a str,
+    /// All the other fields of info.
     pub info: ZoneInfo<'a>,
 }
 
@@ -755,10 +947,15 @@ pub struct Link<'a> {
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Line<'a> {
+    /// This line is empty.
     Space,
+    /// This line contains a **zone** definition.
     Zone(Zone<'a>),
+    /// This line contains a **continuation** of a zone definition.
     Continuation(ZoneInfo<'a>),
+    /// This line contains a **rule** definition.
     Rule(Rule<'a>),
+    /// This line contains a **link** definition.
     Link(Link<'a>),
 }
 
@@ -829,12 +1026,18 @@ impl LineParser {
     }
 
     fn parse_dayspec(&self, input: &str) -> Result<DaySpec, Error> {
+        // Parse the field as a number if it vaguely resembles one.
         if input.chars().all(|c| c.is_digit(10)) {
             Ok(DaySpec::Ordinal(input.parse().unwrap()))
-        } else if input.starts_with("last") {
+        }
+        // Check if it stars with ‘last’, and trim off the first four bytes if
+        // it does. (Luckily, the file is ASCII, so ‘last’ is four bytes)
+        else if input.starts_with("last") {
             let weekday = input[4..].parse()?;
             Ok(DaySpec::Last(weekday))
-        } else if let Some(caps) = self.day_field.captures(input) {
+        }
+        // Check if it’s a relative expression with the regex.
+        else if let Some(caps) = self.day_field.captures(input) {
             let weekday = caps.name("weekday").unwrap().as_str().parse().unwrap();
             let day = caps.name("day").unwrap().as_str().parse().unwrap();
 
@@ -843,7 +1046,9 @@ impl LineParser {
                 ">=" => Ok(DaySpec::FirstOnOrAfter(weekday, day)),
                 _ => unreachable!("The regex only matches one of those two!"),
             }
-        } else {
+        }
+        // Otherwise, give up.
+        else {
             Err(Error::InvalidDaySpec(input.to_string()))
         }
     }
@@ -851,6 +1056,7 @@ impl LineParser {
     fn parse_rule<'a>(&self, input: &'a str) -> Result<Rule<'a>, Error> {
         if let Some(caps) = self.rule_line.captures(input) {
             let name = caps.name("name").unwrap().as_str();
+
             let from_year = caps.name("from").unwrap().as_str().parse()?;
 
             // The end year can be ‘only’ to indicate that this rule only
@@ -914,6 +1120,9 @@ impl LineParser {
         let saving = self.saving_from_str(caps.name("rulessave").unwrap().as_str())?;
         let format = caps.name("format").unwrap().as_str();
 
+        // The year, month, day, and time fields are all optional, meaning
+        // that it should be impossible to, say, have a defined month but not
+        // a defined year.
         let time = match (
             caps.name("year"),
             caps.name("month"),
@@ -948,7 +1157,7 @@ impl LineParser {
         })
     }
 
-    fn parse_zone<'a>(&self, input: &'a str) -> Result<Zone<'a>, Error> {
+    pub fn parse_zone<'a>(&self, input: &'a str) -> Result<Zone<'a>, Error> {
         if let Some(caps) = self.zone_line.captures(input) {
             let name = caps.name("name").unwrap().as_str();
             let info = self.zoneinfo_from_captures(caps)?;
@@ -961,7 +1170,7 @@ impl LineParser {
         }
     }
 
-    fn parse_link<'a>(&self, input: &'a str) -> Result<Link<'a>, Error> {
+    pub fn parse_link<'a>(&self, input: &'a str) -> Result<Link<'a>, Error> {
         if let Some(caps) = self.link_line.captures(input) {
             let target = caps.name("target").unwrap().as_str();
             let name = caps.name("name").unwrap().as_str();
@@ -974,6 +1183,8 @@ impl LineParser {
         }
     }
 
+    /// Attempt to parse this line, returning a `Line` depending on what
+    /// type of line it was, or an `Error` if it couldn't be parsed.
     pub fn parse_str<'a>(&self, input: &'a str) -> Result<Line<'a>, Error> {
         if self.empty_line.is_match(input) {
             return Ok(Line::Space);

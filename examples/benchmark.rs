@@ -3,7 +3,7 @@ extern crate parse_zoneinfo;
 use parse_zoneinfo::line::{Line, LineParser};
 use parse_zoneinfo::table::TableBuilder;
 
-// This function is needed until zoneinfo_parse handles comments correctly.
+// This function is needed until parse-zoneinfo handles comments correctly.
 // Technically a '#' symbol could occur between double quotes and should be
 // ignored in this case, however this never happens in the tz database as it
 // stands.
