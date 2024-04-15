@@ -6,7 +6,7 @@ use chrono::{
 };
 
 use crate::binary_search::binary_search;
-use crate::timezones::Tz;
+use crate::timezones::{Tz, ABBREVIATIONS};
 
 /// Returns [`Tz::UTC`].
 impl Default for Tz {
@@ -20,37 +20,34 @@ impl Default for Tz {
 /// For example, [`::US::Eastern`] is composed of at least two
 /// `FixedTimespan`s: `EST` and `EDT`, that are variously in effect.
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub struct FixedTimespan {
-    /// The base offset from UTC; this usually doesn't change unless the government changes something
-    pub utc_offset: i32,
-    /// The additional offset from UTC for this timespan; typically for daylight saving time
-    pub dst_offset: i32,
-    /// The name of this timezone, for example the difference between `EDT`/`EST`
-    pub name: &'static str,
+pub(crate) struct FixedTimespan {
+    /// We encode two values in the offset: the base offset from utc and the extra offset due to
+    /// DST. It is encoded as `(utc_offset << 14) | (dst_offset & ((1 << 14) - 1))`.
+    pub(crate) offset: i32,
+    /// The abbreviation of this offset, for example the difference between `EDT`/`EST`.
+    /// Stored as a slice of the `ABBREVIATIONS` static as `index << 3 | len`.
+    pub(crate) abbreviation: i16,
 }
 
-impl Offset for FixedTimespan {
-    fn fix(&self) -> FixedOffset {
-        FixedOffset::east_opt(self.utc_offset + self.dst_offset).unwrap()
+impl FixedTimespan {
+    fn base_offset(&self) -> i32 {
+        self.offset >> 14
     }
-}
 
-impl Display for FixedTimespan {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "{}", self.name)
-    }
-}
-
-impl Debug for FixedTimespan {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "{}", self.name)
+    fn saving(&self) -> i32 {
+        (self.offset << 18) >> 18
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct TzOffset {
     tz: Tz,
-    offset: FixedTimespan,
+    /// We encode two values in the offset: the base offset from utc and the extra offset due to
+    /// DST. It is encoded as `(utc_offset << 14) | (saving & ((1 << 14) - 1))`.
+    offset: i32,
+    /// The abbreviation of this offset, for example the difference between `EDT`/`EST`.
+    /// Stored as a slice of the `ABBREVIATIONS` static as `index << 3 | len`.
+    abbreviation: i16,
 }
 
 /// Detailed timezone offset components that expose any special conditions currently in effect.
@@ -126,7 +123,7 @@ pub trait OffsetName {
 
 impl TzOffset {
     fn new(tz: Tz, offset: FixedTimespan) -> Self {
-        TzOffset { tz, offset }
+        TzOffset { tz, offset: offset.offset, abbreviation: offset.abbreviation }
     }
 
     fn map_localresult(tz: Tz, result: LocalResult<FixedTimespan>) -> LocalResult<Self> {
@@ -142,11 +139,11 @@ impl TzOffset {
 
 impl OffsetComponents for TzOffset {
     fn base_utc_offset(&self) -> Duration {
-        Duration::seconds(self.offset.utc_offset as i64)
+        Duration::seconds((self.offset >> 14) as i64)
     }
 
     fn dst_offset(&self) -> Duration {
-        Duration::seconds(self.offset.dst_offset as i64)
+        Duration::seconds(((self.offset << 18) >> 18) as i64)
     }
 }
 
@@ -156,25 +153,27 @@ impl OffsetName for TzOffset {
     }
 
     fn abbreviation(&self) -> &str {
-        self.offset.name
+        let index = (self.abbreviation >> 3) as usize;
+        let len = (self.abbreviation & 0b111) as usize;
+        &ABBREVIATIONS[index..index + len]
     }
 }
 
 impl Offset for TzOffset {
     fn fix(&self) -> FixedOffset {
-        self.offset.fix()
+        FixedOffset::east_opt((self.offset >> 14) + ((self.offset << 18) >> 18)).unwrap()
     }
 }
 
 impl Display for TzOffset {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        Display::fmt(&self.offset, f)
+        f.write_str(self.abbreviation())
     }
 }
 
 impl Debug for TzOffset {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        Debug::fmt(&self.offset, f)
+        f.write_str(self.abbreviation())
     }
 }
 
@@ -243,21 +242,17 @@ impl FixedTimespanSet {
                 None
             } else {
                 let span = self.rest[index - 1];
-                Some(span.0 + span.1.utc_offset as i64 + span.1.dst_offset as i64)
+                Some(span.0 + (span.1.base_offset() + span.1.saving()) as i64)
             },
             end: if index == self.rest.len() {
                 None
             } else if index == 0 {
-                Some(
-                    self.rest[index].0
-                        + self.first.utc_offset as i64
-                        + self.first.dst_offset as i64,
-                )
+                Some(self.rest[index].0 + (self.first.base_offset() + self.first.saving()) as i64)
             } else {
                 Some(
                     self.rest[index].0
-                        + self.rest[index - 1].1.utc_offset as i64
-                        + self.rest[index - 1].1.dst_offset as i64,
+                        + self.rest[index - 1].1.base_offset() as i64
+                        + self.rest[index - 1].1.saving() as i64,
                 )
             },
         }
