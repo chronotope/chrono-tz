@@ -807,7 +807,7 @@ Zone    Asia/Dushanbe   4:35:12 -   LMT 1924 May  2
 "#;
 
     let mut table = TableBuilder::new();
-    let parser = LineParser::new();
+    let parser = LineParser::default();
     for line in ZONEINFO.lines() {
         let line = parser.parse_str(line).unwrap();
         match line {
