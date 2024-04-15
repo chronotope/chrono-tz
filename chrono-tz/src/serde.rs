@@ -23,7 +23,9 @@ impl<'de> Deserialize<'de> for Tz {
             }
 
             fn visit_str<E: de::Error>(self, value: &str) -> Result<Tz, E> {
-                value.parse::<Tz>().map_err(|_| E::custom(SerdeError(value)))
+                value
+                    .parse::<Tz>()
+                    .map_err(|_| E::custom(SerdeError(value)))
             }
         }
 

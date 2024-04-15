@@ -113,7 +113,11 @@ impl fmt::Display for Error {
             }
             Error::InvalidLineType(s) => write!(f, "line with invalid format: \"{}\"", s),
             Error::TypeColumnContainedNonHyphen(s) => {
-                write!(f, "'type' column is not a hyphen but has the value: \"{}\"", s)
+                write!(
+                    f,
+                    "'type' column is not a hyphen but has the value: \"{}\"",
+                    s
+                )
             }
             Error::CouldNotParseSaving(s) => write!(f, "failed to parse RULES column: \"{}\"", s),
             Error::InvalidDaySpec(s) => write!(f, "invalid day specification ('ON'): \"{}\"", s),
@@ -434,19 +438,40 @@ impl Weekday {
 #[cfg(test)]
 #[test]
 fn weekdays() {
-    assert_eq!(Weekday::calculate(1970, Month::January, 1), Weekday::Thursday);
-    assert_eq!(Weekday::calculate(2017, Month::February, 11), Weekday::Saturday);
+    assert_eq!(
+        Weekday::calculate(1970, Month::January, 1),
+        Weekday::Thursday
+    );
+    assert_eq!(
+        Weekday::calculate(2017, Month::February, 11),
+        Weekday::Saturday
+    );
     assert_eq!(Weekday::calculate(1890, Month::March, 2), Weekday::Sunday);
     assert_eq!(Weekday::calculate(2100, Month::April, 20), Weekday::Tuesday);
     assert_eq!(Weekday::calculate(2009, Month::May, 31), Weekday::Sunday);
     assert_eq!(Weekday::calculate(2001, Month::June, 9), Weekday::Saturday);
     assert_eq!(Weekday::calculate(1995, Month::July, 21), Weekday::Friday);
     assert_eq!(Weekday::calculate(1982, Month::August, 8), Weekday::Sunday);
-    assert_eq!(Weekday::calculate(1962, Month::September, 6), Weekday::Thursday);
-    assert_eq!(Weekday::calculate(1899, Month::October, 14), Weekday::Saturday);
-    assert_eq!(Weekday::calculate(2016, Month::November, 18), Weekday::Friday);
-    assert_eq!(Weekday::calculate(2010, Month::December, 19), Weekday::Sunday);
-    assert_eq!(Weekday::calculate(2016, Month::February, 29), Weekday::Monday);
+    assert_eq!(
+        Weekday::calculate(1962, Month::September, 6),
+        Weekday::Thursday
+    );
+    assert_eq!(
+        Weekday::calculate(1899, Month::October, 14),
+        Weekday::Saturday
+    );
+    assert_eq!(
+        Weekday::calculate(2016, Month::November, 18),
+        Weekday::Friday
+    );
+    assert_eq!(
+        Weekday::calculate(2010, Month::December, 19),
+        Weekday::Sunday
+    );
+    assert_eq!(
+        Weekday::calculate(2016, Month::February, 29),
+        Weekday::Monday
+    );
 }
 
 fn is_leap(year: i64) -> bool {
@@ -543,36 +568,102 @@ impl DaySpec {
 #[test]
 fn last_monday() {
     let dayspec = DaySpec::Last(Weekday::Monday);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::January), (Month::January, 25));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::February), (Month::February, 29));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::March), (Month::March, 28));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::April), (Month::April, 25));
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::January),
+        (Month::January, 25)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::February),
+        (Month::February, 29)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::March),
+        (Month::March, 28)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::April),
+        (Month::April, 25)
+    );
     assert_eq!(dayspec.to_concrete_day(2016, Month::May), (Month::May, 30));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::June), (Month::June, 27));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::July), (Month::July, 25));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::August), (Month::August, 29));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::September), (Month::September, 26));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::October), (Month::October, 31));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::November), (Month::November, 28));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::December), (Month::December, 26));
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::June),
+        (Month::June, 27)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::July),
+        (Month::July, 25)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::August),
+        (Month::August, 29)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::September),
+        (Month::September, 26)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::October),
+        (Month::October, 31)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::November),
+        (Month::November, 28)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::December),
+        (Month::December, 26)
+    );
 }
 
 #[cfg(test)]
 #[test]
 fn first_monday_on_or_after() {
     let dayspec = DaySpec::FirstOnOrAfter(Weekday::Monday, 20);
-    assert_eq!(dayspec.to_concrete_day(2016, Month::January), (Month::January, 25));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::February), (Month::February, 22));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::March), (Month::March, 21));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::April), (Month::April, 25));
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::January),
+        (Month::January, 25)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::February),
+        (Month::February, 22)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::March),
+        (Month::March, 21)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::April),
+        (Month::April, 25)
+    );
     assert_eq!(dayspec.to_concrete_day(2016, Month::May), (Month::May, 23));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::June), (Month::June, 20));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::July), (Month::July, 25));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::August), (Month::August, 22));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::September), (Month::September, 26));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::October), (Month::October, 24));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::November), (Month::November, 21));
-    assert_eq!(dayspec.to_concrete_day(2016, Month::December), (Month::December, 26));
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::June),
+        (Month::June, 20)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::July),
+        (Month::July, 25)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::August),
+        (Month::August, 22)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::September),
+        (Month::September, 26)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::October),
+        (Month::October, 24)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::November),
+        (Month::November, 21)
+    );
+    assert_eq!(
+        dayspec.to_concrete_day(2016, Month::December),
+        (Month::December, 26)
+    );
 }
 
 // A couple of specific timezone transitions that we care about
@@ -583,7 +674,10 @@ fn first_sunday_in_toronto() {
     assert_eq!(dayspec.to_concrete_day(1932, Month::April), (Month::May, 1));
     // asia/zion
     let dayspec = DaySpec::LastOnOrBefore(Weekday::Friday, 1);
-    assert_eq!(dayspec.to_concrete_day(2012, Month::April), (Month::March, 30));
+    assert_eq!(
+        dayspec.to_concrete_day(2012, Month::April),
+        (Month::March, 30)
+    );
 }
 
 /// A **time** definition field.
@@ -911,9 +1005,16 @@ impl LineParser {
         if input == "-" {
             Ok(TimeSpecAndType(TimeSpec::Zero, TimeType::Wall))
         } else if input.chars().all(|c| c == '-' || c.is_ascii_digit()) {
-            Ok(TimeSpecAndType(TimeSpec::Hours(input.parse().unwrap()), TimeType::Wall))
+            Ok(TimeSpecAndType(
+                TimeSpec::Hours(input.parse().unwrap()),
+                TimeType::Wall,
+            ))
         } else if let Some(caps) = self.hm_field.captures(input) {
-            let sign: i8 = if caps.name("sign").unwrap().as_str() == "-" { -1 } else { 1 };
+            let sign: i8 = if caps.name("sign").unwrap().as_str() == "-" {
+                -1
+            } else {
+                1
+            };
             let hour: i8 = caps.name("hour").unwrap().as_str().parse().unwrap();
             let minute: i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
             let flag = caps
@@ -921,9 +1022,16 @@ impl LineParser {
                 .and_then(|c| parse_time_type(&c.as_str()[0..1]))
                 .unwrap_or(TimeType::Wall);
 
-            Ok(TimeSpecAndType(TimeSpec::HoursMinutes(hour * sign, minute * sign), flag))
+            Ok(TimeSpecAndType(
+                TimeSpec::HoursMinutes(hour * sign, minute * sign),
+                flag,
+            ))
         } else if let Some(caps) = self.hms_field.captures(input) {
-            let sign: i8 = if caps.name("sign").unwrap().as_str() == "-" { -1 } else { 1 };
+            let sign: i8 = if caps.name("sign").unwrap().as_str() == "-" {
+                -1
+            } else {
+                1
+            };
             let hour: i8 = caps.name("hour").unwrap().as_str().parse().unwrap();
             let minute: i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
             let second: i8 = caps.name("second").unwrap().as_str().parse().unwrap();
@@ -1008,7 +1116,16 @@ impl LineParser {
                 l => Some(l),
             };
 
-            Ok(Rule { name, from_year, to_year, month, day, time, time_to_add, letters })
+            Ok(Rule {
+                name,
+                from_year,
+                to_year,
+                month,
+                day,
+                time,
+                time_to_add,
+                letters,
+            })
         } else {
             Err(Error::NotParsedAsRuleLine)
         }
@@ -1017,7 +1134,10 @@ impl LineParser {
     fn saving_from_str<'a>(&self, input: &'a str) -> Result<Saving<'a>, Error> {
         if input == "-" {
             Ok(Saving::NoSaving)
-        } else if input.chars().all(|c| c == '-' || c == '_' || c.is_alphabetic()) {
+        } else if input
+            .chars()
+            .all(|c| c == '-' || c == '_' || c.is_alphabetic())
+        {
             Ok(Saving::Multiple(input))
         } else if self.hm_field.is_match(input) {
             let time = self.parse_timespec(input)?;
@@ -1035,28 +1155,38 @@ impl LineParser {
         // The year, month, day, and time fields are all optional, meaning
         // that it should be impossible to, say, have a defined month but not
         // a defined year.
-        let time =
-            match (caps.name("year"), caps.name("month"), caps.name("day"), caps.name("time")) {
-                (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime(
-                    y.as_str().parse()?,
-                    m.as_str().parse()?,
-                    self.parse_dayspec(d.as_str())?,
-                    self.parse_timespec_and_type(t.as_str())?,
-                )),
-                (Some(y), Some(m), Some(d), _) => Some(ChangeTime::UntilDay(
-                    y.as_str().parse()?,
-                    m.as_str().parse()?,
-                    self.parse_dayspec(d.as_str())?,
-                )),
-                (Some(y), Some(m), _, _) => {
-                    Some(ChangeTime::UntilMonth(y.as_str().parse()?, m.as_str().parse()?))
-                }
-                (Some(y), _, _, _) => Some(ChangeTime::UntilYear(y.as_str().parse()?)),
-                (None, None, None, None) => None,
-                _ => unreachable!("Out-of-order capturing groups!"),
-            };
+        let time = match (
+            caps.name("year"),
+            caps.name("month"),
+            caps.name("day"),
+            caps.name("time"),
+        ) {
+            (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime(
+                y.as_str().parse()?,
+                m.as_str().parse()?,
+                self.parse_dayspec(d.as_str())?,
+                self.parse_timespec_and_type(t.as_str())?,
+            )),
+            (Some(y), Some(m), Some(d), _) => Some(ChangeTime::UntilDay(
+                y.as_str().parse()?,
+                m.as_str().parse()?,
+                self.parse_dayspec(d.as_str())?,
+            )),
+            (Some(y), Some(m), _, _) => Some(ChangeTime::UntilMonth(
+                y.as_str().parse()?,
+                m.as_str().parse()?,
+            )),
+            (Some(y), _, _, _) => Some(ChangeTime::UntilYear(y.as_str().parse()?)),
+            (None, None, None, None) => None,
+            _ => unreachable!("Out-of-order capturing groups!"),
+        };
 
-        Ok(ZoneInfo { utc_offset, saving, format, time })
+        Ok(ZoneInfo {
+            utc_offset,
+            saving,
+            format,
+            time,
+        })
     }
 
     fn parse_zone<'a>(&self, input: &'a str) -> Result<Zone<'a>, Error> {
@@ -1073,7 +1203,10 @@ impl LineParser {
         if let Some(caps) = self.link_line.captures(input) {
             let target = caps.name("target").unwrap().as_str();
             let name = caps.name("name").unwrap().as_str();
-            Ok(Link { existing: target, new: name })
+            Ok(Link {
+                existing: target,
+                new: name,
+            })
         } else {
             Err(Error::NotParsedAsLinkLine)
         }
@@ -1202,7 +1335,10 @@ mod tests {
         static LINE: &str = "Zone    Europe/London   -0:01:15 -  LMT 1847 Dec  1  0:00s";
         let parser = LineParser::default();
         let zone = parser.parse_zone(LINE).unwrap();
-        assert_eq!(zone.info.utc_offset, TimeSpec::HoursMinutesSeconds(0, -1, -15));
+        assert_eq!(
+            zone.info.utc_offset,
+            TimeSpec::HoursMinutesSeconds(0, -1, -15)
+        );
     }
 
     #[test]
@@ -1211,7 +1347,10 @@ mod tests {
             "Zone        Europe/Madrid   -0:14:44 -      LMT     1901 Jan  1  0:00s";
         let parser = LineParser::default();
         let zone = parser.parse_zone(LINE).unwrap();
-        assert_eq!(zone.info.utc_offset, TimeSpec::HoursMinutesSeconds(0, -14, -44));
+        assert_eq!(
+            zone.info.utc_offset,
+            TimeSpec::HoursMinutesSeconds(0, -14, -44)
+        );
     }
 
     #[test]
@@ -1219,7 +1358,10 @@ mod tests {
         static LINE: &str = "Zone America/Danmarkshavn -1:14:40 -    LMT 1916 Jul 28";
         let parser = LineParser::default();
         let zone = parser.parse_zone(LINE).unwrap();
-        assert_eq!(zone.info.utc_offset, TimeSpec::HoursMinutesSeconds(-1, -14, -40));
+        assert_eq!(
+            zone.info.utc_offset,
+            TimeSpec::HoursMinutesSeconds(-1, -14, -40)
+        );
     }
 
     test!(link: "Link  Europe/Istanbul  Asia/Istanbul" => Ok(Line::Link(Link {

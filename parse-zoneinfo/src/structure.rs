@@ -92,7 +92,10 @@ impl<'table> IntoIterator for TableStructure<'table> {
         let mut keys: Vec<_> = self.mappings.keys().cloned().collect();
         keys.sort_by(|a, b| b.cmp(a));
 
-        Iter { structure: self, keys }
+        Iter {
+            structure: self,
+            keys,
+        }
     }
 }
 
@@ -112,7 +115,10 @@ impl<'table> Iterator for Iter<'table> {
         // Move the strings out into an (automatically-sorted) vector.
         let values = self.structure.mappings[key].iter().cloned().collect();
 
-        Some(TableStructureEntry { name: key, children: values })
+        Some(TableStructureEntry {
+            name: key,
+            children: values,
+        })
     }
 }
 
@@ -172,7 +178,10 @@ mod test {
         let mut structure = table.structure().into_iter();
         assert_eq!(
             structure.next(),
-            Some(TableStructureEntry { name: "a", children: vec![Child::TimeZone("b")] })
+            Some(TableStructureEntry {
+                name: "a",
+                children: vec![Child::TimeZone("b")]
+            })
         );
         assert_eq!(structure.next(), None);
     }
