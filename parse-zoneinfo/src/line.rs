@@ -14,8 +14,6 @@
 //! Parsing a `Rule` line:
 //!
 //! ```
-//! # extern crate parse_zoneinfo;
-//! # fn main() {
 //! use parse_zoneinfo::line::*;
 //!
 //! let parser = LineParser::default();
@@ -31,13 +29,11 @@
 //!     time_to_add:  TimeSpec::HoursMinutes(1, 0),
 //!     letters:      Some("S"),
 //! })));
-//! # }
 //! ```
 //!
 //! Parsing a `Zone` line:
 //!
 //! ```
-//! # fn main() {
 //! use parse_zoneinfo::line::*;
 //!
 //! let parser = LineParser::default();
@@ -57,7 +53,6 @@
 //!                      ),
 //!     },
 //! })));
-//! # }
 //! ```
 //!
 //! Parsing a `Link` line:
