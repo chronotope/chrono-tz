@@ -564,122 +564,6 @@ impl DaySpec {
     }
 }
 
-#[cfg(test)]
-#[test]
-fn last_monday() {
-    let dayspec = DaySpec::Last(Weekday::Monday);
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::January),
-        (Month::January, 25)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::February),
-        (Month::February, 29)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::March),
-        (Month::March, 28)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::April),
-        (Month::April, 25)
-    );
-    assert_eq!(dayspec.to_concrete_day(2016, Month::May), (Month::May, 30));
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::June),
-        (Month::June, 27)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::July),
-        (Month::July, 25)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::August),
-        (Month::August, 29)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::September),
-        (Month::September, 26)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::October),
-        (Month::October, 31)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::November),
-        (Month::November, 28)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::December),
-        (Month::December, 26)
-    );
-}
-
-#[cfg(test)]
-#[test]
-fn first_monday_on_or_after() {
-    let dayspec = DaySpec::FirstOnOrAfter(Weekday::Monday, 20);
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::January),
-        (Month::January, 25)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::February),
-        (Month::February, 22)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::March),
-        (Month::March, 21)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::April),
-        (Month::April, 25)
-    );
-    assert_eq!(dayspec.to_concrete_day(2016, Month::May), (Month::May, 23));
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::June),
-        (Month::June, 20)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::July),
-        (Month::July, 25)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::August),
-        (Month::August, 22)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::September),
-        (Month::September, 26)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::October),
-        (Month::October, 24)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::November),
-        (Month::November, 21)
-    );
-    assert_eq!(
-        dayspec.to_concrete_day(2016, Month::December),
-        (Month::December, 26)
-    );
-}
-
-// A couple of specific timezone transitions that we care about
-#[cfg(test)]
-#[test]
-fn first_sunday_in_toronto() {
-    let dayspec = DaySpec::FirstOnOrAfter(Weekday::Sunday, 25);
-    assert_eq!(dayspec.to_concrete_day(1932, Month::April), (Month::May, 1));
-    // asia/zion
-    let dayspec = DaySpec::LastOnOrBefore(Weekday::Friday, 1);
-    assert_eq!(
-        dayspec.to_concrete_day(2012, Month::April),
-        (Month::March, 30)
-    );
-}
-
 /// A **time** definition field.
 ///
 /// A time must have an hours component, with optional minutes and seconds
@@ -854,24 +738,6 @@ impl ChangeTime {
             _ => unreachable!(),
         }
     }
-}
-
-#[cfg(test)]
-#[test]
-fn to_timestamp() {
-    let time = ChangeTime::UntilYear(Year::Number(1970));
-    assert_eq!(time.to_timestamp(), 0);
-    let time = ChangeTime::UntilYear(Year::Number(2016));
-    assert_eq!(time.to_timestamp(), 1451606400);
-    let time = ChangeTime::UntilYear(Year::Number(1900));
-    assert_eq!(time.to_timestamp(), -2208988800);
-    let time = ChangeTime::UntilTime(
-        Year::Number(2000),
-        Month::February,
-        DaySpec::Last(Weekday::Sunday),
-        TimeSpecAndType(TimeSpec::Hours(9), TimeType::Wall),
-    );
-    assert_eq!(time.to_timestamp(), 951642000);
 }
 
 /// The information contained in both zone lines *and* zone continuation lines.
@@ -1246,6 +1112,136 @@ impl LineParser {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn last_monday() {
+        let dayspec = DaySpec::Last(Weekday::Monday);
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::January),
+            (Month::January, 25)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::February),
+            (Month::February, 29)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::March),
+            (Month::March, 28)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::April),
+            (Month::April, 25)
+        );
+        assert_eq!(dayspec.to_concrete_day(2016, Month::May), (Month::May, 30));
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::June),
+            (Month::June, 27)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::July),
+            (Month::July, 25)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::August),
+            (Month::August, 29)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::September),
+            (Month::September, 26)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::October),
+            (Month::October, 31)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::November),
+            (Month::November, 28)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::December),
+            (Month::December, 26)
+        );
+    }
+
+    #[test]
+    fn first_monday_on_or_after() {
+        let dayspec = DaySpec::FirstOnOrAfter(Weekday::Monday, 20);
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::January),
+            (Month::January, 25)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::February),
+            (Month::February, 22)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::March),
+            (Month::March, 21)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::April),
+            (Month::April, 25)
+        );
+        assert_eq!(dayspec.to_concrete_day(2016, Month::May), (Month::May, 23));
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::June),
+            (Month::June, 20)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::July),
+            (Month::July, 25)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::August),
+            (Month::August, 22)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::September),
+            (Month::September, 26)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::October),
+            (Month::October, 24)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::November),
+            (Month::November, 21)
+        );
+        assert_eq!(
+            dayspec.to_concrete_day(2016, Month::December),
+            (Month::December, 26)
+        );
+    }
+
+    // A couple of specific timezone transitions that we care about
+    #[test]
+    fn first_sunday_in_toronto() {
+        let dayspec = DaySpec::FirstOnOrAfter(Weekday::Sunday, 25);
+        assert_eq!(dayspec.to_concrete_day(1932, Month::April), (Month::May, 1));
+        // asia/zion
+        let dayspec = DaySpec::LastOnOrBefore(Weekday::Friday, 1);
+        assert_eq!(
+            dayspec.to_concrete_day(2012, Month::April),
+            (Month::March, 30)
+        );
+    }
+
+    #[test]
+    fn to_timestamp() {
+        let time = ChangeTime::UntilYear(Year::Number(1970));
+        assert_eq!(time.to_timestamp(), 0);
+        let time = ChangeTime::UntilYear(Year::Number(2016));
+        assert_eq!(time.to_timestamp(), 1451606400);
+        let time = ChangeTime::UntilYear(Year::Number(1900));
+        assert_eq!(time.to_timestamp(), -2208988800);
+        let time = ChangeTime::UntilTime(
+            Year::Number(2000),
+            Month::February,
+            DaySpec::Last(Weekday::Sunday),
+            TimeSpecAndType(TimeSpec::Hours(9), TimeType::Wall),
+        );
+        assert_eq!(time.to_timestamp(), 951642000);
+    }
 
     macro_rules! test {
         ($name:ident: $input:expr => $result:expr) => {
