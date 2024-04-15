@@ -801,7 +801,7 @@ fn tripoli() {
 
 #[test]
 fn dushanbe() {
-    static ZONEINFO: &'static str = r#"
+    static ZONEINFO: &str = r#"
 Zone    Asia/Dushanbe   4:35:12 -   LMT 1924 May  2
             5:00    1:00    +05/+06 1991 Sep  9  2:00s
 "#;

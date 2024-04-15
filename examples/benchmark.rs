@@ -8,7 +8,9 @@ use parse_zoneinfo::table::TableBuilder;
 // ignored in this case, however this never happens in the tz database as it
 // stands.
 fn strip_comments(mut line: String) -> String {
-    line.find('#').map(|pos| line.truncate(pos));
+    if let Some(pos) = line.find('#') {
+        line.truncate(pos)
+    }
     line
 }
 
@@ -23,7 +25,7 @@ fn main() {
         let parser = LineParser::new();
         let mut builder = TableBuilder::new();
         for line in &lines {
-            match parser.parse_str(&line).unwrap() {
+            match parser.parse_str(line).unwrap() {
                 Line::Zone(zone) => builder.add_zone_line(zone).unwrap(),
                 Line::Continuation(cont) => builder.add_continuation_line(cont).unwrap(),
                 Line::Rule(rule) => builder.add_rule_line(rule).unwrap(),

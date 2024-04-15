@@ -977,7 +977,7 @@ impl LineParser {
     fn parse_timespec_and_type(&self, input: &str) -> Result<TimeSpecAndType, Error> {
         if input == "-" {
             Ok(TimeSpecAndType(TimeSpec::Zero, TimeType::Wall))
-        } else if input.chars().all(|c| c == '-' || c.is_digit(10)) {
+        } else if input.chars().all(|c| c == '-' || c.is_ascii_digit()) {
             Ok(TimeSpecAndType(
                 TimeSpec::Hours(input.parse().unwrap()),
                 TimeType::Wall,
@@ -1032,13 +1032,13 @@ impl LineParser {
 
     fn parse_dayspec(&self, input: &str) -> Result<DaySpec, Error> {
         // Parse the field as a number if it vaguely resembles one.
-        if input.chars().all(|c| c.is_digit(10)) {
+        if input.chars().all(|c| c.is_ascii_digit()) {
             Ok(DaySpec::Ordinal(input.parse().unwrap()))
         }
         // Check if it stars with ‘last’, and trim off the first four bytes if
         // it does. (Luckily, the file is ASCII, so ‘last’ is four bytes)
-        else if input.starts_with("last") {
-            let weekday = input[4..].parse()?;
+        else if let Some(remainder) = input.strip_prefix("last") {
+            let weekday = remainder.parse()?;
             Ok(DaySpec::Last(weekday))
         }
         // Check if it’s a relative expression with the regex.
@@ -1090,14 +1090,14 @@ impl LineParser {
             };
 
             Ok(Rule {
-                name: name,
-                from_year: from_year,
-                to_year: to_year,
-                month: month,
-                day: day,
-                time: time,
-                time_to_add: time_to_add,
-                letters: letters,
+                name,
+                from_year,
+                to_year,
+                month,
+                day,
+                time,
+                time_to_add,
+                letters,
             })
         } else {
             Err(Error::NotParsedAsRuleLine)
@@ -1155,10 +1155,10 @@ impl LineParser {
         };
 
         Ok(ZoneInfo {
-            utc_offset: utc_offset,
-            saving: saving,
-            format: format,
-            time: time,
+            utc_offset,
+            saving,
+            format,
+            time,
         })
     }
 
@@ -1166,10 +1166,7 @@ impl LineParser {
         if let Some(caps) = self.zone_line.captures(input) {
             let name = caps.name("name").unwrap().as_str();
             let info = self.zoneinfo_from_captures(caps)?;
-            Ok(Zone {
-                name: name,
-                info: info,
-            })
+            Ok(Zone { name, info })
         } else {
             Err(Error::NotParsedAsZoneLine)
         }
@@ -1308,7 +1305,7 @@ mod tests {
 
     #[test]
     fn negative_offsets() {
-        static LINE: &'static str = "Zone    Europe/London   -0:01:15 -  LMT 1847 Dec  1  0:00s";
+        static LINE: &str = "Zone    Europe/London   -0:01:15 -  LMT 1847 Dec  1  0:00s";
         let parser = LineParser::default();
         let zone = parser.parse_zone(LINE).unwrap();
         assert_eq!(
@@ -1319,7 +1316,7 @@ mod tests {
 
     #[test]
     fn negative_offsets_2() {
-        static LINE: &'static str =
+        static LINE: &str =
             "Zone        Europe/Madrid   -0:14:44 -      LMT     1901 Jan  1  0:00s";
         let parser = LineParser::default();
         let zone = parser.parse_zone(LINE).unwrap();
@@ -1331,7 +1328,7 @@ mod tests {
 
     #[test]
     fn negative_offsets_3() {
-        static LINE: &'static str = "Zone America/Danmarkshavn -1:14:40 -    LMT 1916 Jul 28";
+        static LINE: &str = "Zone America/Danmarkshavn -1:14:40 -    LMT 1916 Jul 28";
         let parser = LineParser::default();
         let zone = parser.parse_zone(LINE).unwrap();
         assert_eq!(

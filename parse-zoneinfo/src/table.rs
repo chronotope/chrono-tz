@@ -61,7 +61,7 @@ impl Table {
             Some(&*self.zonesets[zone_name])
         } else if self.links.contains_key(zone_name) {
             let target = &self.links[zone_name];
-            Some(&*self.zonesets[&*target])
+            Some(&*self.zonesets[target])
         } else {
             None
         }
@@ -276,6 +276,12 @@ pub struct TableBuilder {
     current_zoneset_name: Option<String>,
 }
 
+impl Default for TableBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TableBuilder {
     /// Creates a new builder with an empty table.
     pub fn new() -> TableBuilder {
@@ -333,7 +339,7 @@ impl TableBuilder {
             .table
             .rulesets
             .entry(rule_line.name.to_owned())
-            .or_insert_with(Vec::new);
+            .or_default();
 
         ruleset.push(rule_line.into());
         self.current_zoneset_name = None;

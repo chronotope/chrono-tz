@@ -179,7 +179,7 @@ mod test {
         assert_eq!(
             structure.next(),
             Some(TableStructureEntry {
-                name: &"a".to_owned(),
+                name: "a",
                 children: vec![Child::TimeZone("b")]
             })
         );
@@ -197,14 +197,14 @@ mod test {
         assert_eq!(
             structure.next(),
             Some(TableStructureEntry {
-                name: &"a".to_owned(),
+                name: "a",
                 children: vec![Child::Submodule("b"), Child::TimeZone("e")]
             })
         );
         assert_eq!(
             structure.next(),
             Some(TableStructureEntry {
-                name: &"a/b".to_owned(),
+                name: "a/b",
                 children: vec![Child::TimeZone("c"), Child::TimeZone("d")]
             })
         );
