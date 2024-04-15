@@ -294,7 +294,10 @@ impl Default for TableBuilder {
 impl TableBuilder {
     /// Creates a new builder with an empty table.
     pub fn new() -> TableBuilder {
-        TableBuilder { table: Table::default(), current_zoneset_name: None }
+        TableBuilder {
+            table: Table::default(),
+            current_zoneset_name: None,
+        }
     }
 
     /// Adds a new line describing a zone definition.
@@ -341,7 +344,11 @@ impl TableBuilder {
     /// Adds a new line describing one entry in a ruleset, creating that set
     /// if it didn’t exist already.
     pub fn add_rule_line(&mut self, rule_line: line::Rule) -> Result<(), Error> {
-        let ruleset = self.table.rulesets.entry(rule_line.name.to_owned()).or_default();
+        let ruleset = self
+            .table
+            .rulesets
+            .entry(rule_line.name.to_owned())
+            .or_default();
 
         ruleset.push(rule_line.into());
         self.current_zoneset_name = None;
@@ -392,7 +399,10 @@ impl<'line> fmt::Display for Error<'line> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::SurpriseContinuationLine => {
-                write!(f, "continuation line follows line that isn't a zone definition line")
+                write!(
+                    f,
+                    "continuation line follows line that isn't a zone definition line"
+                )
             }
             Error::UnknownRuleset(_) => {
                 write!(f, "zone definition refers to a ruleset that isn't defined")

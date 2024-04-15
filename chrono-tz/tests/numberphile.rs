@@ -135,8 +135,10 @@ fn london_25_march() {
 #[test]
 fn leapsecond() {
     let from = UTC.with_ymd_and_hms(2016, 6, 30, 23, 59, 59).unwrap();
-    let leap =
-        NaiveDate::from_ymd_opt(2016, 6, 30).unwrap().and_hms_milli_opt(23, 59, 59, 1000).unwrap();
+    let leap = NaiveDate::from_ymd_opt(2016, 6, 30)
+        .unwrap()
+        .and_hms_milli_opt(23, 59, 59, 1000)
+        .unwrap();
     let to = UTC.from_local_datetime(&leap).unwrap();
     assert_eq!(seconds(from, to), 1);
 }
@@ -154,8 +156,10 @@ fn leapsecond_2() {
 #[test]
 #[ignore]
 fn leapsecond_3() {
-    let leap =
-        NaiveDate::from_ymd_opt(2016, 6, 30).unwrap().and_hms_milli_opt(23, 59, 59, 1000).unwrap();
+    let leap = NaiveDate::from_ymd_opt(2016, 6, 30)
+        .unwrap()
+        .and_hms_milli_opt(23, 59, 59, 1000)
+        .unwrap();
     let from = UTC.from_local_datetime(&leap).unwrap();
     let to = UTC.with_ymd_and_hms(2016, 7, 1, 0, 0, 0).unwrap();
     assert_eq!(seconds(from, to), 1);

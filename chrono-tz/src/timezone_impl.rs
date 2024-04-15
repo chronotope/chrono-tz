@@ -231,8 +231,16 @@ impl FixedTimespanSet {
     fn utc_span(&self, index: usize) -> Span {
         debug_assert!(index < self.len());
         Span {
-            begin: if index == 0 { None } else { Some(self.rest[index - 1].0) },
-            end: if index == self.rest.len() { None } else { Some(self.rest[index].0) },
+            begin: if index == 0 {
+                None
+            } else {
+                Some(self.rest[index - 1].0)
+            },
+            end: if index == self.rest.len() {
+                None
+            } else {
+                Some(self.rest[index].0)
+            },
         }
     }
 
@@ -330,7 +338,9 @@ impl TimeZone for Tz {
     fn offset_from_local_datetime(&self, local: &NaiveDateTime) -> LocalResult<Self::Offset> {
         let timestamp = local.and_utc().timestamp();
         let timespans = self.timespans();
-        let index = binary_search(0, timespans.len(), |i| timespans.local_span(i).cmp(timestamp));
+        let index = binary_search(0, timespans.len(), |i| {
+            timespans.local_span(i).cmp(timestamp)
+        });
         TzOffset::map_localresult(
             *self,
             match index {

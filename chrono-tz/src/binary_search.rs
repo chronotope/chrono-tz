@@ -27,7 +27,11 @@ fn test_binary_search() {
     assert_eq!(binary_search(30, 50, |x| x.cmp(&42)), Ok(42));
     assert_eq!(binary_search(300, 500, |x| x.cmp(&42)), Err(300));
     assert_eq!(
-        binary_search(0, 500, |x| if x < 42 { Ordering::Less } else { Ordering::Greater }),
+        binary_search(0, 500, |x| if x < 42 {
+            Ordering::Less
+        } else {
+            Ordering::Greater
+        }),
         Err(42)
     );
 }
