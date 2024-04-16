@@ -150,11 +150,6 @@ environment variable to select them. The environment variable is called
 `CHRONO_TZ_TIMEZONE_FILTER` and is a regular expression. It should be specified in your top-level
 build:
 
-```toml
-[dependencies]
-chrono-tz = { version = "0.6", features = [ "filter-by-regex" ] }
-```
-
 ```sh
 CHRONO_TZ_TIMEZONE_FILTER="(Europe/London|US/.*)" cargo build
 ```
