@@ -70,9 +70,6 @@
 
 use std::fmt;
 use std::str::FromStr;
-// we still support rust that doesn't have the inherent methods
-#[allow(deprecated, unused_imports)]
-use std::ascii::AsciiExt;
 
 use regex::{Captures, Regex};
 
