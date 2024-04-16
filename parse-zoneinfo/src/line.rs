@@ -75,7 +75,6 @@ use regex::{Captures, Regex};
 
 pub struct LineParser {
     rule_line: Regex,
-    day_field: Regex,
     hm_field: Regex,
     hms_field: Regex,
     zone_line: Regex,
@@ -147,15 +146,6 @@ impl Default for LineParser {
                 ( ?P<save>    \S+)  \s+
                 ( ?P<letters> \S+)  \s*
                 (\#.*)?
-            $ "##,
-            )
-            .unwrap(),
-
-            day_field: Regex::new(
-                r##"(?x) ^
-                ( ?P<weekday> \w+ )
-                ( ?P<sign>    [<>] = )
-                ( ?P<day>     \d+ )
             $ "##,
             )
             .unwrap(),
@@ -411,6 +401,44 @@ pub enum DaySpec {
     /// The **first** day with the given weekday **after** (or including) a
     /// day with a specific number.
     FirstOnOrAfter(Weekday, i8),
+}
+
+impl FromStr for DaySpec {
+    type Err = Error;
+
+    fn from_str(input: &str) -> Result<Self, Error> {
+        // Parse the field as a number if it vaguely resembles one.
+        if input.chars().all(|c| c.is_ascii_digit()) {
+            return Ok(DaySpec::Ordinal(input.parse().unwrap()));
+        }
+        // Check if it stars with ‘last’, and trim off the first four bytes if
+        // it does. (Luckily, the file is ASCII, so ‘last’ is four bytes)
+        else if let Some(remainder) = input.strip_prefix("last") {
+            let weekday = remainder.parse()?;
+            return Ok(DaySpec::Last(weekday));
+        }
+
+        let weekday = match input.get(..3) {
+            Some(wd) => Weekday::from_str(wd)?,
+            None => return Err(Error::InvalidDaySpec(input.to_string())),
+        };
+
+        let dir = match input.get(3..5) {
+            Some(">=") => true,
+            Some("<=") => false,
+            _ => return Err(Error::InvalidDaySpec(input.to_string())),
+        };
+
+        let day = match input.get(5..) {
+            Some(day) => u8::from_str(day).map_err(|_| Error::InvalidDaySpec(input.to_string()))?,
+            None => return Err(Error::InvalidDaySpec(input.to_string())),
+        } as i8;
+
+        Ok(match dir {
+            true => DaySpec::FirstOnOrAfter(weekday, day),
+            false => DaySpec::LastOnOrBefore(weekday, day),
+        })
+    }
 }
 
 impl Weekday {
@@ -920,34 +948,6 @@ impl LineParser {
         }
     }
 
-    fn parse_dayspec(&self, input: &str) -> Result<DaySpec, Error> {
-        // Parse the field as a number if it vaguely resembles one.
-        if input.chars().all(|c| c.is_ascii_digit()) {
-            Ok(DaySpec::Ordinal(input.parse().unwrap()))
-        }
-        // Check if it stars with ‘last’, and trim off the first four bytes if
-        // it does. (Luckily, the file is ASCII, so ‘last’ is four bytes)
-        else if let Some(remainder) = input.strip_prefix("last") {
-            let weekday = remainder.parse()?;
-            Ok(DaySpec::Last(weekday))
-        }
-        // Check if it’s a relative expression with the regex.
-        else if let Some(caps) = self.day_field.captures(input) {
-            let weekday = caps.name("weekday").unwrap().as_str().parse().unwrap();
-            let day = caps.name("day").unwrap().as_str().parse().unwrap();
-
-            match caps.name("sign").unwrap().as_str() {
-                "<=" => Ok(DaySpec::LastOnOrBefore(weekday, day)),
-                ">=" => Ok(DaySpec::FirstOnOrAfter(weekday, day)),
-                _ => unreachable!("The regex only matches one of those two!"),
-            }
-        }
-        // Otherwise, give up.
-        else {
-            Err(Error::InvalidDaySpec(input.to_string()))
-        }
-    }
-
     fn parse_rule<'a>(&self, input: &'a str) -> Result<Rule<'a>, Error> {
         if let Some(caps) = self.rule_line.captures(input) {
             let name = caps.name("name").unwrap().as_str();
@@ -971,7 +971,7 @@ impl LineParser {
             }
 
             let month = caps.name("in").unwrap().as_str().parse()?;
-            let day = self.parse_dayspec(caps.name("on").unwrap().as_str())?;
+            let day = DaySpec::from_str(caps.name("on").unwrap().as_str())?;
             let time = self.parse_timespec_and_type(caps.name("at").unwrap().as_str())?;
             let time_to_add = self.parse_timespec(caps.name("save").unwrap().as_str())?;
             let letters = match caps.name("letters").unwrap().as_str() {
@@ -1027,13 +1027,13 @@ impl LineParser {
             (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime(
                 y.as_str().parse()?,
                 m.as_str().parse()?,
-                self.parse_dayspec(d.as_str())?,
+                DaySpec::from_str(d.as_str())?,
                 self.parse_timespec_and_type(t.as_str())?,
             )),
             (Some(y), Some(m), Some(d), _) => Some(ChangeTime::UntilDay(
                 y.as_str().parse()?,
                 m.as_str().parse()?,
-                self.parse_dayspec(d.as_str())?,
+                DaySpec::from_str(d.as_str())?,
             )),
             (Some(y), Some(m), _, _) => Some(ChangeTime::UntilMonth(
                 y.as_str().parse()?,
