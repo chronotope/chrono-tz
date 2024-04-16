@@ -14,16 +14,9 @@ Parse-zoneinfo is a fork of [`zoneinfo_parse`] by Benjamin Sago (now unmaintaine
 [`zoneinfo_parse`]: https://crates.io/crates/zoneinfo_parse
 [`chrono-tz`]: https://crates.io/crates/chrono-tz
 
-# Installation
+## Rust version requirements
 
-This crate works with [Cargo](https://crates.io). Add the following to your `Cargo.toml` dependencies section:
-
-```toml
-[dependencies]
-parse-zoneinfo = "0.5"
-```
-
-The earliest version of Rust that this crate is tested against is [Rust v1.31.0](https://blog.rust-lang.org/2018/12/06/Rust-1.31-and-rust-2018.html).
+The Minimum Supported Rust Version (MSRV) is currently **Rust 1.57.0**.
 
 # Usage
 
