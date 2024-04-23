@@ -1,6 +1,6 @@
 # parse-zoneinfo
 
-Rust library for reading the text files comprising the [zoneinfo database][w], which records time zone changes and offsets across the world from multiple sources.
+Rust library for reading the text files comprising the [zoneinfo database], which records time zone changes and offsets across the world from multiple sources.
 
 The zoneinfo database is distributed in one of two formats: a raw text format with one file per continent, and a compiled binary format with one file per time zone. This crate deals with the text format.
 
@@ -10,7 +10,7 @@ Parse-zoneinfo is a fork of [`zoneinfo_parse`] by Benjamin Sago (now unmaintaine
 
 [iana]: https://www.iana.org/time-zones
 [tz]: https://github.com/eggert/tz
-[w]: https://en.wikipedia.org/wiki/Tz_database
+[zoneinfo database]: https://en.wikipedia.org/wiki/Tz_database
 [`zoneinfo_parse`]: https://crates.io/crates/zoneinfo_parse
 [`chrono-tz`]: https://crates.io/crates/chrono-tz
 
