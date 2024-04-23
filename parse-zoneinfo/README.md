@@ -2,7 +2,7 @@
 
 Rust library for reading the text files comprising the [zoneinfo database][w], which records time zone changes and offsets across the world from multiple sources.
 
-The zoneinfo database is distributed in one of two formats: a raw text format with one file per continent, and a compiled binary format with one file per time zone. This crate deals with the former; for the latter, see the [`zoneinfo_compiled` crate][zc] instead.
+The zoneinfo database is distributed in one of two formats: a raw text format with one file per continent, and a compiled binary format with one file per time zone. This crate deals with the text format.
 
 The database itself is maintained by IANA. For more information, see [IANA’s page on the time zone database][iana]. You can also find the text files themselves in [the tz repository][tz].
 
@@ -11,7 +11,6 @@ Parse-zoneinfo is a fork of [`zoneinfo_parse`] by Benjamin Sago (now unmaintaine
 [iana]: https://www.iana.org/time-zones
 [tz]: https://github.com/eggert/tz
 [w]: https://en.wikipedia.org/wiki/Tz_database
-[zc]: https://github.com/rust-datetime/zoneinfo-compiled
 [`zoneinfo_parse`]: https://crates.io/crates/zoneinfo_parse
 [`chrono-tz`]: https://crates.io/crates/chrono-tz
 
