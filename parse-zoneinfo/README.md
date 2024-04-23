@@ -70,8 +70,11 @@ Once the input lines have been parsed, they must be *interpreted* to form a tabl
 
 The easiest way to do this is with a `TableBuilder`. You can add various lines to the builder, and it will throw an error as soon as it detects that something’s wrong, such as a duplicate or a missing entry. When all the lines have been fed to the builder, you can use the `build` method to produce a `Table` containing fields for the rule, zone, and link lines.
 
-
-
 ## Example program
 
-This crate is used to produce the data for the [`zoneinfo-data` crate](https://github.com/rust-datetime/zoneinfo-data). For an example of its use, see the bundled [data crate builder](https://github.com/rust-datetime/zoneinfo-parse/tree/master/data-crate-builder).
+The `example` folder of this crate contains a basic parser example.
+
+`parse-zoneinfo` is used to produce the data for [`chrono-tz`]. For a full example of its use see [`chrono-tz-build`].
+
+[`chrono-tz-build`]: https://github.com/chronotope/chrono-tz/tree/main/chrono-tz-build
+
