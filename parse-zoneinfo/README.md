@@ -14,8 +14,6 @@ Parse-zoneinfo is a fork of [`zoneinfo_parse`] by Benjamin Sago (now unmaintaine
 [`zoneinfo_parse`]: https://crates.io/crates/zoneinfo_parse
 [`chrono-tz`]: https://crates.io/crates/chrono-tz
 
-### [View the Rustdoc](https://docs.rs/parse-zoneinfo)
-
 # Installation
 
 This crate works with [Cargo](https://crates.io). Add the following to your `Cargo.toml` dependencies section:
