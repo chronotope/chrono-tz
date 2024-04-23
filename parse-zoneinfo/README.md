@@ -1,5 +1,19 @@
 # parse-zoneinfo
 
+[![parse-zoneinfo GitHub Actions][gh-image]][gh-checks]
+[![parse-zoneinfo on crates.io][cratesio-image]][cratesio]
+[![parse-zoneinfo on docs.rs][docsrs-image]][docsrs]
+[![Chat][discord-image]][discord]
+
+[gh-image]: https://github.com/chronotope/chrono-tz/actions/workflows/rust.yml/badge.svg
+[gh-checks]: https://github.com/chronotope/chrono-tz/actions/workflows/rust.yml
+[cratesio-image]: https://img.shields.io/crates/v/parse-zoneinfo.svg
+[cratesio]: https://crates.io/crates/parse-zoneinfo
+[docsrs-image]: https://docs.rs/parse-zoneinfo/badge.svg
+[docsrs]: https://docs.rs/parse-zoneinfo
+[discord-image]: https://img.shields.io/discord/976380008299917365?logo=discord
+[discord]: https://discord.gg/sXpav4PS7M
+
 Rust library for reading the text files comprising the [zoneinfo database], which records time zone changes and offsets across the world from multiple sources.
 
 The zoneinfo database is distributed in one of two formats: a raw text format with one file per continent, and a compiled binary format with one file per time zone. This crate deals with the text format.
