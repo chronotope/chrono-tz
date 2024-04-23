@@ -4,7 +4,7 @@ Rust library for reading the text files comprising the [zoneinfo database][w], w
 
 The zoneinfo database is distributed in one of two formats: a raw text format with one file per continent, and a compiled binary format with one file per time zone. This crate deals with the text format.
 
-The database itself is maintained by IANA. For more information, see [IANA’s page on the time zone database][iana]. You can also find the text files themselves in [the tz repository][tz].
+The database itself is maintained by IANA. For more information, see [IANA’s page on the time zone database][iana]. You can also find the text files in [the tz repository][tz].
 
 Parse-zoneinfo is a fork of [`zoneinfo_parse`] by Benjamin Sago (now unmaintained). It is used by [`chrono-tz`].
 
