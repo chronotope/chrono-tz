@@ -1,7 +1,3 @@
-extern crate parse_zoneinfo;
-#[cfg(feature = "filter-by-regex")]
-extern crate regex;
-
 use std::collections::BTreeSet;
 use std::env;
 use std::fs::File;
@@ -382,7 +378,7 @@ mod filter {
     use std::collections::HashSet;
     use std::env;
 
-    use regex::Regex;
+    use regex_lite::Regex;
 
     use crate::{Table, FILTER_ENV_VAR_NAME};
 
