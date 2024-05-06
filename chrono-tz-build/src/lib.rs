@@ -511,24 +511,12 @@ pub fn main() {
 
     let parser = LineParser::default();
     let mut table = TableBuilder::new();
-
-    let tzfiles = [
-        "tz/africa",
-        "tz/antarctica",
-        "tz/asia",
-        "tz/australasia",
-        "tz/backward",
-        "tz/etcetera",
-        "tz/europe",
-        "tz/northamerica",
-        "tz/southamerica",
-    ];
-
-    let lines = tzfiles
+    let lines = parse_zoneinfo::FILES
         .iter()
-        .map(Path::new)
         .map(|p| {
-            Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::new())).join(p)
+            Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::new()))
+                .join("tz")
+                .join(p)
         })
         .map(|path| {
             File::open(&path).unwrap_or_else(|e| panic!("cannot open {}: {}", path.display(), e))
