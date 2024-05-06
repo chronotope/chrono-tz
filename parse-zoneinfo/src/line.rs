@@ -74,7 +74,6 @@ use std::str::FromStr;
 use regex::Regex;
 
 pub struct LineParser {
-    link_line: Regex,
     empty_line: Regex,
 }
 
@@ -128,16 +127,6 @@ impl std::error::Error for Error {}
 impl Default for LineParser {
     fn default() -> Self {
         LineParser {
-            link_line: Regex::new(
-                r##"(?x) ^
-                Link  \s+
-                ( ?P<target>  \S+ )  \s+
-                ( ?P<name>    \S+ )  \s*
-                (\#.*)?
-            $ "##,
-            )
-            .unwrap(),
-
             empty_line: Regex::new(
                 r##"(?x) ^
                 \s*
@@ -1276,6 +1265,20 @@ pub struct Link<'a> {
     pub new: &'a str,
 }
 
+impl<'a> Link<'a> {
+    fn from_str(input: &'a str) -> Result<Self, Error> {
+        let mut iter = input.split_ascii_whitespace();
+        if iter.next() != Some("Link") {
+            return Err(Error::NotParsedAsLinkLine);
+        }
+
+        Ok(Link {
+            existing: iter.next().ok_or(Error::NotParsedAsLinkLine)?,
+            new: iter.next().ok_or(Error::NotParsedAsLinkLine)?,
+        })
+    }
+}
+
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Line<'a> {
     /// This line is empty.
@@ -1307,19 +1310,6 @@ impl LineParser {
         Self::default()
     }
 
-    fn parse_link<'a>(&self, input: &'a str) -> Result<Link<'a>, Error> {
-        if let Some(caps) = self.link_line.captures(input) {
-            let target = caps.name("target").unwrap().as_str();
-            let name = caps.name("name").unwrap().as_str();
-            Ok(Link {
-                existing: target,
-                new: name,
-            })
-        } else {
-            Err(Error::NotParsedAsLinkLine)
-        }
-    }
-
     /// Attempt to parse this line, returning a `Line` depending on what
     /// type of line it was, or an `Error` if it couldn't be parsed.
     pub fn parse_str<'a>(&self, input: &'a str) -> Result<Line<'a>, Error> {
@@ -1341,9 +1331,8 @@ impl LineParser {
             return Ok(Line::Rule(Rule::from_str(input)?));
         }
 
-        match self.parse_link(input) {
-            Err(Error::NotParsedAsLinkLine) => {}
-            result => return result.map(Line::Link),
+        if input.starts_with("Link") {
+            return Ok(Line::Link(Link::from_str(input)?));
         }
 
         Err(Error::InvalidLineType(input.to_string()))
