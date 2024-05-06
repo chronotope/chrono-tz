@@ -71,11 +71,8 @@
 use std::fmt;
 use std::str::FromStr;
 
-use regex::Regex;
-
-pub struct LineParser {
-    empty_line: Regex,
-}
+#[derive(Clone, Copy)]
+pub struct LineParser {}
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Error {
@@ -126,15 +123,7 @@ impl std::error::Error for Error {}
 
 impl Default for LineParser {
     fn default() -> Self {
-        LineParser {
-            empty_line: Regex::new(
-                r##"(?x) ^
-                \s*
-                (\#.*)?
-            $"##,
-            )
-            .unwrap(),
-        }
+        LineParser {}
     }
 }
 
@@ -1313,7 +1302,12 @@ impl LineParser {
     /// Attempt to parse this line, returning a `Line` depending on what
     /// type of line it was, or an `Error` if it couldn't be parsed.
     pub fn parse_str<'a>(&self, input: &'a str) -> Result<Line<'a>, Error> {
-        if self.empty_line.is_match(input) {
+        let input = match input.split_once('#') {
+            Some((input, _)) => input,
+            None => input,
+        };
+
+        if input.trim().is_empty() {
             return Ok(Line::Space);
         }
 
