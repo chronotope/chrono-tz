@@ -71,18 +71,8 @@
 use std::fmt;
 use std::str::FromStr;
 
-use regex::{Captures, Regex};
-
-pub struct LineParser {
-    rule_line: Regex,
-    day_field: Regex,
-    hm_field: Regex,
-    hms_field: Regex,
-    zone_line: Regex,
-    continuation_line: Regex,
-    link_line: Regex,
-    empty_line: Regex,
-}
+#[derive(Clone, Copy)]
+pub struct LineParser {}
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Error {
@@ -133,100 +123,7 @@ impl std::error::Error for Error {}
 
 impl Default for LineParser {
     fn default() -> Self {
-        LineParser {
-            rule_line: Regex::new(
-                r##"(?x) ^
-                Rule \s+
-                ( ?P<name>    \S+)  \s+
-                ( ?P<from>    \S+)  \s+
-                ( ?P<to>      \S+)  \s+
-                ( ?P<type>    \S+)  \s+
-                ( ?P<in>      \S+)  \s+
-                ( ?P<on>      \S+)  \s+
-                ( ?P<at>      \S+)  \s+
-                ( ?P<save>    \S+)  \s+
-                ( ?P<letters> \S+)  \s*
-                (\#.*)?
-            $ "##,
-            )
-            .unwrap(),
-
-            day_field: Regex::new(
-                r##"(?x) ^
-                ( ?P<weekday> \w+ )
-                ( ?P<sign>    [<>] = )
-                ( ?P<day>     \d+ )
-            $ "##,
-            )
-            .unwrap(),
-
-            hm_field: Regex::new(
-                r##"(?x) ^
-                ( ?P<sign> -? )
-                ( ?P<hour> \d{1,2} ) : ( ?P<minute> \d{2} )
-                ( ?P<flag> [wsugz] )?
-            $ "##,
-            )
-            .unwrap(),
-
-            hms_field: Regex::new(
-                r##"(?x) ^
-                ( ?P<sign> -? )
-                ( ?P<hour> \d{1,2} ) : ( ?P<minute> \d{2} ) : ( ?P<second> \d{2} )
-                ( ?P<flag> [wsugz] )?
-            $ "##,
-            )
-            .unwrap(),
-
-            zone_line: Regex::new(
-                r##"(?x) ^
-                Zone \s+
-                ( ?P<name> [A-Za-z0-9/_+-]+ )  \s+
-                ( ?P<gmtoff>     \S+ )  \s+
-                ( ?P<rulessave>  \S+ )  \s+
-                ( ?P<format>     \S+ )  \s*
-                ( ?P<year>       [0-9]+)? \s*
-                ( ?P<month>      [A-Za-z]+)? \s*
-                ( ?P<day>        [A-Za-z0-9><=]+ )? \s*
-                ( ?P<time>       [0-9:]+[suwz]? )? \s*
-                (\#.*)?
-            $ "##,
-            )
-            .unwrap(),
-
-            continuation_line: Regex::new(
-                r##"(?x) ^
-                \s+
-                ( ?P<gmtoff>     \S+ )  \s+
-                ( ?P<rulessave>  \S+ )  \s+
-                ( ?P<format>     \S+ )  \s*
-                ( ?P<year>       [0-9]+)? \s*
-                ( ?P<month>      [A-Za-z]+)? \s*
-                ( ?P<day>        [A-Za-z0-9><=]+ )? \s*
-                ( ?P<time>       [0-9:]+[suwz]? )? \s*
-                (\#.*)?
-            $ "##,
-            )
-            .unwrap(),
-
-            link_line: Regex::new(
-                r##"(?x) ^
-                Link  \s+
-                ( ?P<target>  \S+ )  \s+
-                ( ?P<name>    \S+ )  \s*
-                (\#.*)?
-            $ "##,
-            )
-            .unwrap(),
-
-            empty_line: Regex::new(
-                r##"(?x) ^
-                \s*
-                (\#.*)?
-            $"##,
-            )
-            .unwrap(),
-        }
+        LineParser {}
     }
 }
 
@@ -413,6 +310,44 @@ pub enum DaySpec {
     FirstOnOrAfter(Weekday, i8),
 }
 
+impl FromStr for DaySpec {
+    type Err = Error;
+
+    fn from_str(input: &str) -> Result<Self, Error> {
+        // Parse the field as a number if it vaguely resembles one.
+        if input.chars().all(|c| c.is_ascii_digit()) {
+            return Ok(DaySpec::Ordinal(input.parse().unwrap()));
+        }
+        // Check if it stars with ‘last’, and trim off the first four bytes if
+        // it does. (Luckily, the file is ASCII, so ‘last’ is four bytes)
+        else if let Some(remainder) = input.strip_prefix("last") {
+            let weekday = remainder.parse()?;
+            return Ok(DaySpec::Last(weekday));
+        }
+
+        let weekday = match input.get(..3) {
+            Some(wd) => Weekday::from_str(wd)?,
+            None => return Err(Error::InvalidDaySpec(input.to_string())),
+        };
+
+        let dir = match input.get(3..5) {
+            Some(">=") => true,
+            Some("<=") => false,
+            _ => return Err(Error::InvalidDaySpec(input.to_string())),
+        };
+
+        let day = match input.get(5..) {
+            Some(day) => u8::from_str(day).map_err(|_| Error::InvalidDaySpec(input.to_string()))?,
+            None => return Err(Error::InvalidDaySpec(input.to_string())),
+        } as i8;
+
+        Ok(match dir {
+            true => DaySpec::FirstOnOrAfter(weekday, day),
+            false => DaySpec::LastOnOrBefore(weekday, day),
+        })
+    }
+}
+
 impl Weekday {
     fn calculate(year: i64, month: Month, day: i8) -> Weekday {
         let m = month as i64;
@@ -591,6 +526,21 @@ impl TimeSpec {
             TimeSpec::Zero => 0,
         }
     }
+
+    pub fn with_type(self, timetype: TimeType) -> TimeSpecAndType {
+        TimeSpecAndType(self, timetype)
+    }
+}
+
+impl FromStr for TimeSpec {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<TimeSpec, Error> {
+        match TimeSpecAndType::from_str(s)? {
+            TimeSpecAndType(spec, TimeType::Wall) => Ok(spec),
+            TimeSpecAndType(_, _) => Err(Error::NonWallClockInTimeSpec(s.to_string())),
+        }
+    }
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]
@@ -600,12 +550,64 @@ pub enum TimeType {
     UTC,
 }
 
+impl TimeType {
+    fn from_char(c: char) -> Option<Self> {
+        Some(match c {
+            'w' => Self::Wall,
+            's' => Self::Standard,
+            'u' | 'g' | 'z' => Self::UTC,
+            _ => return None,
+        })
+    }
+}
+
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct TimeSpecAndType(pub TimeSpec, pub TimeType);
 
-impl TimeSpec {
-    pub fn with_type(self, timetype: TimeType) -> TimeSpecAndType {
-        TimeSpecAndType(self, timetype)
+impl FromStr for TimeSpecAndType {
+    type Err = Error;
+
+    fn from_str(input: &str) -> Result<Self, Error> {
+        if input == "-" {
+            return Ok(TimeSpecAndType(TimeSpec::Zero, TimeType::Wall));
+        } else if input.chars().all(|c| c == '-' || c.is_ascii_digit()) {
+            return Ok(TimeSpecAndType(
+                TimeSpec::Hours(input.parse().unwrap()),
+                TimeType::Wall,
+            ));
+        }
+
+        let (input, ty) = match input.chars().last().and_then(TimeType::from_char) {
+            Some(ty) => (&input[..input.len() - 1], Some(ty)),
+            None => (input, None),
+        };
+
+        let neg = if input.starts_with('-') { -1 } else { 1 };
+        let mut state = TimeSpec::Zero;
+        for part in input.split(':') {
+            state = match (state, part) {
+                (TimeSpec::Zero, hour) => TimeSpec::Hours(
+                    i8::from_str(hour)
+                        .map_err(|_| Error::InvalidTimeSpecAndType(input.to_string()))?,
+                ),
+                (TimeSpec::Hours(hours), minutes) => TimeSpec::HoursMinutes(
+                    hours,
+                    i8::from_str(minutes)
+                        .map_err(|_| Error::InvalidTimeSpecAndType(input.to_string()))?
+                        * neg,
+                ),
+                (TimeSpec::HoursMinutes(hours, minutes), seconds) => TimeSpec::HoursMinutesSeconds(
+                    hours,
+                    minutes,
+                    i8::from_str(seconds)
+                        .map_err(|_| Error::InvalidTimeSpecAndType(input.to_string()))?
+                        * neg,
+                ),
+                _ => return Err(Error::InvalidTimeSpecAndType(input.to_string())),
+            };
+        }
+
+        Ok(TimeSpecAndType(state, ty.unwrap_or(TimeType::Wall)))
     }
 }
 
@@ -753,6 +755,191 @@ pub struct ZoneInfo<'a> {
     pub time: Option<ChangeTime>,
 }
 
+impl<'a> ZoneInfo<'a> {
+    fn from_iter(iter: impl Iterator<Item = &'a str>) -> Result<Self, Error> {
+        let mut state = ZoneInfoState::Start;
+        for part in iter {
+            state = match (state, part) {
+                (st, _) if part.starts_with('#') => {
+                    state = st;
+                    break;
+                }
+                (ZoneInfoState::Start, offset) => ZoneInfoState::Save {
+                    offset: TimeSpec::from_str(offset)?,
+                },
+                (ZoneInfoState::Save { offset }, saving) => ZoneInfoState::Format {
+                    offset,
+                    saving: Saving::from_str(saving)?,
+                },
+                (ZoneInfoState::Format { offset, saving }, format) => ZoneInfoState::Year {
+                    offset,
+                    saving,
+                    format,
+                },
+                (
+                    ZoneInfoState::Year {
+                        offset,
+                        saving,
+                        format,
+                    },
+                    year,
+                ) => ZoneInfoState::Month {
+                    offset,
+                    saving,
+                    format,
+                    year: Year::from_str(year)?,
+                },
+                (
+                    ZoneInfoState::Month {
+                        offset,
+                        saving,
+                        format,
+                        year,
+                    },
+                    month,
+                ) => ZoneInfoState::Day {
+                    offset,
+                    saving,
+                    format,
+                    year,
+                    month: Month::from_str(month)?,
+                },
+                (
+                    ZoneInfoState::Day {
+                        offset,
+                        saving,
+                        format,
+                        year,
+                        month,
+                    },
+                    day,
+                ) => ZoneInfoState::Time {
+                    offset,
+                    saving,
+                    format,
+                    year,
+                    month,
+                    day: DaySpec::from_str(day)?,
+                },
+                (
+                    ZoneInfoState::Time {
+                        offset,
+                        saving,
+                        format,
+                        year,
+                        month,
+                        day,
+                    },
+                    time,
+                ) => {
+                    return Ok(Self {
+                        utc_offset: offset,
+                        saving,
+                        format,
+                        time: Some(ChangeTime::UntilTime(
+                            year,
+                            month,
+                            day,
+                            TimeSpecAndType::from_str(time)?,
+                        )),
+                    })
+                }
+            };
+        }
+
+        match state {
+            ZoneInfoState::Start | ZoneInfoState::Save { .. } | ZoneInfoState::Format { .. } => {
+                return Err(Error::NotParsedAsZoneLine)
+            }
+            ZoneInfoState::Year {
+                offset,
+                saving,
+                format,
+            } => {
+                return Ok(Self {
+                    utc_offset: offset,
+                    saving,
+                    format,
+                    time: None,
+                })
+            }
+            ZoneInfoState::Month {
+                offset,
+                saving,
+                format,
+                year,
+            } => Ok(Self {
+                utc_offset: offset,
+                saving,
+                format,
+                time: Some(ChangeTime::UntilYear(year)),
+            }),
+            ZoneInfoState::Day {
+                offset,
+                saving,
+                format,
+                year,
+                month,
+            } => Ok(Self {
+                utc_offset: offset,
+                saving,
+                format,
+                time: Some(ChangeTime::UntilMonth(year, month)),
+            }),
+            ZoneInfoState::Time {
+                offset,
+                saving,
+                format,
+                year,
+                month,
+                day,
+            } => Ok(Self {
+                utc_offset: offset,
+                saving,
+                format,
+                time: Some(ChangeTime::UntilDay(year, month, day)),
+            }),
+        }
+    }
+}
+
+enum ZoneInfoState<'a> {
+    Start,
+    Save {
+        offset: TimeSpec,
+    },
+    Format {
+        offset: TimeSpec,
+        saving: Saving<'a>,
+    },
+    Year {
+        offset: TimeSpec,
+        saving: Saving<'a>,
+        format: &'a str,
+    },
+    Month {
+        offset: TimeSpec,
+        saving: Saving<'a>,
+        format: &'a str,
+        year: Year,
+    },
+    Day {
+        offset: TimeSpec,
+        saving: Saving<'a>,
+        format: &'a str,
+        year: Year,
+        month: Month,
+    },
+    Time {
+        offset: TimeSpec,
+        saving: Saving<'a>,
+        format: &'a str,
+        year: Year,
+        month: Month,
+        day: DaySpec,
+    },
+}
+
 /// The amount of daylight saving time (DST) to apply to this timespan. This
 /// is a special type for a certain field in a zone line, which can hold
 /// different types of value.
@@ -767,6 +954,23 @@ pub enum Saving<'a> {
     /// All rules with the given name should apply while this timespan is in
     /// effect.
     Multiple(&'a str),
+}
+
+impl<'a> Saving<'a> {
+    fn from_str(input: &'a str) -> Result<Self, Error> {
+        if input == "-" {
+            Ok(Saving::NoSaving)
+        } else if input
+            .chars()
+            .all(|c| c == '-' || c == '_' || c.is_alphabetic())
+        {
+            Ok(Self::Multiple(input))
+        } else if let Ok(time) = TimeSpec::from_str(input) {
+            Ok(Self::OneOff(time))
+        } else {
+            Err(Error::CouldNotParseSaving(input.to_string()))
+        }
+    }
 }
 
 /// A **rule** definition line.
@@ -802,6 +1006,190 @@ pub struct Rule<'a> {
     pub letters: Option<&'a str>,
 }
 
+impl<'a> Rule<'a> {
+    fn from_str(input: &'a str) -> Result<Self, Error> {
+        let mut state = RuleState::Start;
+        for part in input.split_ascii_whitespace() {
+            state = match (state, part) {
+                (RuleState::Start, "Rule") => RuleState::Name,
+                (RuleState::Name, name) => RuleState::FromYear { name },
+                (RuleState::FromYear { name }, year) => RuleState::ToYear {
+                    name,
+                    from_year: Year::from_str(year)?,
+                },
+                (RuleState::ToYear { name, from_year }, year) => RuleState::Type {
+                    name,
+                    from_year,
+                    to_year: match year {
+                        "only" => None,
+                        _ => Some(Year::from_str(year)?),
+                    },
+                },
+                (
+                    RuleState::Type {
+                        name,
+                        from_year,
+                        to_year,
+                    },
+                    "-" | "\u{2010}",
+                ) => RuleState::Month {
+                    name,
+                    from_year,
+                    to_year,
+                },
+                (RuleState::Type { .. }, _) => {
+                    return Err(Error::TypeColumnContainedNonHyphen(part.to_string()))
+                }
+                (
+                    RuleState::Month {
+                        name,
+                        from_year,
+                        to_year,
+                    },
+                    month,
+                ) => RuleState::Day {
+                    name,
+                    from_year,
+                    to_year,
+                    month: Month::from_str(month)?,
+                },
+                (
+                    RuleState::Day {
+                        name,
+                        from_year,
+                        to_year,
+                        month,
+                    },
+                    day,
+                ) => RuleState::Time {
+                    name,
+                    from_year,
+                    to_year,
+                    month,
+                    day: DaySpec::from_str(day)?,
+                },
+                (
+                    RuleState::Time {
+                        name,
+                        from_year,
+                        to_year,
+                        month,
+                        day,
+                    },
+                    time,
+                ) => RuleState::TimeToAdd {
+                    name,
+                    from_year,
+                    to_year,
+                    month,
+                    day,
+                    time: TimeSpecAndType::from_str(time)?,
+                },
+                (
+                    RuleState::TimeToAdd {
+                        name,
+                        from_year,
+                        to_year,
+                        month,
+                        day,
+                        time,
+                    },
+                    time_to_add,
+                ) => RuleState::Letters {
+                    name,
+                    from_year,
+                    to_year,
+                    month,
+                    day,
+                    time,
+                    time_to_add: TimeSpec::from_str(time_to_add)?,
+                },
+                (
+                    RuleState::Letters {
+                        name,
+                        from_year,
+                        to_year,
+                        month,
+                        day,
+                        time,
+                        time_to_add,
+                    },
+                    letters,
+                ) => {
+                    return Ok(Self {
+                        name,
+                        from_year,
+                        to_year,
+                        month,
+                        day,
+                        time,
+                        time_to_add,
+                        letters: match letters {
+                            "-" => None,
+                            _ => Some(letters),
+                        },
+                    })
+                }
+                _ => return Err(Error::NotParsedAsRuleLine),
+            };
+        }
+
+        Err(Error::NotParsedAsRuleLine)
+    }
+}
+
+enum RuleState<'a> {
+    Start,
+    Name,
+    FromYear {
+        name: &'a str,
+    },
+    ToYear {
+        name: &'a str,
+        from_year: Year,
+    },
+    Type {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+    },
+    Month {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+    },
+    Day {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+        month: Month,
+    },
+    Time {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+        month: Month,
+        day: DaySpec,
+    },
+    TimeToAdd {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+        month: Month,
+        day: DaySpec,
+        time: TimeSpecAndType,
+    },
+    Letters {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+        month: Month,
+        day: DaySpec,
+        time: TimeSpecAndType,
+        time_to_add: TimeSpec,
+    },
+}
+
 /// A **zone** definition line.
 ///
 /// According to the `zic(8)` man page, a zone line has this form, along with
@@ -829,10 +1217,43 @@ pub struct Zone<'a> {
     pub info: ZoneInfo<'a>,
 }
 
+impl<'a> Zone<'a> {
+    fn from_str(input: &'a str) -> Result<Self, Error> {
+        let mut iter = input.split_ascii_whitespace();
+        if iter.next() != Some("Zone") {
+            return Err(Error::NotParsedAsZoneLine);
+        }
+
+        let name = match iter.next() {
+            Some(name) => name,
+            None => return Err(Error::NotParsedAsZoneLine),
+        };
+
+        Ok(Self {
+            name,
+            info: ZoneInfo::from_iter(iter)?,
+        })
+    }
+}
+
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct Link<'a> {
     pub existing: &'a str,
     pub new: &'a str,
+}
+
+impl<'a> Link<'a> {
+    fn from_str(input: &'a str) -> Result<Self, Error> {
+        let mut iter = input.split_ascii_whitespace();
+        if iter.next() != Some("Link") {
+            return Err(Error::NotParsedAsLinkLine);
+        }
+
+        Ok(Link {
+            existing: iter.next().ok_or(Error::NotParsedAsLinkLine)?,
+            new: iter.next().ok_or(Error::NotParsedAsLinkLine)?,
+        })
+    }
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]
@@ -849,257 +1270,38 @@ pub enum Line<'a> {
     Link(Link<'a>),
 }
 
-fn parse_time_type(c: &str) -> Option<TimeType> {
-    Some(match c {
-        "w" => TimeType::Wall,
-        "s" => TimeType::Standard,
-        "u" | "g" | "z" => TimeType::UTC,
-        _ => return None,
-    })
-}
-
 impl LineParser {
     #[deprecated]
     pub fn new() -> Self {
         Self::default()
     }
 
-    fn parse_timespec_and_type(&self, input: &str) -> Result<TimeSpecAndType, Error> {
-        if input == "-" {
-            Ok(TimeSpecAndType(TimeSpec::Zero, TimeType::Wall))
-        } else if input.chars().all(|c| c == '-' || c.is_ascii_digit()) {
-            Ok(TimeSpecAndType(
-                TimeSpec::Hours(input.parse().unwrap()),
-                TimeType::Wall,
-            ))
-        } else if let Some(caps) = self.hm_field.captures(input) {
-            let sign: i8 = if caps.name("sign").unwrap().as_str() == "-" {
-                -1
-            } else {
-                1
-            };
-            let hour: i8 = caps.name("hour").unwrap().as_str().parse().unwrap();
-            let minute: i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
-            let flag = caps
-                .name("flag")
-                .and_then(|c| parse_time_type(&c.as_str()[0..1]))
-                .unwrap_or(TimeType::Wall);
-
-            Ok(TimeSpecAndType(
-                TimeSpec::HoursMinutes(hour * sign, minute * sign),
-                flag,
-            ))
-        } else if let Some(caps) = self.hms_field.captures(input) {
-            let sign: i8 = if caps.name("sign").unwrap().as_str() == "-" {
-                -1
-            } else {
-                1
-            };
-            let hour: i8 = caps.name("hour").unwrap().as_str().parse().unwrap();
-            let minute: i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
-            let second: i8 = caps.name("second").unwrap().as_str().parse().unwrap();
-            let flag = caps
-                .name("flag")
-                .and_then(|c| parse_time_type(&c.as_str()[0..1]))
-                .unwrap_or(TimeType::Wall);
-
-            Ok(TimeSpecAndType(
-                TimeSpec::HoursMinutesSeconds(hour * sign, minute * sign, second * sign),
-                flag,
-            ))
-        } else {
-            Err(Error::InvalidTimeSpecAndType(input.to_string()))
-        }
-    }
-
-    fn parse_timespec(&self, input: &str) -> Result<TimeSpec, Error> {
-        match self.parse_timespec_and_type(input) {
-            Ok(TimeSpecAndType(spec, TimeType::Wall)) => Ok(spec),
-            Ok(TimeSpecAndType(_, _)) => Err(Error::NonWallClockInTimeSpec(input.to_string())),
-            Err(e) => Err(e),
-        }
-    }
-
-    fn parse_dayspec(&self, input: &str) -> Result<DaySpec, Error> {
-        // Parse the field as a number if it vaguely resembles one.
-        if input.chars().all(|c| c.is_ascii_digit()) {
-            Ok(DaySpec::Ordinal(input.parse().unwrap()))
-        }
-        // Check if it stars with ‘last’, and trim off the first four bytes if
-        // it does. (Luckily, the file is ASCII, so ‘last’ is four bytes)
-        else if let Some(remainder) = input.strip_prefix("last") {
-            let weekday = remainder.parse()?;
-            Ok(DaySpec::Last(weekday))
-        }
-        // Check if it’s a relative expression with the regex.
-        else if let Some(caps) = self.day_field.captures(input) {
-            let weekday = caps.name("weekday").unwrap().as_str().parse().unwrap();
-            let day = caps.name("day").unwrap().as_str().parse().unwrap();
-
-            match caps.name("sign").unwrap().as_str() {
-                "<=" => Ok(DaySpec::LastOnOrBefore(weekday, day)),
-                ">=" => Ok(DaySpec::FirstOnOrAfter(weekday, day)),
-                _ => unreachable!("The regex only matches one of those two!"),
-            }
-        }
-        // Otherwise, give up.
-        else {
-            Err(Error::InvalidDaySpec(input.to_string()))
-        }
-    }
-
-    fn parse_rule<'a>(&self, input: &'a str) -> Result<Rule<'a>, Error> {
-        if let Some(caps) = self.rule_line.captures(input) {
-            let name = caps.name("name").unwrap().as_str();
-
-            let from_year = caps.name("from").unwrap().as_str().parse()?;
-
-            // The end year can be ‘only’ to indicate that this rule only
-            // takes place on that year.
-            let to_year = match caps.name("to").unwrap().as_str() {
-                "only" => None,
-                to => Some(to.parse()?),
-            };
-
-            // According to the spec, the only value inside the ‘type’ column
-            // should be “-”, so throw an error if it isn’t. (It only exists
-            // for compatibility with old versions that used to contain year
-            // types.) Sometimes “‐”, a Unicode hyphen, is used as well.
-            let t = caps.name("type").unwrap().as_str();
-            if t != "-" && t != "\u{2010}" {
-                return Err(Error::TypeColumnContainedNonHyphen(t.to_string()));
-            }
-
-            let month = caps.name("in").unwrap().as_str().parse()?;
-            let day = self.parse_dayspec(caps.name("on").unwrap().as_str())?;
-            let time = self.parse_timespec_and_type(caps.name("at").unwrap().as_str())?;
-            let time_to_add = self.parse_timespec(caps.name("save").unwrap().as_str())?;
-            let letters = match caps.name("letters").unwrap().as_str() {
-                "-" => None,
-                l => Some(l),
-            };
-
-            Ok(Rule {
-                name,
-                from_year,
-                to_year,
-                month,
-                day,
-                time,
-                time_to_add,
-                letters,
-            })
-        } else {
-            Err(Error::NotParsedAsRuleLine)
-        }
-    }
-
-    fn saving_from_str<'a>(&self, input: &'a str) -> Result<Saving<'a>, Error> {
-        if input == "-" {
-            Ok(Saving::NoSaving)
-        } else if input
-            .chars()
-            .all(|c| c == '-' || c == '_' || c.is_alphabetic())
-        {
-            Ok(Saving::Multiple(input))
-        } else if self.hm_field.is_match(input) {
-            let time = self.parse_timespec(input)?;
-            Ok(Saving::OneOff(time))
-        } else {
-            Err(Error::CouldNotParseSaving(input.to_string()))
-        }
-    }
-
-    fn zoneinfo_from_captures<'a>(&self, caps: Captures<'a>) -> Result<ZoneInfo<'a>, Error> {
-        let utc_offset = self.parse_timespec(caps.name("gmtoff").unwrap().as_str())?;
-        let saving = self.saving_from_str(caps.name("rulessave").unwrap().as_str())?;
-        let format = caps.name("format").unwrap().as_str();
-
-        // The year, month, day, and time fields are all optional, meaning
-        // that it should be impossible to, say, have a defined month but not
-        // a defined year.
-        let time = match (
-            caps.name("year"),
-            caps.name("month"),
-            caps.name("day"),
-            caps.name("time"),
-        ) {
-            (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime(
-                y.as_str().parse()?,
-                m.as_str().parse()?,
-                self.parse_dayspec(d.as_str())?,
-                self.parse_timespec_and_type(t.as_str())?,
-            )),
-            (Some(y), Some(m), Some(d), _) => Some(ChangeTime::UntilDay(
-                y.as_str().parse()?,
-                m.as_str().parse()?,
-                self.parse_dayspec(d.as_str())?,
-            )),
-            (Some(y), Some(m), _, _) => Some(ChangeTime::UntilMonth(
-                y.as_str().parse()?,
-                m.as_str().parse()?,
-            )),
-            (Some(y), _, _, _) => Some(ChangeTime::UntilYear(y.as_str().parse()?)),
-            (None, None, None, None) => None,
-            _ => unreachable!("Out-of-order capturing groups!"),
-        };
-
-        Ok(ZoneInfo {
-            utc_offset,
-            saving,
-            format,
-            time,
-        })
-    }
-
-    fn parse_zone<'a>(&self, input: &'a str) -> Result<Zone<'a>, Error> {
-        if let Some(caps) = self.zone_line.captures(input) {
-            let name = caps.name("name").unwrap().as_str();
-            let info = self.zoneinfo_from_captures(caps)?;
-            Ok(Zone { name, info })
-        } else {
-            Err(Error::NotParsedAsZoneLine)
-        }
-    }
-
-    fn parse_link<'a>(&self, input: &'a str) -> Result<Link<'a>, Error> {
-        if let Some(caps) = self.link_line.captures(input) {
-            let target = caps.name("target").unwrap().as_str();
-            let name = caps.name("name").unwrap().as_str();
-            Ok(Link {
-                existing: target,
-                new: name,
-            })
-        } else {
-            Err(Error::NotParsedAsLinkLine)
-        }
-    }
-
     /// Attempt to parse this line, returning a `Line` depending on what
     /// type of line it was, or an `Error` if it couldn't be parsed.
     pub fn parse_str<'a>(&self, input: &'a str) -> Result<Line<'a>, Error> {
-        if self.empty_line.is_match(input) {
+        let input = match input.split_once('#') {
+            Some((input, _)) => input,
+            None => input,
+        };
+
+        if input.trim().is_empty() {
             return Ok(Line::Space);
         }
 
-        match self.parse_zone(input) {
-            Err(Error::NotParsedAsZoneLine) => {}
-            result => return result.map(Line::Zone),
+        if input.starts_with("Zone") {
+            return Ok(Line::Zone(Zone::from_str(input)?));
         }
 
-        match self.continuation_line.captures(input) {
-            None => {}
-            Some(caps) => return self.zoneinfo_from_captures(caps).map(Line::Continuation),
+        if input.starts_with(&[' ', '\t'][..]) {
+            return ZoneInfo::from_iter(input.split_ascii_whitespace()).map(Line::Continuation);
         }
 
-        match self.parse_rule(input) {
-            Err(Error::NotParsedAsRuleLine) => {}
-            result => return result.map(Line::Rule),
+        if input.starts_with("Rule") {
+            return Ok(Line::Rule(Rule::from_str(input)?));
         }
 
-        match self.parse_link(input) {
-            Err(Error::NotParsedAsLinkLine) => {}
-            result => return result.map(Line::Link),
+        if input.starts_with("Link") {
+            return Ok(Line::Link(Link::from_str(input)?));
         }
 
         Err(Error::InvalidLineType(input.to_string()))
@@ -1326,8 +1528,7 @@ mod tests {
     #[test]
     fn negative_offsets() {
         static LINE: &str = "Zone    Europe/London   -0:01:15 -  LMT 1847 Dec  1  0:00s";
-        let parser = LineParser::default();
-        let zone = parser.parse_zone(LINE).unwrap();
+        let zone = Zone::from_str(LINE).unwrap();
         assert_eq!(
             zone.info.utc_offset,
             TimeSpec::HoursMinutesSeconds(0, -1, -15)
@@ -1338,8 +1539,7 @@ mod tests {
     fn negative_offsets_2() {
         static LINE: &str =
             "Zone        Europe/Madrid   -0:14:44 -      LMT     1901 Jan  1  0:00s";
-        let parser = LineParser::default();
-        let zone = parser.parse_zone(LINE).unwrap();
+        let zone = Zone::from_str(LINE).unwrap();
         assert_eq!(
             zone.info.utc_offset,
             TimeSpec::HoursMinutesSeconds(0, -14, -44)
@@ -1349,8 +1549,7 @@ mod tests {
     #[test]
     fn negative_offsets_3() {
         static LINE: &str = "Zone America/Danmarkshavn -1:14:40 -    LMT 1916 Jul 28";
-        let parser = LineParser::default();
-        let zone = parser.parse_zone(LINE).unwrap();
+        let zone = Zone::from_str(LINE).unwrap();
         assert_eq!(
             zone.info.utc_offset,
             TimeSpec::HoursMinutesSeconds(-1, -14, -40)
@@ -1373,7 +1572,7 @@ mod tests {
     test!(comment: "# this is a comment" => Ok(Line::Space));
     test!(another_comment: "     # so is this" => Ok(Line::Space));
     test!(multiple_hash: "     # so is this ## " => Ok(Line::Space));
-    test!(non_comment: " this is not a # comment" => Err(Error::InvalidTimeSpecAndType("this".to_string())));
+    test!(non_comment: " this is not a # comment" => Err(Error::InvalidTimeSpecAndType("thi".to_string())));
 
     test!(comment_after: "Link  Europe/Istanbul  Asia/Istanbul #with a comment after" => Ok(Line::Link(Link {
         existing:  "Europe/Istanbul",
