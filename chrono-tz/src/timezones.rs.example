@@ -39,15 +39,15 @@ impl TimeSpans for Tz {
         match *self {
             Tz::America__New_York => {
                 const REST: &'static [(i64, FixedTimespan)] = &[
-                    (-2717650800, FixedTimespan { utc_offset: -18000, dst_offset: 0, name: "EST" }),
-                    (-1633280400, FixedTimespan { utc_offset: -18000, dst_offset: 3600, name: "EDT" }),
-                    (-1615140000, FixedTimespan { utc_offset: -18000, dst_offset: 0, name: "EST" }),
+                    (-2717650800, FixedTimespan { utc_offset: -18000, dst_offset: 0, name: Some("EST") }),
+                    (-1633280400, FixedTimespan { utc_offset: -18000, dst_offset: 3600, name: Some("EDT") }),
+                    (-1615140000, FixedTimespan { utc_offset: -18000, dst_offset: 0, name: Some("EST") }),
                 ];
                 FixedTimespanSet {
                     first: FixedTimespan {
                         utc_offset: -17762,
                         dst_offset: 0,
-                        name: "LMT",
+                        name: Some("LMT"),
                     },
                     rest: REST
                 }
@@ -55,15 +55,15 @@ impl TimeSpans for Tz {
 
             Tz::America__Toronto => {
                 const REST: &'static [(i64, FixedTimespan)] = &[
-                    (-2366736148, FixedTimespan { utc_offset: -18000, dst_offset: 0, name: "EST" }),
-                    (-1632070800, FixedTimespan { utc_offset: -18000, dst_offset: 3600, name: "EDT" }),
-                    (-1615140000, FixedTimespan { utc_offset: -18000, dst_offset: 0, name: "EST" }),
+                    (-2366736148, FixedTimespan { utc_offset: -18000, dst_offset: 0, name: Some("EST") }),
+                    (-1632070800, FixedTimespan { utc_offset: -18000, dst_offset: 3600, name: Some("EDT") }),
+                    (-1615140000, FixedTimespan { utc_offset: -18000, dst_offset: 0, name: Some("EST") }),
                 ];
                 FixedTimespanSet {
                     first: FixedTimespan {
                         utc_offset: -19052,
                         dst_offset: 0,
-                        name: "LMT",
+                        name: Some("LMT"),
                     },
                     rest: REST
                 }
@@ -71,15 +71,15 @@ impl TimeSpans for Tz {
 
             Tz::Europe__London => {
                 const REST: &'static [(i64, FixedTimespan)] = &[
-                    (-3852662325, FixedTimespan { utc_offset: 0, dst_offset: 0, name: "GMT" }),
-                    (-1691964000, FixedTimespan { utc_offset: 0, dst_offset: 3600, name: "BST" }),
-                    (-1680472800, FixedTimespan { utc_offset: 0, dst_offset: 0, name: "GMT" }),
+                    (-3852662325, FixedTimespan { utc_offset: 0, dst_offset: 0, name: Some("GMT") }),
+                    (-1691964000, FixedTimespan { utc_offset: 0, dst_offset: 3600, name: Some("BST") }),
+                    (-1680472800, FixedTimespan { utc_offset: 0, dst_offset: 0, name: Some("GMT") }),
                 ];
                 FixedTimespanSet {
                     first: FixedTimespan {
                         utc_offset: -75,
                         dst_offset: 0,
-                        name: "LMT",
+                        name: Some("LMT"),
                     },
                     rest: REST
                 }
@@ -87,15 +87,15 @@ impl TimeSpans for Tz {
 
             Tz::Europe__Moscow => {
                 const REST: &'static [(i64, FixedTimespan)] = &[
-                    (-2840149817, FixedTimespan { utc_offset: 9017, dst_offset: 0, name: "MMT" }),
-                    (-1688265017, FixedTimespan { utc_offset: 9079, dst_offset: 0, name: "MMT" }),
-                    (-1656819079, FixedTimespan { utc_offset: 9079, dst_offset: 3600, name: "MST" }),
+                    (-2840149817, FixedTimespan { utc_offset: 9017, dst_offset: 0, name: Some("MMT") }),
+                    (-1688265017, FixedTimespan { utc_offset: 9079, dst_offset: 0, name: Some("MMT") }),
+                    (-1656819079, FixedTimespan { utc_offset: 9079, dst_offset: 3600, name: Some("MST") }),
                 ];
                 FixedTimespanSet {
                     first: FixedTimespan {
                         utc_offset: 9017,
                         dst_offset: 0,
-                        name: "LMT",
+                        name: Some("LMT"),
                     },
                     rest: REST
                 }
@@ -103,15 +103,15 @@ impl TimeSpans for Tz {
 
             Tz::Europe__Rome => {
                 const REST: &'static [(i64, FixedTimespan)] = &[
-                    (-3259097396, FixedTimespan { utc_offset: 2996, dst_offset: 0, name: "RMT" }),
-                    (-2403564596, FixedTimespan { utc_offset: 3600, dst_offset: 0, name: "CET" }),
-                    (-1690851600, FixedTimespan { utc_offset: 3600, dst_offset: 3600, name: "CEST" }),
+                    (-3259097396, FixedTimespan { utc_offset: 2996, dst_offset: 0, name: Some("RMT") }),
+                    (-2403564596, FixedTimespan { utc_offset: 3600, dst_offset: 0, name: Some("CET") }),
+                    (-1690851600, FixedTimespan { utc_offset: 3600, dst_offset: 3600, name: Some("CEST") }),
                 ];
                 FixedTimespanSet {
                     first: FixedTimespan {
                         utc_offset: 2996,
                         dst_offset: 0,
-                        name: "LMT",
+                        name: Some("LMT"),
                     },
                     rest: REST
                 }
