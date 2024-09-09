@@ -1,5 +1,5 @@
 use core::cmp::Ordering;
-use core::fmt::{Debug, Display, Error, Formatter};
+use core::fmt::{Debug, Display, Error, Formatter, Write};
 
 use chrono::{
     Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, Offset, TimeZone,
@@ -26,7 +26,7 @@ pub struct FixedTimespan {
     /// The additional offset from UTC for this timespan; typically for daylight saving time
     pub dst_offset: i32,
     /// The name of this timezone, for example the difference between `EDT`/`EST`
-    pub name: &'static str,
+    pub name: Option<&'static str>,
 }
 
 impl Offset for FixedTimespan {
@@ -37,13 +37,38 @@ impl Offset for FixedTimespan {
 
 impl Display for FixedTimespan {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "{}", self.name)
+        if let Some(name) = self.name {
+            return write!(f, "{}", name);
+        }
+        let offset = self.utc_offset + self.dst_offset;
+        let (sign, off) = if offset < 0 {
+            ('-', -offset)
+        } else {
+            ('+', offset)
+        };
+
+        let minutes = off / 60;
+        let secs = (off % 60) as u8;
+        let mins = (minutes % 60) as u8;
+        let hours = (minutes / 60) as u8;
+
+        assert!(
+            secs == 0,
+            "numeric names are not used if the offset has fractional minutes"
+        );
+
+        f.write_char(sign)?;
+        write!(f, "{:02}", hours)?;
+        if mins != 0 {
+            write!(f, "{:02}", mins)?;
+        }
+        Ok(())
     }
 }
 
 impl Debug for FixedTimespan {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "{}", self.name)
+        Display::fmt(self, f)
     }
 }
 
@@ -104,13 +129,13 @@ pub trait OffsetComponents {
 /// let london_time = London.ymd(2016, 2, 10).and_hms(12, 0, 0);
 /// assert_eq!(london_time.offset().tz_id(), "Europe/London");
 /// // London is normally on GMT
-/// assert_eq!(london_time.offset().abbreviation(), "GMT");
+/// assert_eq!(london_time.offset().abbreviation(), Some("GMT"));
 ///
 /// let london_summer_time = London.ymd(2016, 5, 10).and_hms(12, 0, 0);
 /// // The TZ ID remains constant year round
 /// assert_eq!(london_summer_time.offset().tz_id(), "Europe/London");
 /// // During the summer, this becomes British Summer Time
-/// assert_eq!(london_summer_time.offset().abbreviation(), "BST");
+/// assert_eq!(london_summer_time.offset().abbreviation(), Some("BST"));
 /// # }
 /// ```
 pub trait OffsetName {
@@ -121,7 +146,7 @@ pub trait OffsetName {
     /// This takes into account any special offsets that may be in effect.
     /// For example, at a given instant, the time zone with ID *America/New_York*
     /// may be either *EST* or *EDT*.
-    fn abbreviation(&self) -> &str;
+    fn abbreviation(&self) -> Option<&str>;
 }
 
 impl TzOffset {
@@ -155,7 +180,7 @@ impl OffsetName for TzOffset {
         self.tz.name()
     }
 
-    fn abbreviation(&self) -> &str {
+    fn abbreviation(&self) -> Option<&str> {
         self.offset.name
     }
 }
