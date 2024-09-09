@@ -148,7 +148,10 @@ pub use crate::IANA_TZDB_VERSION;
 
 #[cfg(test)]
 mod tests {
+    use super::Africa::Addis_Ababa;
     use super::America::Danmarkshavn;
+    use super::America::Scoresbysund;
+    use super::Antarctica::Casey;
     use super::Asia::Dhaka;
     use super::Australia::Adelaide;
     use super::Europe::Berlin;
@@ -495,5 +498,20 @@ mod tests {
         let numbers: Vec<&str> = IANA_TZDB_VERSION.matches(char::is_numeric).collect();
         assert_eq!(4, numbers.len());
         assert!(IANA_TZDB_VERSION.ends_with(|c: char| c.is_ascii_lowercase()));
+    }
+
+    #[test]
+    fn test_numeric_names() {
+        let dt = Scoresbysund
+            .with_ymd_and_hms(2024, 05, 01, 0, 0, 0)
+            .unwrap();
+        assert_eq!(format!("{}", dt.offset()), "-01");
+        assert_eq!(format!("{:?}", dt.offset()), "-01");
+        let dt = Casey.with_ymd_and_hms(2022, 11, 01, 0, 0, 0).unwrap();
+        assert_eq!(format!("{}", dt.offset()), "+11");
+        assert_eq!(format!("{:?}", dt.offset()), "+11");
+        let dt = Addis_Ababa.with_ymd_and_hms(1937, 02, 01, 0, 0, 0).unwrap();
+        assert_eq!(format!("{}", dt.offset()), "+0245");
+        assert_eq!(format!("{:?}", dt.offset()), "+0245");
     }
 }
