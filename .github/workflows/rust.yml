@@ -84,7 +84,9 @@ jobs:
           # doesn't matter if it is empty.
           echo '{"files":{}}' > vendor/$name/.cargo-checksum.json
         done
-        cargo package --config "source.vendored-sources.directory = 'vendor'" \
+        cargo package -p chrono-tz --config "source.vendored-sources.directory = 'vendor'" \
+           --config "source.crates-io.replace-with = 'vendored-sources'"
+        cargo package -p chrono-tz-build --config "source.vendored-sources.directory = 'vendor'" \
            --config "source.crates-io.replace-with = 'vendored-sources'"
 
   lint:
