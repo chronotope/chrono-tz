@@ -524,7 +524,7 @@ mod tests {
         let gap_end = tz.from_local_datetime(&gap_end).single().unwrap();
 
         let in_gap = gap_begin + Duration::seconds(1);
-        let GapInfo { begin, end } = tz.gap_info_from_local_datetime(&in_gap).unwrap();
+        let GapInfo { begin, end } = GapInfo::new(&in_gap, &tz).unwrap();
         let (begin_time, begin_offset) = begin.unwrap();
         let end = end.unwrap();
 
