@@ -514,7 +514,7 @@ fn detect_iana_db_version() -> String {
 pub fn main() {
     println!("cargo:rerun-if-env-changed={}", FILTER_ENV_VAR_NAME);
 
-    let parser = LineParser::new();
+    let parser = LineParser::default();
     let mut table = TableBuilder::new();
 
     let tzfiles = [
