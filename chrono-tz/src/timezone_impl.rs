@@ -441,34 +441,36 @@ impl GapInfo {
             return None;
         };
 
-        let begin = if end_idx == 0 {
-            None
-        } else {
-            let start_idx = end_idx - 1;
+        let begin = match end_idx {
+            0 => None,
+            _ => {
+                let start_idx = end_idx - 1;
 
-            timespans
-                .local_span(start_idx)
-                .end
-                .and_then(|start_time| DateTime::from_timestamp(start_time, 0))
-                .map(|start_time| {
-                    (
-                        start_time.naive_local(),
-                        TzOffset::new(*tz, timespans.get(start_idx)),
-                    )
-                })
+                timespans
+                    .local_span(start_idx)
+                    .end
+                    .and_then(|start_time| DateTime::from_timestamp(start_time, 0))
+                    .map(|start_time| {
+                        (
+                            start_time.naive_local(),
+                            TzOffset::new(*tz, timespans.get(start_idx)),
+                        )
+                    })
+            }
         };
 
-        let end = if end_idx >= timespans.len() {
-            None
-        } else {
-            timespans
-                .local_span(end_idx)
-                .begin
-                .and_then(|end_time| DateTime::from_timestamp(end_time, 0))
-                .and_then(|date_time| {
-                    // we create the DateTime from a timestamp that exists in the timezone
-                    tz.from_local_datetime(&date_time.naive_local()).single()
-                })
+        let end = match end_idx {
+            _ if end_idx >= timespans.len() => None,
+            _ => {
+                timespans
+                    .local_span(end_idx)
+                    .begin
+                    .and_then(|end_time| DateTime::from_timestamp(end_time, 0))
+                    .and_then(|date_time| {
+                        // we create the DateTime from a timestamp that exists in the timezone
+                        tz.from_local_datetime(&date_time.naive_local()).single()
+                    })
+            }
         };
 
         Some(Self { begin, end })
