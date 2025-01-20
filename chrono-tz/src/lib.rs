@@ -140,7 +140,7 @@ mod timezone_impl;
 mod timezones;
 
 pub use crate::directory::*;
-pub use crate::timezone_impl::{OffsetComponents, OffsetName, TzOffset};
+pub use crate::timezone_impl::{GapInfo, OffsetComponents, OffsetName, TzOffset};
 pub use crate::timezones::ParseError;
 pub use crate::timezones::Tz;
 pub use crate::timezones::TZ_VARIANTS;
@@ -159,6 +159,7 @@ mod tests {
     use super::Europe::Moscow;
     use super::Europe::Vilnius;
     use super::Europe::Warsaw;
+    use super::GapInfo;
     use super::Pacific::Apia;
     use super::Pacific::Noumea;
     use super::Pacific::Tahiti;
@@ -166,6 +167,7 @@ mod tests {
     use super::IANA_TZDB_VERSION;
     use super::US::Eastern;
     use super::UTC;
+    use chrono::NaiveDateTime;
     use chrono::{Duration, NaiveDate, TimeZone};
 
     #[test]
@@ -513,5 +515,96 @@ mod tests {
         let dt = Addis_Ababa.with_ymd_and_hms(1937, 02, 01, 0, 0, 0).unwrap();
         assert_eq!(format!("{}", dt.offset()), "+0245");
         assert_eq!(format!("{:?}", dt.offset()), "+0245");
+    }
+
+    fn gap_info_test(tz: Tz, gap_begin: NaiveDateTime, gap_end: NaiveDateTime) {
+        let before = gap_begin - Duration::seconds(1);
+        let before_offset = tz.offset_from_local_datetime(&before).single().unwrap();
+
+        let gap_end = tz.from_local_datetime(&gap_end).single().unwrap();
+
+        let in_gap = gap_begin + Duration::seconds(1);
+        let GapInfo { begin, end } = GapInfo::new(&in_gap, &tz).unwrap();
+        let (begin_time, begin_offset) = begin.unwrap();
+        let end = end.unwrap();
+
+        assert_eq!(gap_begin, begin_time);
+        assert_eq!(before_offset, begin_offset);
+        assert_eq!(gap_end, end);
+    }
+
+    #[test]
+    fn gap_info_europe_london() {
+        gap_info_test(
+            Tz::Europe__London,
+            NaiveDate::from_ymd_opt(2024, 3, 31)
+                .unwrap()
+                .and_hms_opt(1, 0, 0)
+                .unwrap(),
+            NaiveDate::from_ymd_opt(2024, 3, 31)
+                .unwrap()
+                .and_hms_opt(2, 0, 0)
+                .unwrap(),
+        );
+    }
+
+    #[test]
+    fn gap_info_europe_dublin() {
+        gap_info_test(
+            Tz::Europe__Dublin,
+            NaiveDate::from_ymd_opt(2024, 3, 31)
+                .unwrap()
+                .and_hms_opt(1, 0, 0)
+                .unwrap(),
+            NaiveDate::from_ymd_opt(2024, 3, 31)
+                .unwrap()
+                .and_hms_opt(2, 0, 0)
+                .unwrap(),
+        );
+    }
+
+    #[test]
+    fn gap_info_australia_adelaide() {
+        gap_info_test(
+            Tz::Australia__Adelaide,
+            NaiveDate::from_ymd_opt(2024, 10, 6)
+                .unwrap()
+                .and_hms_opt(2, 0, 0)
+                .unwrap(),
+            NaiveDate::from_ymd_opt(2024, 10, 6)
+                .unwrap()
+                .and_hms_opt(3, 0, 0)
+                .unwrap(),
+        );
+    }
+
+    #[test]
+    fn gap_info_samoa_skips_a_day() {
+        gap_info_test(
+            Tz::Pacific__Apia,
+            NaiveDate::from_ymd_opt(2011, 12, 30)
+                .unwrap()
+                .and_hms_opt(0, 0, 0)
+                .unwrap(),
+            NaiveDate::from_ymd_opt(2011, 12, 31)
+                .unwrap()
+                .and_hms_opt(0, 0, 0)
+                .unwrap(),
+        );
+    }
+
+    #[test]
+    fn gap_info_libya_2013() {
+        gap_info_test(
+            Tz::Libya,
+            NaiveDate::from_ymd_opt(2013, 3, 29)
+                .unwrap()
+                .and_hms_opt(1, 0, 0)
+                .unwrap(),
+            NaiveDate::from_ymd_opt(2013, 3, 29)
+                .unwrap()
+                .and_hms_opt(2, 0, 0)
+                .unwrap(),
+        );
     }
 }

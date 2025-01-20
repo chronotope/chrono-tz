@@ -2,7 +2,8 @@ use core::cmp::Ordering;
 use core::fmt::{Debug, Display, Error, Formatter, Write};
 
 use chrono::{
-    Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, Offset, TimeZone,
+    DateTime, Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, Offset,
+    TimeZone,
 };
 
 use crate::binary_search::binary_search;
@@ -401,5 +402,77 @@ impl TimeZone for Tz {
         let index =
             binary_search(0, timespans.len(), |i| timespans.utc_span(i).cmp(timestamp)).unwrap();
         TzOffset::new(*self, timespans.get(index))
+    }
+}
+
+/// Represents the information of a gap.
+///
+/// This returns useful information that can be used when converting a local [`NaiveDateTime`]
+/// to a timezone-aware [`DateTime`] with [`TimeZone::from_local_datetime`] and a gap
+/// ([`LocalResult::None`]) is found.
+pub struct GapInfo {
+    /// When available it contains information about the beginning of the gap.
+    ///
+    /// The time represents the first instant in which the gap starts.
+    /// This means that it is the first instant that when used with [`TimeZone::from_local_datetime`]
+    /// it will return [`LocalResult::None`].
+    ///
+    /// The offset represents the offset of the first instant before the gap.
+    pub begin: Option<(NaiveDateTime, TzOffset)>,
+    /// When available it contains the first instant after the gap.
+    pub end: Option<DateTime<Tz>>,
+}
+
+impl GapInfo {
+    /// Return information about a gap.
+    ///
+    /// It returns `None` if `local` is not in a gap for the current timezone.
+    ///
+    /// If `local` is at the limits of the known timestamps the fields `begin` or `end` in
+    /// [`GapInfo`] will be `None`.
+    pub fn new(local: &NaiveDateTime, tz: &Tz) -> Option<Self> {
+        let timestamp = local.and_utc().timestamp();
+        let timespans = tz.timespans();
+        let index = binary_search(0, timespans.len(), |i| {
+            timespans.local_span(i).cmp(timestamp)
+        });
+
+        let Err(end_idx) = index else {
+            return None;
+        };
+
+        let begin = match end_idx {
+            0 => None,
+            _ => {
+                let start_idx = end_idx - 1;
+
+                timespans
+                    .local_span(start_idx)
+                    .end
+                    .and_then(|start_time| DateTime::from_timestamp(start_time, 0))
+                    .map(|start_time| {
+                        (
+                            start_time.naive_local(),
+                            TzOffset::new(*tz, timespans.get(start_idx)),
+                        )
+                    })
+            }
+        };
+
+        let end = match end_idx {
+            _ if end_idx >= timespans.len() => None,
+            _ => {
+                timespans
+                    .local_span(end_idx)
+                    .begin
+                    .and_then(|end_time| DateTime::from_timestamp(end_time, 0))
+                    .and_then(|date_time| {
+                        // we create the DateTime from a timestamp that exists in the timezone
+                        tz.from_local_datetime(&date_time.naive_local()).single()
+                    })
+            }
+        };
+
+        Some(Self { begin, end })
     }
 }
