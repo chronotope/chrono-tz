@@ -38,3 +38,15 @@ pub mod line;
 pub mod structure;
 pub mod table;
 pub mod transitions;
+
+pub const FILES: &[&str] = &[
+    "africa",
+    "antarctica",
+    "asia",
+    "australasia",
+    "backward",
+    "etcetera",
+    "europe",
+    "northamerica",
+    "southamerica",
+];
