@@ -514,6 +514,14 @@ fn detect_iana_db_version() -> String {
     unreachable!("no version found")
 }
 
+fn write_source_files(path: &Path, table: &Table, iana_db_version: &str) {
+    std::fs::create_dir_all(path).unwrap();
+    let mut timezone_file = File::create(path.join("timezones.rs")).unwrap();
+    write_timezone_file(&mut timezone_file, &table).unwrap();
+    let mut directory_file = File::create(path.join("directory.rs")).unwrap();
+    write_directory_file(&mut directory_file, &table, &iana_db_version).unwrap();
+}
+
 pub fn main() {
     let parser = LineParser::default();
     let mut table = TableBuilder::new();
@@ -559,22 +567,10 @@ pub fn main() {
     let iana_db_version = detect_iana_db_version();
 
     if env::var("CHRONO_TZ_UPDATE_PREBUILT").as_deref() == Ok("1") {
-        let src_dir = env::current_dir().unwrap();
-        let timezone_path = src_dir.join("src").join("prebuilt_timezones.rs");
-        let mut timezone_file = File::create(timezone_path).unwrap();
-        write_timezone_file(&mut timezone_file, &table).unwrap();
-
-        let directory_path = src_dir.join("src").join("prebuilt_directory.rs");
-        let mut directory_file = File::create(directory_path).unwrap();
-        write_directory_file(&mut directory_file, &table, &iana_db_version).unwrap();
+        let prebuilt_path = env::current_dir().unwrap().join("src").join("prebuilt");
+        write_source_files(&prebuilt_path, &table, &iana_db_version);
     }
 
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let timezone_path = out_dir.join("timezones.rs");
-    let mut timezone_file = File::create(timezone_path).unwrap();
-    write_timezone_file(&mut timezone_file, &table).unwrap();
-
-    let directory_path = out_dir.join("directory.rs");
-    let mut directory_file = File::create(directory_path).unwrap();
-    write_directory_file(&mut directory_file, &table, &iana_db_version).unwrap();
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    write_source_files(&out_path, &table, &iana_db_version);
 }

@@ -7,4 +7,4 @@
 include!(concat!(env!("OUT_DIR"), "/directory.rs"));
 
 #[cfg(not(feature = "filter-by-regex"))]
-include!("prebuilt_directory.rs");
+include!("prebuilt/directory.rs");
