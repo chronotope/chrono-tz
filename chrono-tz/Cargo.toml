@@ -39,7 +39,7 @@ uncased = { version = "0.9", optional = true, default-features = false }
 default = ["std"]
 std = []
 serde = ["dep:serde"]
-filter-by-regex = ["dep:chrono-tz-build", "chrono-tz-build/filter-by-regex"]
+filter-by-regex = ["chrono-tz-build/filter-by-regex"]
 case-insensitive = ["dep:uncased", "chrono-tz-build?/case-insensitive", "phf/uncased"]
 
 [build-dependencies]
