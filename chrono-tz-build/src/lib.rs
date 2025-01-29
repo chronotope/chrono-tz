@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use parse_zoneinfo::line::{Line, LineParser};
 use parse_zoneinfo::structure::{Child, Structure};
@@ -15,6 +15,7 @@ use parse_zoneinfo::transitions::FixedTimespan;
 use parse_zoneinfo::transitions::TableTransitions;
 
 /// The name of the environment variable which possibly holds the filter regex.
+#[cfg(feature = "filter-by-regex")]
 const FILTER_ENV_VAR_NAME: &str = "CHRONO_TZ_TIMEZONE_FILTER";
 
 // This function is needed until zoneinfo_parse handles comments correctly.
@@ -135,6 +136,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
 
     #[cfg(feature = "case-insensitive")]
     {
+        writeln!(timezone_file, r#"#[cfg(feature = "case-insensitive")]"#)?;
         writeln!(timezone_file, "use uncased::UncasedStr;\n",)?;
         let mut map = phf_codegen::Map::new();
         for zone in &zones {
@@ -143,6 +145,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
                 &format!("Tz::{}", convert_bad_chars(zone)),
             );
         }
+        writeln!(timezone_file, r#"#[cfg(feature = "case-insensitive")]"#)?;
         writeln!(
             timezone_file,
             "static TIMEZONES_UNCASED: ::phf::Map<&'static uncased::UncasedStr, Tz> = \n{};",
@@ -511,9 +514,15 @@ fn detect_iana_db_version() -> String {
     unreachable!("no version found")
 }
 
-pub fn main() {
-    println!("cargo:rerun-if-env-changed={}", FILTER_ENV_VAR_NAME);
+fn write_source_files(path: &Path, table: &Table, iana_db_version: &str) {
+    std::fs::create_dir_all(path).unwrap();
+    let mut timezone_file = File::create(path.join("timezones.rs")).unwrap();
+    write_timezone_file(&mut timezone_file, &table).unwrap();
+    let mut directory_file = File::create(path.join("directory.rs")).unwrap();
+    write_directory_file(&mut directory_file, &table, &iana_db_version).unwrap();
+}
 
+pub fn main() {
     let parser = LineParser::default();
     let mut table = TableBuilder::new();
 
@@ -555,13 +564,13 @@ pub fn main() {
 
     let mut table = table.build();
     filter::maybe_filter_timezone_table(&mut table);
+    let iana_db_version = detect_iana_db_version();
 
-    let timezone_path = Path::new(&env::var("OUT_DIR").unwrap()).join("timezones.rs");
-    let mut timezone_file = File::create(timezone_path).unwrap();
-    write_timezone_file(&mut timezone_file, &table).unwrap();
+    if env::var("CHRONO_TZ_UPDATE_PREBUILT").as_deref() == Ok("1") {
+        let prebuilt_path = env::current_dir().unwrap().join("src").join("prebuilt");
+        write_source_files(&prebuilt_path, &table, &iana_db_version);
+    }
 
-    let directory_path = Path::new(&env::var("OUT_DIR").unwrap()).join("directory.rs");
-    let mut directory_file = File::create(directory_path).unwrap();
-    let version = detect_iana_db_version();
-    write_directory_file(&mut directory_file, &table, &version).unwrap();
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    write_source_files(&out_path, &table, &iana_db_version);
 }
