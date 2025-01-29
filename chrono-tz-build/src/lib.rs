@@ -15,6 +15,7 @@ use parse_zoneinfo::transitions::FixedTimespan;
 use parse_zoneinfo::transitions::TableTransitions;
 
 /// The name of the environment variable which possibly holds the filter regex.
+#[cfg(feature = "filter-by-regex")]
 const FILTER_ENV_VAR_NAME: &str = "CHRONO_TZ_TIMEZONE_FILTER";
 
 // This function is needed until zoneinfo_parse handles comments correctly.
@@ -514,8 +515,6 @@ fn detect_iana_db_version() -> String {
 }
 
 pub fn main() {
-    println!("cargo:rerun-if-env-changed={}", FILTER_ENV_VAR_NAME);
-
     let parser = LineParser::default();
     let mut table = TableBuilder::new();
 
