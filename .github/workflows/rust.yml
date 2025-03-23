@@ -121,3 +121,20 @@ jobs:
     - name: rustfmt
       working-directory: ./chrono-tz-build
       run: cargo fmt -- --color=always --check
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout submodules
+        shell: bash
+        run: |
+          auth_header="$(git config --local --get http.https://github.com/.extraheader)"
+          git submodule sync --recursive
+          git -c "http.extraheader=$auth_header" -c protocol.version=2 \
+              submodule update --init --force --recursive --depth=1
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.65.0
+      - run: cargo check --lib
