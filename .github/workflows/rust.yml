@@ -5,6 +5,7 @@ on:
     branches: [main, "update-tz*"]
   pull_request:
     branches: ["*"]
+  merge_group:
 
 jobs:
   test:
