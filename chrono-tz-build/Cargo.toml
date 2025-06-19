@@ -19,8 +19,8 @@ regex = ["dep:regex"]
 [dependencies]
 parse-zoneinfo = { version = "0.3.1" }
 regex = { default-features = false, version = "1", optional = true }
-phf_codegen = { version = "0.11", default-features = false }
+phf_codegen = { version = "0.12", default-features = false }
 uncased = { version = "0.9", optional = true, default-features = false }
 
 # needed only to forward feature for uncased
-phf_shared = { version = "0.11", default-features = false, optional = true }
+phf_shared = { version = "0.12", default-features = false, optional = true }
