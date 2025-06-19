@@ -125,7 +125,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
 
     let mut map = phf_codegen::Map::new();
     for zone in &zones {
-        map.entry(zone, &format!("Tz::{}", convert_bad_chars(zone)));
+        map.entry(zone, format!("Tz::{}", convert_bad_chars(zone)));
     }
     writeln!(
         timezone_file,
@@ -140,7 +140,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
         for zone in &zones {
             map.entry(
                 uncased::UncasedStr::new(zone),
-                &format!("Tz::{}", convert_bad_chars(zone)),
+                format!("Tz::{}", convert_bad_chars(zone)),
             );
         }
         writeln!(
