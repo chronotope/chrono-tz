@@ -131,6 +131,9 @@
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
+#[cfg(feature = "case-insensitive")]
+extern crate uncased;
+
 #[cfg(feature = "serde")]
 mod serde;
 
