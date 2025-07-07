@@ -13,6 +13,7 @@ readme = "../README.md"
 license = "MIT OR Apache-2.0"
 include = [
   "src/*.rs",
+  "src/prebuilt/*.rs",
   "tests/*.rs",
   "build.rs",
   "LICENSE",
@@ -39,15 +40,16 @@ uncased = { version = "0.9", optional = true, default-features = false }
 default = ["std"]
 std = []
 serde = ["dep:serde"]
-filter-by-regex = ["chrono-tz-build/filter-by-regex"]
-case-insensitive = ["dep:uncased", "chrono-tz-build/case-insensitive", "phf/uncased"]
+filter-by-regex = ["chrono-tz-build", "chrono-tz-build/filter-by-regex"]
+case-insensitive = ["dep:uncased", "chrono-tz-build", "chrono-tz-build/case-insensitive", "phf/uncased"]
 
 [build-dependencies]
-chrono-tz-build = { path = "../chrono-tz-build", version = "0.4" }
+chrono-tz-build = { path = "../chrono-tz-build", version = "0.4", optional = true }
 
 [dev-dependencies]
 serde_test = "1"
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
+chrono-tz-build = { path = "../chrono-tz-build", version = "0.4" }
 tzfile = "0.1"
 
 [package.metadata.docs.rs]
