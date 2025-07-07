@@ -80,7 +80,7 @@ fn convert_bad_chars(name: &str) -> String {
 // The timezone file contains impls of `Timespans` for all timezones in the
 // database. The `Wrap` wrapper in the `timezone_impl` module then implements
 // TimeZone for any contained struct that implements `Timespans`.
-fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()> {
+fn write_timezone_file(timezone_file: &mut File, table: &Table, uncased: bool) -> io::Result<()> {
     let zones = table
         .zonesets
         .keys()
@@ -126,7 +126,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
     )?;
 
     #[cfg(feature = "case-insensitive")]
-    {
+    if uncased {
         writeln!(timezone_file, "use uncased::UncasedStr;\n",)?;
         let mut map = phf_codegen::Map::new();
         for zone in &zones {
@@ -181,8 +181,7 @@ impl FromStr for Tz {{
     }}"
     )?;
 
-    #[cfg(feature = "case-insensitive")]
-    {
+    if uncased {
         writeln!(
             timezone_file,
             r#"
@@ -346,13 +345,6 @@ fn write_directory_file(directory_file: &mut File, table: &Table, version: &str)
     Ok(())
 }
 
-/// Stub module because filter-by-regex feature is not enabled
-#[cfg(not(feature = "filter-by-regex"))]
-mod filter {
-    /// stub function because filter-by-regex feature is not enabled
-    pub(crate) fn maybe_filter_timezone_table(_table: &mut super::Table) {}
-}
-
 /// Module containing code supporting filter-by-regex feature
 ///
 /// The "GMT" and "UTC" time zones are always included.
@@ -483,7 +475,7 @@ fn detect_iana_db_version() -> String {
     unreachable!("no version found")
 }
 
-pub fn main(dir: &Path) {
+pub fn main(dir: &Path, _filter: bool, _uncased: bool) {
     let parser = LineParser::default();
     let mut table = TableBuilder::new();
 
@@ -504,12 +496,16 @@ pub fn main(dir: &Path) {
         }
     }
 
+    #[allow(unused_mut)]
     let mut table = table.build();
-    filter::maybe_filter_timezone_table(&mut table);
+    #[cfg(feature = "filter-by-regex")]
+    if _filter {
+        filter::maybe_filter_timezone_table(&mut table);
+    }
 
     let timezone_path = dir.join("timezones.rs");
     let mut timezone_file = File::create(timezone_path).unwrap();
-    write_timezone_file(&mut timezone_file, &table).unwrap();
+    write_timezone_file(&mut timezone_file, &table, _uncased).unwrap();
 
     let directory_path = dir.join("directory.rs");
     let mut directory_file = File::create(directory_path).unwrap();
