@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use parse_zoneinfo::line::{Line, LineParser};
 use parse_zoneinfo::structure::{Child, Structure};
@@ -487,12 +487,11 @@ pub fn main(dir: &Path) {
     let parser = LineParser::default();
     let mut table = TableBuilder::new();
 
+    let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::new()));
     let lines = TZ_FILES
         .iter()
         .map(Path::new)
-        .map(|p| {
-            Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::new())).join(p)
-        })
+        .map(|p| root.join(p))
         .map(|path| {
             File::open(&path).unwrap_or_else(|e| panic!("cannot open {}: {}", path.display(), e))
         })
