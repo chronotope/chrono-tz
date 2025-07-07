@@ -6,5 +6,9 @@ use chrono_tz_build::FILTER_ENV_VAR_NAME;
 fn main() {
     #[cfg(feature = "filter-by-regex")]
     println!("cargo:rerun-if-env-changed={FILTER_ENV_VAR_NAME}");
-    chrono_tz_build::main(Path::new(&env::var("OUT_DIR").unwrap()));
+    chrono_tz_build::main(
+        Path::new(&env::var("OUT_DIR").unwrap()),
+        cfg!(feature = "filter-by-regex"),
+        cfg!(feature = "case-insensitive"),
+    );
 }
