@@ -135,16 +135,34 @@
 mod serde;
 
 mod binary_search;
-mod directory;
+#[cfg(not(any(feature = "case-insensitive", feature = "filter-by-regex")))]
+use prebuilt::directory;
+mod prebuilt;
+#[cfg(any(feature = "case-insensitive", feature = "filter-by-regex"))]
+mod directory {
+    #![allow(
+        dead_code,
+        non_camel_case_types,
+        non_snake_case,
+        non_upper_case_globals
+    )]
+    include!(concat!(env!("OUT_DIR"), "/directory.rs"));
+}
 mod timezone_impl;
-mod timezones;
+#[cfg(not(any(feature = "case-insensitive", feature = "filter-by-regex")))]
+use prebuilt::timezones;
+#[cfg(any(feature = "case-insensitive", feature = "filter-by-regex"))]
+mod timezones {
+    #![allow(non_camel_case_types, clippy::unreadable_literal)]
+    include!(concat!(env!("OUT_DIR"), "/timezones.rs"));
+}
 
-pub use crate::directory::*;
 pub use crate::timezone_impl::{GapInfo, OffsetComponents, OffsetName, TzOffset};
-pub use crate::timezones::ParseError;
-pub use crate::timezones::Tz;
-pub use crate::timezones::TZ_VARIANTS;
-pub use crate::IANA_TZDB_VERSION;
+pub use directory::*;
+pub use timezones::ParseError;
+pub use timezones::Tz;
+pub use timezones::TZ_VARIANTS;
+pub use IANA_TZDB_VERSION;
 
 #[cfg(test)]
 mod tests {
