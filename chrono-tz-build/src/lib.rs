@@ -487,19 +487,7 @@ pub fn main(dir: &Path) {
     let parser = LineParser::default();
     let mut table = TableBuilder::new();
 
-    let tzfiles = [
-        "tz/africa",
-        "tz/antarctica",
-        "tz/asia",
-        "tz/australasia",
-        "tz/backward",
-        "tz/etcetera",
-        "tz/europe",
-        "tz/northamerica",
-        "tz/southamerica",
-    ];
-
-    let lines = tzfiles
+    let lines = TZ_FILES
         .iter()
         .map(Path::new)
         .map(|p| {
@@ -535,3 +523,15 @@ pub fn main(dir: &Path) {
     let version = detect_iana_db_version();
     write_directory_file(&mut directory_file, &table, &version).unwrap();
 }
+
+const TZ_FILES: &[&str] = &[
+    "tz/africa",
+    "tz/antarctica",
+    "tz/asia",
+    "tz/australasia",
+    "tz/backward",
+    "tz/etcetera",
+    "tz/europe",
+    "tz/northamerica",
+    "tz/southamerica",
+];
