@@ -483,7 +483,7 @@ fn detect_iana_db_version() -> String {
     unreachable!("no version found")
 }
 
-pub fn main() {
+pub fn main(dir: &Path) {
     let parser = LineParser::default();
     let mut table = TableBuilder::new();
 
@@ -526,11 +526,11 @@ pub fn main() {
     let mut table = table.build();
     filter::maybe_filter_timezone_table(&mut table);
 
-    let timezone_path = Path::new(&env::var("OUT_DIR").unwrap()).join("timezones.rs");
+    let timezone_path = dir.join("timezones.rs");
     let mut timezone_file = File::create(timezone_path).unwrap();
     write_timezone_file(&mut timezone_file, &table).unwrap();
 
-    let directory_path = Path::new(&env::var("OUT_DIR").unwrap()).join("directory.rs");
+    let directory_path = dir.join("directory.rs");
     let mut directory_file = File::create(directory_path).unwrap();
     let version = detect_iana_db_version();
     write_directory_file(&mut directory_file, &table, &version).unwrap();
