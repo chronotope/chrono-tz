@@ -4,7 +4,7 @@ extern crate regex;
 
 use std::collections::BTreeSet;
 use std::env;
-use std::fs::File;
+use std::fs::{File, create_dir_all};
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 
@@ -515,7 +515,7 @@ fn detect_iana_db_version() -> String {
 }
 
 fn write_source_files(path: &Path, table: &Table, iana_db_version: &str) {
-    std::fs::create_dir_all(path).unwrap();
+    create_dir_all(path).unwrap();
     let mut timezone_file = File::create(path.join("timezones.rs")).unwrap();
     write_timezone_file(&mut timezone_file, &table).unwrap();
     let mut directory_file = File::create(path.join("directory.rs")).unwrap();
