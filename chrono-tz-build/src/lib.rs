@@ -488,25 +488,19 @@ pub fn main(dir: &Path) {
     let mut table = TableBuilder::new();
 
     let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::new()));
-    let lines = TZ_FILES
-        .iter()
-        .map(Path::new)
-        .map(|p| root.join(p))
-        .map(|path| {
-            File::open(&path).unwrap_or_else(|e| panic!("cannot open {}: {}", path.display(), e))
-        })
-        .map(BufReader::new)
-        .flat_map(BufRead::lines)
-        .map(Result::unwrap)
-        .map(strip_comments);
-
-    for line in lines {
-        match parser.parse_str(&line).unwrap() {
-            Line::Zone(zone) => table.add_zone_line(zone).unwrap(),
-            Line::Continuation(cont) => table.add_continuation_line(cont).unwrap(),
-            Line::Rule(rule) => table.add_rule_line(rule).unwrap(),
-            Line::Link(link) => table.add_link_line(link).unwrap(),
-            Line::Space => {}
+    for fname in TZ_FILES {
+        let path = root.join(fname);
+        let file =
+            File::open(&path).unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
+        for line in BufReader::new(file).lines() {
+            let line = strip_comments(line.unwrap());
+            match parser.parse_str(&line).unwrap() {
+                Line::Zone(zone) => table.add_zone_line(zone).unwrap(),
+                Line::Continuation(cont) => table.add_continuation_line(cont).unwrap(),
+                Line::Rule(rule) => table.add_rule_line(rule).unwrap(),
+                Line::Link(link) => table.add_link_line(link).unwrap(),
+                Line::Space => {}
+            }
         }
     }
 
