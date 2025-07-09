@@ -64,7 +64,7 @@ fn one_transition() {
             name: "TEST".to_owned(),
         },
         rest: vec![(
-            122222,
+            ((24 + 10) * 60 + 17) * 60 + 36,
             FixedTimespan {
                 utc_offset: 5678,
                 dst_offset: 0,

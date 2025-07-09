@@ -630,7 +630,7 @@ pub enum ChangeTime {
 impl ChangeTime {
     /// Convert this change time to an absolute timestamp, as the number of
     /// seconds since the Unix epoch that the change occurs at.
-    pub fn to_timestamp(&self) -> i64 {
+    pub fn to_timestamp(&self, utc_offset: i64, dst_offset: i64) -> i64 {
         fn seconds_in_year(year: i64) -> i64 {
             if is_leap(year) {
                 366 * 24 * 60 * 60
@@ -698,30 +698,41 @@ impl ChangeTime {
         }
 
         match *self {
-            ChangeTime::UntilYear(Year::Number(y)) => time_to_timestamp(y, 1, 1, 0, 0, 0),
-            ChangeTime::UntilMonth(Year::Number(y), m) => time_to_timestamp(y, m as i8, 1, 0, 0, 0),
+            ChangeTime::UntilYear(Year::Number(y)) => {
+                time_to_timestamp(y, 1, 1, 0, 0, 0) - (utc_offset + dst_offset)
+            }
+            ChangeTime::UntilMonth(Year::Number(y), m) => {
+                time_to_timestamp(y, m as i8, 1, 0, 0, 0) - (utc_offset + dst_offset)
+            }
             ChangeTime::UntilDay(Year::Number(y), m, d) => {
                 let (m, wd) = d.to_concrete_day(y, m);
-                time_to_timestamp(y, m as i8, wd, 0, 0, 0)
+                time_to_timestamp(y, m as i8, wd, 0, 0, 0) - (utc_offset + dst_offset)
             }
-            ChangeTime::UntilTime(Year::Number(y), m, d, time) => match time.0 {
-                TimeSpec::Zero => {
-                    let (m, wd) = d.to_concrete_day(y, m);
-                    time_to_timestamp(y, m as i8, wd, 0, 0, 0)
+            ChangeTime::UntilTime(Year::Number(y), m, d, time) => {
+                (match time.0 {
+                    TimeSpec::Zero => {
+                        let (m, wd) = d.to_concrete_day(y, m);
+                        time_to_timestamp(y, m as i8, wd, 0, 0, 0)
+                    }
+                    TimeSpec::Hours(h) => {
+                        let (m, wd) = d.to_concrete_day(y, m);
+                        time_to_timestamp(y, m as i8, wd, h, 0, 0)
+                    }
+                    TimeSpec::HoursMinutes(h, min) => {
+                        let (m, wd) = d.to_concrete_day(y, m);
+                        time_to_timestamp(y, m as i8, wd, h, min, 0)
+                    }
+                    TimeSpec::HoursMinutesSeconds(h, min, s) => {
+                        let (m, wd) = d.to_concrete_day(y, m);
+                        time_to_timestamp(y, m as i8, wd, h, min, s)
+                    }
+                }) - match time.1 {
+                    TimeType::UTC => 0,
+                    TimeType::Standard => utc_offset,
+                    TimeType::Wall => utc_offset + dst_offset,
                 }
-                TimeSpec::Hours(h) => {
-                    let (m, wd) = d.to_concrete_day(y, m);
-                    time_to_timestamp(y, m as i8, wd, h, 0, 0)
-                }
-                TimeSpec::HoursMinutes(h, min) => {
-                    let (m, wd) = d.to_concrete_day(y, m);
-                    time_to_timestamp(y, m as i8, wd, h, min, 0)
-                }
-                TimeSpec::HoursMinutesSeconds(h, min, s) => {
-                    let (m, wd) = d.to_concrete_day(y, m);
-                    time_to_timestamp(y, m as i8, wd, h, min, s)
-                }
-            },
+            }
+
             _ => unreachable!(),
         }
     }
@@ -1226,18 +1237,18 @@ mod tests {
     #[test]
     fn to_timestamp() {
         let time = ChangeTime::UntilYear(Year::Number(1970));
-        assert_eq!(time.to_timestamp(), 0);
+        assert_eq!(time.to_timestamp(0, 0), 0);
         let time = ChangeTime::UntilYear(Year::Number(2016));
-        assert_eq!(time.to_timestamp(), 1451606400);
+        assert_eq!(time.to_timestamp(0, 0), 1451606400);
         let time = ChangeTime::UntilYear(Year::Number(1900));
-        assert_eq!(time.to_timestamp(), -2208988800);
+        assert_eq!(time.to_timestamp(0, 0), -2208988800);
         let time = ChangeTime::UntilTime(
             Year::Number(2000),
             Month::February,
             DaySpec::Last(Weekday::Sunday),
             TimeSpecAndType(TimeSpec::Hours(9), TimeType::Wall),
         );
-        assert_eq!(time.to_timestamp(), 951642000);
+        assert_eq!(time.to_timestamp(3600, 3600), 951642000 - 2 * 3600);
     }
 
     macro_rules! test {

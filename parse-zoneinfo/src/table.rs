@@ -147,7 +147,8 @@ impl RuleInfo {
         };
 
         let changetime = ChangeTime::UntilDay(Year::Number(year), self.month, self.day);
-        changetime.to_timestamp() + self.time - offset
+        let unused = 0;
+        changetime.to_timestamp(unused, unused) + self.time - offset
     }
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "chrono-tz-build"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 rust-version = "1.65"
 description = "internal build script for chrono-tz"
@@ -17,7 +17,7 @@ case-insensitive = ["uncased", "phf_shared/uncased"]
 regex = ["dep:regex"]
 
 [dependencies]
-parse-zoneinfo = { version = "0.3.1" }
+parse-zoneinfo = { path = "../parse-zoneinfo", version = "0.4.0" }
 regex = { default-features = false, version = "1", optional = true }
 phf_codegen = { version = "0.12", default-features = false }
 uncased = { version = "0.9", optional = true, default-features = false }

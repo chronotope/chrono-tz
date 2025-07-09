@@ -75,6 +75,7 @@ jobs:
       - name: Verify cargo publish includes all files needed to build
         run: |
           cargo vendor
+          cargo package -p parse-zoneinfo
           cargo package -p chrono-tz-build
           cargo package -p chrono-tz --no-verify
           for crate in target/package/*.crate
