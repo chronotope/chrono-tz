@@ -607,4 +607,31 @@ mod tests {
                 .unwrap(),
         );
     }
+
+    #[test]
+    fn casey_utc_change_time() {
+        assert_eq!(
+            NaiveDate::from_ymd_opt(2012, 2, 21)
+                .unwrap()
+                .and_hms_opt(16, 59, 59)
+                .unwrap()
+                .and_utc()
+                .with_timezone(&Casey)
+                .offset()
+                .to_string(),
+            "+11"
+        );
+
+        assert_eq!(
+            NaiveDate::from_ymd_opt(2012, 2, 21)
+                .unwrap()
+                .and_hms_opt(17, 00, 00)
+                .unwrap()
+                .and_utc()
+                .with_timezone(&Casey)
+                .offset()
+                .to_string(),
+            "+08"
+        );
+    }
 }

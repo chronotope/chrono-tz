@@ -226,7 +226,10 @@ impl TableTransitions for Table {
 
             if use_until {
                 builder.start_time = Some(
-                    zone_info.end_time.expect("End time").to_timestamp() - utc_offset - dst_offset,
+                    zone_info
+                        .end_time
+                        .expect("End time")
+                        .to_timestamp(utc_offset, dst_offset),
                 );
             }
         }
@@ -304,8 +307,12 @@ impl FixedTimespanSetBuilder {
 
             loop {
                 if use_until {
-                    self.until_time =
-                        Some(timespan.end_time.unwrap().to_timestamp() - utc_offset - *dst_offset);
+                    self.until_time = Some(
+                        timespan
+                            .end_time
+                            .unwrap()
+                            .to_timestamp(utc_offset, *dst_offset),
+                    );
                 }
 
                 // Find the minimum rule and its start time based on the current
