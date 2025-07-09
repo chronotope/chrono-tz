@@ -48,6 +48,7 @@ chrono-tz-build = { path = "../chrono-tz-build", version = "0.4" }
 [dev-dependencies]
 serde_test = "1"
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
+tzfile = "0.1"
 
 [package.metadata.docs.rs]
 all-features = true
