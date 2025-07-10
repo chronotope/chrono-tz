@@ -75,20 +75,18 @@ jobs:
       - name: Verify cargo publish includes all files needed to build
         run: |
           cargo vendor
-          cargo package -p parse-zoneinfo
-          cargo package -p chrono-tz-build
-          cargo package -p chrono-tz --no-verify
-          for crate in target/package/*.crate
+
+          for local_dep in parse-zoneinfo chrono-tz-build
           do
-            name=$(basename "$crate" .crate)
-            tar xvfz "$crate" -C vendor/
+            cargo package -p $local_dep --config "source.vendored-sources.directory = 'vendor'" \
+              --config "source.crates-io.replace-with = 'vendored-sources'"
+            tar xvfz target/package/$local_dep*.crate -C vendor/
             # Crates in the vendor directory require a checksum file, but it
             # doesn't matter if it is empty.
-            echo '{"files":{}}' > vendor/$name/.cargo-checksum.json
+            pushd vendor/$local_dep*; echo '{"files":{}}' > .cargo-checksum.json; popd
           done
+
           cargo package -p chrono-tz --config "source.vendored-sources.directory = 'vendor'" \
-             --config "source.crates-io.replace-with = 'vendored-sources'"
-          cargo package -p chrono-tz-build --config "source.vendored-sources.directory = 'vendor'" \
              --config "source.crates-io.replace-with = 'vendored-sources'"
 
   lint:
