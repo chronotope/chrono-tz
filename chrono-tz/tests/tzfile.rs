@@ -1,5 +1,8 @@
-use chrono::{DateTime, Offset, TimeZone};
 use std::fs;
+
+use chrono::{DateTime, Offset, TimeZone};
+use chrono_tz::{IANA_TZDB_VERSION, TZ_VARIANTS};
+use tzfile::Tz;
 
 #[test]
 fn tzfile() {
@@ -7,12 +10,12 @@ fn tzfile() {
         return;
     };
 
-    if chrono_tz::IANA_TZDB_VERSION != system_version.trim() {
+    if IANA_TZDB_VERSION != system_version.trim() {
         return;
     }
 
-    for tz in chrono_tz::TZ_VARIANTS {
-        let Ok(file) = tzfile::Tz::named(tz.name()) else {
+    for tz in TZ_VARIANTS {
+        let Ok(file) = Tz::named(tz.name()) else {
             continue;
         };
 
