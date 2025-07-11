@@ -13,6 +13,7 @@ use parse_zoneinfo::structure::{Child, Structure};
 use parse_zoneinfo::table::{Table, TableBuilder};
 use parse_zoneinfo::transitions::FixedTimespan;
 use parse_zoneinfo::transitions::TableTransitions;
+use parse_zoneinfo::FILES;
 
 /// The name of the environment variable which possibly holds the filter regex.
 #[cfg(feature = "filter-by-regex")]
@@ -487,8 +488,8 @@ pub fn main(dir: &Path, _filter: bool, _uncased: bool) {
     let mut table = TableBuilder::new();
 
     let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::new()));
-    for fname in TZ_FILES {
-        let path = root.join(fname);
+    for fname in FILES {
+        let path = root.join(format!("tz/{fname}"));
         let file =
             File::open(&path).unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
         for line in BufReader::new(file).lines() {
@@ -519,15 +520,3 @@ pub fn main(dir: &Path, _filter: bool, _uncased: bool) {
     let version = detect_iana_db_version();
     write_directory_file(&mut directory_file, &table, &version).unwrap();
 }
-
-const TZ_FILES: &[&str] = &[
-    "tz/africa",
-    "tz/antarctica",
-    "tz/asia",
-    "tz/australasia",
-    "tz/backward",
-    "tz/etcetera",
-    "tz/europe",
-    "tz/northamerica",
-    "tz/southamerica",
-];
