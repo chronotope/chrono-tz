@@ -614,6 +614,55 @@ pub enum TimeType {
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct TimeSpecAndType(pub TimeSpec, pub TimeType);
 
+impl FromStr for TimeSpecAndType {
+    type Err = Error;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        if input == "-" {
+            return Ok(TimeSpecAndType(TimeSpec::Zero, TimeType::Wall));
+        } else if input.chars().all(|c| c == '-' || c.is_ascii_digit()) {
+            return Ok(TimeSpecAndType(
+                TimeSpec::Hours(input.parse().unwrap()),
+                TimeType::Wall,
+            ));
+        }
+
+        let (input, ty) = match input.chars().last().and_then(TimeType::from_char) {
+            Some(ty) => (&input[..input.len() - 1], Some(ty)),
+            None => (input, None),
+        };
+
+        let neg = if input.starts_with('-') { -1 } else { 1 };
+        let mut state = TimeSpec::Zero;
+        for part in input.split(':') {
+            state = match (state, part) {
+                (TimeSpec::Zero, hour) => TimeSpec::Hours(
+                    i8::from_str(hour)
+                        .map_err(|_| Error::InvalidTimeSpecAndType(input.to_string()))?,
+                ),
+                (TimeSpec::Hours(hours), minutes) if minutes.len() == 2 => TimeSpec::HoursMinutes(
+                    hours,
+                    i8::from_str(minutes)
+                        .map_err(|_| Error::InvalidTimeSpecAndType(input.to_string()))?
+                        * neg,
+                ),
+                (TimeSpec::HoursMinutes(hours, minutes), seconds) if seconds.len() == 2 => {
+                    TimeSpec::HoursMinutesSeconds(
+                        hours,
+                        minutes,
+                        i8::from_str(seconds)
+                            .map_err(|_| Error::InvalidTimeSpecAndType(input.to_string()))?
+                            * neg,
+                    )
+                }
+                _ => return Err(Error::InvalidTimeSpecAndType(input.to_string())),
+            };
+        }
+
+        Ok(TimeSpecAndType(state, ty.unwrap_or(TimeType::Wall)))
+    }
+}
+
 /// The time at which the rules change for a location.
 ///
 /// This is described with as few units as possible: a change that occurs at
@@ -882,53 +931,8 @@ impl LineParser {
         Self::default()
     }
 
-    fn parse_timespec_and_type(&self, input: &str) -> Result<TimeSpecAndType, Error> {
-        if input == "-" {
-            return Ok(TimeSpecAndType(TimeSpec::Zero, TimeType::Wall));
-        } else if input.chars().all(|c| c == '-' || c.is_ascii_digit()) {
-            return Ok(TimeSpecAndType(
-                TimeSpec::Hours(input.parse().unwrap()),
-                TimeType::Wall,
-            ));
-        }
-
-        let (input, ty) = match input.chars().last().and_then(TimeType::from_char) {
-            Some(ty) => (&input[..input.len() - 1], Some(ty)),
-            None => (input, None),
-        };
-
-        let neg = if input.starts_with('-') { -1 } else { 1 };
-        let mut state = TimeSpec::Zero;
-        for part in input.split(':') {
-            state = match (state, part) {
-                (TimeSpec::Zero, hour) => TimeSpec::Hours(
-                    i8::from_str(hour)
-                        .map_err(|_| Error::InvalidTimeSpecAndType(input.to_string()))?,
-                ),
-                (TimeSpec::Hours(hours), minutes) if minutes.len() == 2 => TimeSpec::HoursMinutes(
-                    hours,
-                    i8::from_str(minutes)
-                        .map_err(|_| Error::InvalidTimeSpecAndType(input.to_string()))?
-                        * neg,
-                ),
-                (TimeSpec::HoursMinutes(hours, minutes), seconds) if seconds.len() == 2 => {
-                    TimeSpec::HoursMinutesSeconds(
-                        hours,
-                        minutes,
-                        i8::from_str(seconds)
-                            .map_err(|_| Error::InvalidTimeSpecAndType(input.to_string()))?
-                            * neg,
-                    )
-                }
-                _ => return Err(Error::InvalidTimeSpecAndType(input.to_string())),
-            };
-        }
-
-        Ok(TimeSpecAndType(state, ty.unwrap_or(TimeType::Wall)))
-    }
-
     fn parse_timespec(&self, input: &str) -> Result<TimeSpec, Error> {
-        match self.parse_timespec_and_type(input)? {
+        match TimeSpecAndType::from_str(input)? {
             TimeSpecAndType(spec, TimeType::Wall) => Ok(spec),
             TimeSpecAndType(_, _) => Err(Error::NonWallClockInTimeSpec(input.to_string())),
         }
@@ -958,7 +962,7 @@ impl LineParser {
 
             let month = caps.name("in").unwrap().as_str().parse()?;
             let day = DaySpec::from_str(caps.name("on").unwrap().as_str())?;
-            let time = self.parse_timespec_and_type(caps.name("at").unwrap().as_str())?;
+            let time = TimeSpecAndType::from_str(caps.name("at").unwrap().as_str())?;
             let time_to_add = self.parse_timespec(caps.name("save").unwrap().as_str())?;
             let letters = match caps.name("letters").unwrap().as_str() {
                 "-" => None,
@@ -1013,7 +1017,7 @@ impl LineParser {
                 y.as_str().parse()?,
                 m.as_str().parse()?,
                 DaySpec::from_str(d.as_str())?,
-                self.parse_timespec_and_type(t.as_str())?,
+                TimeSpecAndType::from_str(t.as_str())?,
             )),
             (Some(y), Some(m), Some(d), _) => Some(ChangeTime::UntilDay(
                 y.as_str().parse()?,
