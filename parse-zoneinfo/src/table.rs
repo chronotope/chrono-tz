@@ -17,17 +17,16 @@
 //! ## Example
 //!
 //! ```
-//! use parse_zoneinfo::line::{Zone, Line, LineParser, Link};
-//! use parse_zoneinfo::table::{TableBuilder};
+//! use parse_zoneinfo::line::{Zone, Line, Link};
+//! use parse_zoneinfo::table::TableBuilder;
 //!
-//! let parser = LineParser::default();
 //! let mut builder = TableBuilder::new();
 //!
 //! let zone = "Zone  Pacific/Auckland  11:39:04  -  LMT  1868  Nov  2";
 //! let link = "Link  Pacific/Auckland  Antarctica/McMurdo";
 //!
 //! for line in [zone, link] {
-//!     match parser.parse_str(&line)? {
+//!     match Line::new(&line)? {
 //!         Line::Zone(zone) => builder.add_zone_line(zone).unwrap(),
 //!         Line::Continuation(cont) => builder.add_continuation_line(cont).unwrap(),
 //!         Line::Rule(rule) => builder.add_rule_line(rule).unwrap(),
