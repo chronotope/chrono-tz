@@ -1,6 +1,6 @@
 [package]
 name = "chrono-tz-build"
-version = "0.4.2"
+version = "0.5.0"
 edition = "2021"
 rust-version = "1.65"
 description = "internal build script for chrono-tz"
