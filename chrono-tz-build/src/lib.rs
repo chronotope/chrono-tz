@@ -493,13 +493,7 @@ pub fn main(dir: &Path, _filter: bool, _uncased: bool) {
             File::open(&path).unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
         for line in BufReader::new(file).lines() {
             let line = strip_comments(line.unwrap());
-            match Line::new(&line).unwrap() {
-                Line::Zone(zone) => table.add_zone_line(zone).unwrap(),
-                Line::Continuation(cont) => table.add_continuation_line(cont).unwrap(),
-                Line::Rule(rule) => table.add_rule_line(rule).unwrap(),
-                Line::Link(link) => table.add_link_line(link).unwrap(),
-                Line::Space => {}
-            }
+            table.add_line(Line::new(&line).unwrap()).unwrap();
         }
     }
 

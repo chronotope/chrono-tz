@@ -26,13 +26,7 @@
 //! let link = "Link  Pacific/Auckland  Antarctica/McMurdo";
 //!
 //! for line in [zone, link] {
-//!     match Line::new(&line)? {
-//!         Line::Zone(zone) => builder.add_zone_line(zone).unwrap(),
-//!         Line::Continuation(cont) => builder.add_continuation_line(cont).unwrap(),
-//!         Line::Rule(rule) => builder.add_rule_line(rule).unwrap(),
-//!         Line::Link(link) => builder.add_link_line(link).unwrap(),
-//!         Line::Space => {}
-//!     }
+//!     builder.add_line(Line::new(&line)?).unwrap();
 //! }
 //!
 //! let table = builder.build();
@@ -46,7 +40,7 @@
 use std::collections::hash_map::{Entry, HashMap};
 use std::fmt;
 
-use crate::line::{self, ChangeTime, DaySpec, Month, TimeType, Year};
+use crate::line::{self, ChangeTime, DaySpec, Line, Month, TimeType, Year};
 
 /// A **table** of all the data in one or more zoneinfo files.
 #[derive(PartialEq, Debug, Default)]
@@ -300,6 +294,16 @@ impl TableBuilder {
         }
     }
 
+    pub fn add_line<'line>(&mut self, line: Line<'line>) -> Result<(), Error<'line>> {
+        match line {
+            Line::Zone(zone) => self.add_zone_line(zone),
+            Line::Continuation(cont) => self.add_continuation_line(cont),
+            Line::Rule(rule) => self.add_rule_line(rule),
+            Line::Link(link) => self.add_link_line(link),
+            Line::Space => Ok(()),
+        }
+    }
+
     /// Adds a new line describing a zone definition.
     ///
     /// Returns an error if there’s already a zone with the same name, or the
@@ -328,10 +332,10 @@ impl TableBuilder {
     ///
     /// Returns an error if the builder wasn’t expecting a continuation line
     /// (meaning, the previous line wasn’t a zone line)
-    pub fn add_continuation_line(
+    pub fn add_continuation_line<'line>(
         &mut self,
-        continuation_line: line::ZoneInfo,
-    ) -> Result<(), Error> {
+        continuation_line: line::ZoneInfo<'line>,
+    ) -> Result<(), Error<'line>> {
         let zoneset = match self.current_zoneset_name {
             Some(ref name) => self.table.zonesets.get_mut(name).unwrap(),
             None => return Err(Error::SurpriseContinuationLine),
@@ -343,7 +347,10 @@ impl TableBuilder {
 
     /// Adds a new line describing one entry in a ruleset, creating that set
     /// if it didn’t exist already.
-    pub fn add_rule_line(&mut self, rule_line: line::Rule) -> Result<(), Error> {
+    pub fn add_rule_line<'line>(
+        &mut self,
+        rule_line: line::Rule<'line>,
+    ) -> Result<(), Error<'line>> {
         let ruleset = self
             .table
             .rulesets
