@@ -565,6 +565,17 @@ pub enum TimeType {
     UTC,
 }
 
+impl TimeType {
+    fn from_char(c: char) -> Option<Self> {
+        Some(match c {
+            'w' => Self::Wall,
+            's' => Self::Standard,
+            'u' | 'g' | 'z' => Self::UTC,
+            _ => return None,
+        })
+    }
+}
+
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct TimeSpecAndType(pub TimeSpec, pub TimeType);
 
@@ -1302,17 +1313,6 @@ impl<'a> Line<'a> {
         }
 
         Err(Error::InvalidLineType(input.to_string()))
-    }
-}
-
-impl TimeType {
-    fn from_char(c: char) -> Option<Self> {
-        Some(match c {
-            'w' => Self::Wall,
-            's' => Self::Standard,
-            'u' | 'g' | 'z' => Self::UTC,
-            _ => return None,
-        })
     }
 }
 
