@@ -71,11 +71,9 @@
 use std::fmt;
 use std::str::FromStr;
 
-use regex::{Captures, Regex};
+use regex::Regex;
 
 pub struct LineParser {
-    zone_line: Regex,
-    continuation_line: Regex,
     link_line: Regex,
     empty_line: Regex,
 }
@@ -130,37 +128,6 @@ impl std::error::Error for Error {}
 impl Default for LineParser {
     fn default() -> Self {
         LineParser {
-            zone_line: Regex::new(
-                r##"(?x) ^
-                Zone \s+
-                ( ?P<name> [A-Za-z0-9/_+-]+ )  \s+
-                ( ?P<gmtoff>     \S+ )  \s+
-                ( ?P<rulessave>  \S+ )  \s+
-                ( ?P<format>     \S+ )  \s*
-                ( ?P<year>       [0-9]+)? \s*
-                ( ?P<month>      [A-Za-z]+)? \s*
-                ( ?P<day>        [A-Za-z0-9><=]+ )? \s*
-                ( ?P<time>       [0-9:]+[suwz]? )? \s*
-                (\#.*)?
-            $ "##,
-            )
-            .unwrap(),
-
-            continuation_line: Regex::new(
-                r##"(?x) ^
-                \s+
-                ( ?P<gmtoff>     \S+ )  \s+
-                ( ?P<rulessave>  \S+ )  \s+
-                ( ?P<format>     \S+ )  \s*
-                ( ?P<year>       [0-9]+)? \s*
-                ( ?P<month>      [A-Za-z]+)? \s*
-                ( ?P<day>        [A-Za-z0-9><=]+ )? \s*
-                ( ?P<time>       [0-9:]+[suwz]? )? \s*
-                (\#.*)?
-            $ "##,
-            )
-            .unwrap(),
-
             link_line: Regex::new(
                 r##"(?x) ^
                 Link  \s+
@@ -810,6 +777,43 @@ pub struct ZoneInfo<'a> {
     pub time: Option<ChangeTime>,
 }
 
+enum ZoneInfoState<'a> {
+    Start,
+    Save {
+        offset: TimeSpec,
+    },
+    Format {
+        offset: TimeSpec,
+        saving: Saving<'a>,
+    },
+    Year {
+        offset: TimeSpec,
+        saving: Saving<'a>,
+        format: &'a str,
+    },
+    Month {
+        offset: TimeSpec,
+        saving: Saving<'a>,
+        format: &'a str,
+        year: Year,
+    },
+    Day {
+        offset: TimeSpec,
+        saving: Saving<'a>,
+        format: &'a str,
+        year: Year,
+        month: Month,
+    },
+    Time {
+        offset: TimeSpec,
+        saving: Saving<'a>,
+        format: &'a str,
+        year: Year,
+        month: Month,
+        day: DaySpec,
+    },
+}
+
 /// The amount of daylight saving time (DST) to apply to this timespan. This
 /// is a special type for a certain field in a zone line, which can hold
 /// different types of value.
@@ -1136,56 +1140,172 @@ impl LineParser {
         Self::default()
     }
 
-    fn zoneinfo_from_captures<'a>(&self, caps: Captures<'a>) -> Result<ZoneInfo<'a>, Error> {
-        let utc_offset = TimeSpec::from_str(caps.name("gmtoff").unwrap().as_str())?;
-        let saving = Saving::from_str(caps.name("rulessave").unwrap().as_str())?;
-        let format = caps.name("format").unwrap().as_str();
+    fn zoneinfo_from_parts<'a>(
+        &self,
+        iter: impl Iterator<Item = &'a str>,
+    ) -> Result<ZoneInfo<'a>, Error> {
+        let mut state = ZoneInfoState::Start;
+        for part in iter {
+            state = match (state, part) {
+                // In theory a comment is allowed to come after a field without preceding
+                // whitespace, but this doesn't seem to be used in practice.
+                (st, _) if part.starts_with('#') => {
+                    state = st;
+                    break;
+                }
+                (ZoneInfoState::Start, offset) => ZoneInfoState::Save {
+                    offset: TimeSpec::from_str(offset)?,
+                },
+                (ZoneInfoState::Save { offset }, saving) => ZoneInfoState::Format {
+                    offset,
+                    saving: Saving::from_str(saving)?,
+                },
+                (ZoneInfoState::Format { offset, saving }, format) => ZoneInfoState::Year {
+                    offset,
+                    saving,
+                    format,
+                },
+                (
+                    ZoneInfoState::Year {
+                        offset,
+                        saving,
+                        format,
+                    },
+                    year,
+                ) => ZoneInfoState::Month {
+                    offset,
+                    saving,
+                    format,
+                    year: Year::from_str(year)?,
+                },
+                (
+                    ZoneInfoState::Month {
+                        offset,
+                        saving,
+                        format,
+                        year,
+                    },
+                    month,
+                ) => ZoneInfoState::Day {
+                    offset,
+                    saving,
+                    format,
+                    year,
+                    month: Month::from_str(month)?,
+                },
+                (
+                    ZoneInfoState::Day {
+                        offset,
+                        saving,
+                        format,
+                        year,
+                        month,
+                    },
+                    day,
+                ) => ZoneInfoState::Time {
+                    offset,
+                    saving,
+                    format,
+                    year,
+                    month,
+                    day: DaySpec::from_str(day)?,
+                },
+                (
+                    ZoneInfoState::Time {
+                        offset,
+                        saving,
+                        format,
+                        year,
+                        month,
+                        day,
+                    },
+                    time,
+                ) => {
+                    return Ok(ZoneInfo {
+                        utc_offset: offset,
+                        saving,
+                        format,
+                        time: Some(ChangeTime::UntilTime(
+                            year,
+                            month,
+                            day,
+                            TimeSpecAndType::from_str(time)?,
+                        )),
+                    })
+                }
+            };
+        }
 
-        // The year, month, day, and time fields are all optional, meaning
-        // that it should be impossible to, say, have a defined month but not
-        // a defined year.
-        let time = match (
-            caps.name("year"),
-            caps.name("month"),
-            caps.name("day"),
-            caps.name("time"),
-        ) {
-            (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime(
-                y.as_str().parse()?,
-                m.as_str().parse()?,
-                DaySpec::from_str(d.as_str())?,
-                TimeSpecAndType::from_str(t.as_str())?,
-            )),
-            (Some(y), Some(m), Some(d), _) => Some(ChangeTime::UntilDay(
-                y.as_str().parse()?,
-                m.as_str().parse()?,
-                DaySpec::from_str(d.as_str())?,
-            )),
-            (Some(y), Some(m), _, _) => Some(ChangeTime::UntilMonth(
-                y.as_str().parse()?,
-                m.as_str().parse()?,
-            )),
-            (Some(y), _, _, _) => Some(ChangeTime::UntilYear(y.as_str().parse()?)),
-            (None, None, None, None) => None,
-            _ => unreachable!("Out-of-order capturing groups!"),
-        };
-
-        Ok(ZoneInfo {
-            utc_offset,
-            saving,
-            format,
-            time,
-        })
+        match state {
+            ZoneInfoState::Start | ZoneInfoState::Save { .. } | ZoneInfoState::Format { .. } => {
+                return Err(Error::NotParsedAsZoneLine)
+            }
+            ZoneInfoState::Year {
+                offset,
+                saving,
+                format,
+            } => {
+                return Ok(ZoneInfo {
+                    utc_offset: offset,
+                    saving,
+                    format,
+                    time: None,
+                })
+            }
+            ZoneInfoState::Month {
+                offset,
+                saving,
+                format,
+                year,
+            } => Ok(ZoneInfo {
+                utc_offset: offset,
+                saving,
+                format,
+                time: Some(ChangeTime::UntilYear(year)),
+            }),
+            ZoneInfoState::Day {
+                offset,
+                saving,
+                format,
+                year,
+                month,
+            } => Ok(ZoneInfo {
+                utc_offset: offset,
+                saving,
+                format,
+                time: Some(ChangeTime::UntilMonth(year, month)),
+            }),
+            ZoneInfoState::Time {
+                offset,
+                saving,
+                format,
+                year,
+                month,
+                day,
+            } => Ok(ZoneInfo {
+                utc_offset: offset,
+                saving,
+                format,
+                time: Some(ChangeTime::UntilDay(year, month, day)),
+            }),
+        }
     }
 
     fn parse_zone<'a>(&self, input: &'a str) -> Result<Zone<'a>, Error> {
-        if let Some(caps) = self.zone_line.captures(input) {
-            let name = caps.name("name").unwrap().as_str();
-            let info = self.zoneinfo_from_captures(caps)?;
-            Ok(Zone { name, info })
-        } else {
-            Err(Error::NotParsedAsZoneLine)
+        let mut iter = input.split_ascii_whitespace();
+        if iter.next() != Some("Zone") {
+            return Err(Error::NotParsedAsZoneLine);
         }
+
+        let name = match iter.next() {
+            Some(name) => name,
+            None => return Err(Error::NotParsedAsZoneLine),
+        };
+
+        Ok(Zone {
+            name,
+            info: self.zoneinfo_from_parts(iter)?,
+        })
     }
 
     fn parse_link<'a>(&self, input: &'a str) -> Result<Link<'a>, Error> {
@@ -1208,14 +1328,14 @@ impl LineParser {
             return Ok(Line::Space);
         }
 
-        match self.parse_zone(input) {
-            Err(Error::NotParsedAsZoneLine) => {}
-            result => return result.map(Line::Zone),
+        if input.starts_with("Zone") {
+            return Ok(Line::Zone(self.parse_zone(input)?));
         }
 
-        match self.continuation_line.captures(input) {
-            None => {}
-            Some(caps) => return self.zoneinfo_from_captures(caps).map(Line::Continuation),
+        if input.starts_with(&[' ', '\t'][..]) {
+            return self
+                .zoneinfo_from_parts(input.split_ascii_whitespace())
+                .map(Line::Continuation);
         }
 
         if input.starts_with("Rule") {
