@@ -8,6 +8,11 @@ repository = "https://github.com/chronotope/chrono-tz"
 readme = "README.md"
 license = "MIT"
 keywords = ["date", "time", "timezone", "zone", "calendar"]
+exclude = [
+    "examples/asia",
+    "tests/snapshots",
+    "tests/snapshot.rs",
+]
 
 [dev-dependencies]
 insta = "1.38"
