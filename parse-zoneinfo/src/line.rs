@@ -75,8 +75,6 @@ use regex::{Captures, Regex};
 
 pub struct LineParser {
     rule_line: Regex,
-    hm_field: Regex,
-    hms_field: Regex,
     zone_line: Regex,
     continuation_line: Regex,
     link_line: Regex,
@@ -146,24 +144,6 @@ impl Default for LineParser {
                 ( ?P<save>    \S+)  \s+
                 ( ?P<letters> \S+)  \s*
                 (\#.*)?
-            $ "##,
-            )
-            .unwrap(),
-
-            hm_field: Regex::new(
-                r##"(?x) ^
-                ( ?P<sign> -? )
-                ( ?P<hour> \d{1,2} ) : ( ?P<minute> \d{2} )
-                ( ?P<flag> [wsugz] )?
-            $ "##,
-            )
-            .unwrap(),
-
-            hms_field: Regex::new(
-                r##"(?x) ^
-                ( ?P<sign> -? )
-                ( ?P<hour> \d{1,2} ) : ( ?P<minute> \d{2} ) : ( ?P<second> \d{2} )
-                ( ?P<flag> [wsugz] )?
             $ "##,
             )
             .unwrap(),
@@ -888,11 +868,11 @@ pub enum Line<'a> {
 }
 
 impl TimeType {
-    fn from_char(c: &str) -> Option<Self> {
+    fn from_char(c: char) -> Option<Self> {
         Some(match c {
-            "w" => Self::Wall,
-            "s" => Self::Standard,
-            "u" | "g" | "z" => Self::UTC,
+            'w' => Self::Wall,
+            's' => Self::Standard,
+            'u' | 'g' | 'z' => Self::UTC,
             _ => return None,
         })
     }
@@ -906,57 +886,53 @@ impl LineParser {
 
     fn parse_timespec_and_type(&self, input: &str) -> Result<TimeSpecAndType, Error> {
         if input == "-" {
-            Ok(TimeSpecAndType(TimeSpec::Zero, TimeType::Wall))
+            return Ok(TimeSpecAndType(TimeSpec::Zero, TimeType::Wall));
         } else if input.chars().all(|c| c == '-' || c.is_ascii_digit()) {
-            Ok(TimeSpecAndType(
+            return Ok(TimeSpecAndType(
                 TimeSpec::Hours(input.parse().unwrap()),
                 TimeType::Wall,
-            ))
-        } else if let Some(caps) = self.hm_field.captures(input) {
-            let sign: i8 = if caps.name("sign").unwrap().as_str() == "-" {
-                -1
-            } else {
-                1
-            };
-            let hour: i8 = caps.name("hour").unwrap().as_str().parse().unwrap();
-            let minute: i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
-            let flag = caps
-                .name("flag")
-                .and_then(|c| TimeType::from_char(&c.as_str()[0..1]))
-                .unwrap_or(TimeType::Wall);
-
-            Ok(TimeSpecAndType(
-                TimeSpec::HoursMinutes(hour * sign, minute * sign),
-                flag,
-            ))
-        } else if let Some(caps) = self.hms_field.captures(input) {
-            let sign: i8 = if caps.name("sign").unwrap().as_str() == "-" {
-                -1
-            } else {
-                1
-            };
-            let hour: i8 = caps.name("hour").unwrap().as_str().parse().unwrap();
-            let minute: i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
-            let second: i8 = caps.name("second").unwrap().as_str().parse().unwrap();
-            let flag = caps
-                .name("flag")
-                .and_then(|c| TimeType::from_char(&c.as_str()[0..1]))
-                .unwrap_or(TimeType::Wall);
-
-            Ok(TimeSpecAndType(
-                TimeSpec::HoursMinutesSeconds(hour * sign, minute * sign, second * sign),
-                flag,
-            ))
-        } else {
-            Err(Error::InvalidTimeSpecAndType(input.to_string()))
+            ));
         }
+
+        let (input, ty) = match input.chars().last().and_then(TimeType::from_char) {
+            Some(ty) => (&input[..input.len() - 1], Some(ty)),
+            None => (input, None),
+        };
+
+        let neg = if input.starts_with('-') { -1 } else { 1 };
+        let mut state = TimeSpec::Zero;
+        for part in input.split(':') {
+            state = match (state, part) {
+                (TimeSpec::Zero, hour) => TimeSpec::Hours(
+                    i8::from_str(hour)
+                        .map_err(|_| Error::InvalidTimeSpecAndType(input.to_string()))?,
+                ),
+                (TimeSpec::Hours(hours), minutes) if minutes.len() == 2 => TimeSpec::HoursMinutes(
+                    hours,
+                    i8::from_str(minutes)
+                        .map_err(|_| Error::InvalidTimeSpecAndType(input.to_string()))?
+                        * neg,
+                ),
+                (TimeSpec::HoursMinutes(hours, minutes), seconds) if seconds.len() == 2 => {
+                    TimeSpec::HoursMinutesSeconds(
+                        hours,
+                        minutes,
+                        i8::from_str(seconds)
+                            .map_err(|_| Error::InvalidTimeSpecAndType(input.to_string()))?
+                            * neg,
+                    )
+                }
+                _ => return Err(Error::InvalidTimeSpecAndType(input.to_string())),
+            };
+        }
+
+        Ok(TimeSpecAndType(state, ty.unwrap_or(TimeType::Wall)))
     }
 
     fn parse_timespec(&self, input: &str) -> Result<TimeSpec, Error> {
-        match self.parse_timespec_and_type(input) {
-            Ok(TimeSpecAndType(spec, TimeType::Wall)) => Ok(spec),
-            Ok(TimeSpecAndType(_, _)) => Err(Error::NonWallClockInTimeSpec(input.to_string())),
-            Err(e) => Err(e),
+        match self.parse_timespec_and_type(input)? {
+            TimeSpecAndType(spec, TimeType::Wall) => Ok(spec),
+            TimeSpecAndType(_, _) => Err(Error::NonWallClockInTimeSpec(input.to_string())),
         }
     }
 
@@ -1014,8 +990,7 @@ impl LineParser {
             .all(|c| c == '-' || c == '_' || c.is_alphabetic())
         {
             Ok(Saving::Multiple(input))
-        } else if self.hm_field.is_match(input) {
-            let time = self.parse_timespec(input)?;
+        } else if let Ok(time) = self.parse_timespec(input) {
             Ok(Saving::OneOff(time))
         } else {
             Err(Error::CouldNotParseSaving(input.to_string()))
@@ -1385,7 +1360,7 @@ mod tests {
     test!(comment: "# this is a comment" => Ok(Line::Space));
     test!(another_comment: "     # so is this" => Ok(Line::Space));
     test!(multiple_hash: "     # so is this ## " => Ok(Line::Space));
-    test!(non_comment: " this is not a # comment" => Err(Error::InvalidTimeSpecAndType("this".to_string())));
+    test!(non_comment: " this is not a # comment" => Err(Error::InvalidTimeSpecAndType("thi".to_string())));
 
     test!(comment_after: "Link  Europe/Istanbul  Asia/Istanbul #with a comment after" => Ok(Line::Link(Link {
         existing:  "Europe/Istanbul",
