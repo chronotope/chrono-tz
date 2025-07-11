@@ -313,42 +313,46 @@ fn write_directory_file(directory_file: &mut File, table: &Table, version: &str)
         writeln!(directory_file, "pub mod {module_name} {{")?;
         writeln!(directory_file, "    use crate::timezones::Tz;\n",)?;
         for child in entry.children {
-            match child {
-                Child::Submodule(name) => {
-                    let submodule_name = convert_bad_chars(name);
-                    writeln!(directory_file, "    pub mod {submodule_name} {{")?;
-                    writeln!(directory_file, "        use crate::timezones::Tz;\n",)?;
-                    let full_name = entry.name.to_string() + "/" + name;
-                    for entry in table.structure() {
-                        if entry.name == full_name {
-                            for child in entry.children {
-                                match child {
-                                    Child::Submodule(_) => {
-                                        panic!("Depth of > 3 nested submodules not implemented!")
-                                    }
-                                    Child::TimeZone(name) => {
-                                        let converted_name = convert_bad_chars(name);
-                                        writeln!(directory_file,
-                                    "        pub const {converted_name}: Tz = Tz::{module_name}__{submodule_name}__{converted_name};",
-                                        )?;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    writeln!(directory_file, "    }}\n")?;
-                }
+            let name = match child {
+                Child::Submodule(name) => name,
                 Child::TimeZone(name) => {
                     let name = convert_bad_chars(name);
                     writeln!(
                         directory_file,
                         "    pub const {name}: Tz = Tz::{module_name}__{name};"
                     )?;
+                    continue;
+                }
+            };
+
+            let submodule_name = convert_bad_chars(name);
+            writeln!(directory_file, "    pub mod {submodule_name} {{")?;
+            writeln!(directory_file, "        use crate::timezones::Tz;\n",)?;
+            let full_name = entry.name.to_string() + "/" + name;
+            for entry in table.structure() {
+                if entry.name != full_name {
+                    continue;
+                }
+
+                for child in entry.children {
+                    let name = match child {
+                        Child::Submodule(_) => {
+                            panic!("Depth of > 3 nested submodules not implemented!")
+                        }
+                        Child::TimeZone(name) => name,
+                    };
+
+                    let converted_name = convert_bad_chars(name);
+                    writeln!(directory_file,
+                        "        pub const {converted_name}: Tz = Tz::{module_name}__{submodule_name}__{converted_name};",
+                    )?;
                 }
             }
+            writeln!(directory_file, "    }}\n")?;
         }
         writeln!(directory_file, "}}")?;
     }
+
     Ok(())
 }
 
