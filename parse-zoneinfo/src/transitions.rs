@@ -158,10 +158,7 @@ impl TableTransitions for Table {
     fn timespans(&self, zone_name: &str) -> Option<FixedTimespanSet> {
         let mut builder = FixedTimespanSetBuilder::default();
 
-        let zoneset = match self.get_zoneset(zone_name) {
-            Some(zones) => zones,
-            None => return None,
-        };
+        let zoneset = self.get_zoneset(zone_name)?;
 
         for (i, zone_info) in zoneset.iter().enumerate() {
             let mut dst_offset = 0;
@@ -344,13 +341,10 @@ impl FixedTimespanSetBuilder {
                     if earliest_at < self.start_time.unwrap() {
                         let _ = replace(start_utc_offset, timespan.offset);
                         let _ = replace(start_dst_offset, *dst_offset);
-                        let _ = replace(
-                            start_zone_id,
-                            Some(
-                                timespan
-                                    .format
-                                    .format(*dst_offset, earliest_rule.letters.as_ref()),
-                            ),
+                        let _ = start_zone_id.replace(
+                            timespan
+                                .format
+                                .format(*dst_offset, earliest_rule.letters.as_ref()),
                         );
                         continue;
                     }
@@ -358,13 +352,10 @@ impl FixedTimespanSetBuilder {
                     if start_zone_id.is_none()
                         && *start_utc_offset + *start_dst_offset == timespan.offset + *dst_offset
                     {
-                        let _ = replace(
-                            start_zone_id,
-                            Some(
-                                timespan
-                                    .format
-                                    .format(*dst_offset, earliest_rule.letters.as_ref()),
-                            ),
+                        let _ = start_zone_id.replace(
+                            timespan
+                                .format
+                                .format(*dst_offset, earliest_rule.letters.as_ref()),
                         );
                     }
                 }

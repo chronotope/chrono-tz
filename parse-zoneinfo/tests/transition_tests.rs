@@ -98,7 +98,7 @@ fn two_transitions() {
             Year::Number(1970),
             Month::January,
             DaySpec::Ordinal(3),
-            TimeSpec::HoursMinutesSeconds(17, 09, 27).with_type(TimeType::Standard),
+            TimeSpec::HoursMinutesSeconds(17, 9, 27).with_type(TimeType::Standard),
         )),
     };
 
