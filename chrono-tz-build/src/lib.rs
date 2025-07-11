@@ -281,7 +281,7 @@ fn write_directory_file(directory_file: &mut File, table: &Table, version: &str)
     // expose the underlying IANA TZDB version
     writeln!(
         directory_file,
-        "pub const IANA_TZDB_VERSION : &str = \"{version}\";\n"
+        "pub const IANA_TZDB_VERSION: &str = \"{version}\";\n"
     )?;
     // add the `loose' zone definitions first
     writeln!(directory_file, "use crate::timezones::Tz;\n")?;
@@ -293,15 +293,22 @@ fn write_directory_file(directory_file: &mut File, table: &Table, version: &str)
         .collect::<BTreeSet<_>>();
     for zone in zones {
         let zone = convert_bad_chars(zone);
-        writeln!(directory_file, "pub const {zone} : Tz = Tz::{zone};")?;
+        writeln!(directory_file, "pub const {zone}: Tz = Tz::{zone};")?;
     }
     writeln!(directory_file)?;
 
     // now add the `structured' zone names in submodules
+    let mut first = true;
     for entry in table.structure() {
         if entry.name.contains('/') {
             continue;
         }
+
+        match first {
+            true => first = false,
+            false => writeln!(directory_file, "")?,
+        }
+
         let module_name = convert_bad_chars(entry.name);
         writeln!(directory_file, "pub mod {module_name} {{")?;
         writeln!(directory_file, "    use crate::timezones::Tz;\n",)?;
@@ -322,7 +329,7 @@ fn write_directory_file(directory_file: &mut File, table: &Table, version: &str)
                                     Child::TimeZone(name) => {
                                         let converted_name = convert_bad_chars(name);
                                         writeln!(directory_file,
-                                    "        pub const {converted_name} : Tz = Tz::{module_name}__{submodule_name}__{converted_name};",
+                                    "        pub const {converted_name}: Tz = Tz::{module_name}__{submodule_name}__{converted_name};",
                                         )?;
                                     }
                                 }
@@ -335,12 +342,12 @@ fn write_directory_file(directory_file: &mut File, table: &Table, version: &str)
                     let name = convert_bad_chars(name);
                     writeln!(
                         directory_file,
-                        "    pub const {name} : Tz = Tz::{module_name}__{name};"
+                        "    pub const {name}: Tz = Tz::{module_name}__{name};"
                     )?;
                 }
             }
         }
-        writeln!(directory_file, "}}\n")?;
+        writeln!(directory_file, "}}")?;
     }
     Ok(())
 }
