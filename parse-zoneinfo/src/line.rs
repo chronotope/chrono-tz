@@ -598,6 +598,10 @@ impl TimeSpec {
             TimeSpec::Zero => 0,
         }
     }
+
+    pub fn with_type(self, timetype: TimeType) -> TimeSpecAndType {
+        TimeSpecAndType(self, timetype)
+    }
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]
@@ -609,12 +613,6 @@ pub enum TimeType {
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct TimeSpecAndType(pub TimeSpec, pub TimeType);
-
-impl TimeSpec {
-    pub fn with_type(self, timetype: TimeType) -> TimeSpecAndType {
-        TimeSpecAndType(self, timetype)
-    }
-}
 
 /// The time at which the rules change for a location.
 ///
