@@ -354,45 +354,6 @@ impl Weekday {
     }
 }
 
-#[cfg(test)]
-#[test]
-fn weekdays() {
-    assert_eq!(
-        Weekday::calculate(1970, Month::January, 1),
-        Weekday::Thursday
-    );
-    assert_eq!(
-        Weekday::calculate(2017, Month::February, 11),
-        Weekday::Saturday
-    );
-    assert_eq!(Weekday::calculate(1890, Month::March, 2), Weekday::Sunday);
-    assert_eq!(Weekday::calculate(2100, Month::April, 20), Weekday::Tuesday);
-    assert_eq!(Weekday::calculate(2009, Month::May, 31), Weekday::Sunday);
-    assert_eq!(Weekday::calculate(2001, Month::June, 9), Weekday::Saturday);
-    assert_eq!(Weekday::calculate(1995, Month::July, 21), Weekday::Friday);
-    assert_eq!(Weekday::calculate(1982, Month::August, 8), Weekday::Sunday);
-    assert_eq!(
-        Weekday::calculate(1962, Month::September, 6),
-        Weekday::Thursday
-    );
-    assert_eq!(
-        Weekday::calculate(1899, Month::October, 14),
-        Weekday::Saturday
-    );
-    assert_eq!(
-        Weekday::calculate(2016, Month::November, 18),
-        Weekday::Friday
-    );
-    assert_eq!(
-        Weekday::calculate(2010, Month::December, 19),
-        Weekday::Sunday
-    );
-    assert_eq!(
-        Weekday::calculate(2016, Month::February, 29),
-        Weekday::Monday
-    );
-}
-
 fn is_leap(year: i64) -> bool {
     // Leap year rules: years which are factors of 4, except those divisible
     // by 100, unless they are divisible by 400.
@@ -405,21 +366,6 @@ fn is_leap(year: i64) -> bool {
     //
     // Factors of 4 and 16 can quickly be found with bitwise AND.
     year & 3 == 0 && (year % 25 != 0 || year & 15 == 0)
-}
-
-#[cfg(test)]
-#[test]
-fn leap_years() {
-    assert!(!is_leap(1900));
-    assert!(is_leap(1904));
-    assert!(is_leap(1964));
-    assert!(is_leap(1996));
-    assert!(!is_leap(1997));
-    assert!(!is_leap(1997));
-    assert!(!is_leap(1999));
-    assert!(is_leap(2000));
-    assert!(is_leap(2016));
-    assert!(!is_leap(2100));
 }
 
 impl DaySpec {
@@ -1321,6 +1267,44 @@ mod tests {
     use super::*;
 
     #[test]
+    fn weekdays() {
+        assert_eq!(
+            Weekday::calculate(1970, Month::January, 1),
+            Weekday::Thursday
+        );
+        assert_eq!(
+            Weekday::calculate(2017, Month::February, 11),
+            Weekday::Saturday
+        );
+        assert_eq!(Weekday::calculate(1890, Month::March, 2), Weekday::Sunday);
+        assert_eq!(Weekday::calculate(2100, Month::April, 20), Weekday::Tuesday);
+        assert_eq!(Weekday::calculate(2009, Month::May, 31), Weekday::Sunday);
+        assert_eq!(Weekday::calculate(2001, Month::June, 9), Weekday::Saturday);
+        assert_eq!(Weekday::calculate(1995, Month::July, 21), Weekday::Friday);
+        assert_eq!(Weekday::calculate(1982, Month::August, 8), Weekday::Sunday);
+        assert_eq!(
+            Weekday::calculate(1962, Month::September, 6),
+            Weekday::Thursday
+        );
+        assert_eq!(
+            Weekday::calculate(1899, Month::October, 14),
+            Weekday::Saturday
+        );
+        assert_eq!(
+            Weekday::calculate(2016, Month::November, 18),
+            Weekday::Friday
+        );
+        assert_eq!(
+            Weekday::calculate(2010, Month::December, 19),
+            Weekday::Sunday
+        );
+        assert_eq!(
+            Weekday::calculate(2016, Month::February, 29),
+            Weekday::Monday
+        );
+    }
+
+    #[test]
     fn last_monday() {
         let dayspec = DaySpec::Last(Weekday::Monday);
         assert_eq!(
@@ -1590,4 +1574,18 @@ mod tests {
         existing:  "Europe/Istanbul",
         new:       "Asia/Istanbul",
     })));
+
+    #[test]
+    fn leap_years() {
+        assert!(!is_leap(1900));
+        assert!(is_leap(1904));
+        assert!(is_leap(1964));
+        assert!(is_leap(1996));
+        assert!(!is_leap(1997));
+        assert!(!is_leap(1997));
+        assert!(!is_leap(1999));
+        assert!(is_leap(2000));
+        assert!(is_leap(2016));
+        assert!(!is_leap(2100));
+    }
 }
