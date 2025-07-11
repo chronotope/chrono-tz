@@ -159,7 +159,7 @@ impl std::error::Error for ParseError {{}}
 impl FromStr for Tz {{
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {{
-        return TIMEZONES.get(s).cloned().ok_or(ParseError(()));
+        TIMEZONES.get(s).cloned().ok_or(ParseError(()))
     }}
 }}
 "#
