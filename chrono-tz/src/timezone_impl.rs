@@ -3,7 +3,7 @@ use core::fmt::{Debug, Display, Error, Formatter, Write};
 
 use chrono::{
     DateTime, Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, Offset,
-    TimeZone,
+    TimeZone, Utc,
 };
 
 use crate::binary_search::binary_search;
@@ -76,7 +76,8 @@ impl Debug for FixedTimespan {
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct TzOffset {
     tz: Tz,
-    offset: FixedTimespan,
+    timespans: FixedTimespanSet,
+    index: usize,
 }
 
 /// Detailed timezone offset components that expose any special conditions currently in effect.
@@ -107,11 +108,21 @@ pub struct TzOffset {
 /// assert_eq!(total_offset.num_seconds(), london_time.offset().fix().local_minus_utc() as i64);
 /// # }
 /// ```
-pub trait OffsetComponents {
+pub trait OffsetComponents where Self: Sized {
     /// The base offset from UTC; this usually doesn't change unless the government changes something
     fn base_utc_offset(&self) -> Duration;
     /// The additional offset from UTC that is currently in effect; typically for daylight saving time
     fn dst_offset(&self) -> Duration;
+    /// The next offset.
+    fn next_offset(&self) -> Option<Self>;
+    /// Returns an iterator over this and all the remaining offsets for the timezone.
+    fn iter(&self) -> impl Iterator<Item = Self>;
+    /// The time at which this offset will become valid.
+    fn valid_starting(&self) -> Option<DateTime<Utc>>;
+    /// The time at which this offset will become invalid.
+    fn valid_until(&self) -> Option<DateTime<Utc>> {
+        self.next_offset().and_then(|offset| offset.valid_starting())
+    }
 }
 
 /// Timezone offset name information.
@@ -151,28 +162,63 @@ pub trait OffsetName {
 }
 
 impl TzOffset {
-    fn new(tz: Tz, offset: FixedTimespan) -> Self {
-        TzOffset { tz, offset }
+    fn new(tz: Tz, timespans: FixedTimespanSet, index: usize) -> Self {
+        TzOffset {
+            tz,
+            timespans,
+            index,
+        }
     }
 
-    fn map_localresult(tz: Tz, result: LocalResult<FixedTimespan>) -> LocalResult<Self> {
+    fn map_localresult(
+        tz: Tz,
+        timespans: FixedTimespanSet,
+        result: LocalResult<usize>,
+    ) -> LocalResult<Self> {
         match result {
             LocalResult::None => LocalResult::None,
-            LocalResult::Single(s) => LocalResult::Single(TzOffset::new(tz, s)),
-            LocalResult::Ambiguous(a, b) => {
-                LocalResult::Ambiguous(TzOffset::new(tz, a), TzOffset::new(tz, b))
-            }
+            LocalResult::Single(s) => LocalResult::Single(TzOffset::new(tz, timespans, s)),
+            LocalResult::Ambiguous(a, b) => LocalResult::Ambiguous(
+                TzOffset::new(tz, timespans, a),
+                TzOffset::new(tz, timespans, b),
+            ),
         }
+    }
+
+    fn timespan(&self) -> FixedTimespan {
+        self.timespans.get(self.index)
     }
 }
 
 impl OffsetComponents for TzOffset {
     fn base_utc_offset(&self) -> Duration {
-        Duration::seconds(self.offset.utc_offset as i64)
+        Duration::seconds(self.timespan().utc_offset as i64)
     }
 
     fn dst_offset(&self) -> Duration {
-        Duration::seconds(self.offset.dst_offset as i64)
+        Duration::seconds(self.timespan().dst_offset as i64)
+    }
+
+    fn next_offset(&self) -> Option<Self> {
+        if self.timespans.rest.len() == self.index {
+            return None;
+        }
+        assert!(self.index < self.timespans.rest.len());
+
+        let mut next = *self;
+        next.index += 1;
+        Some(next)
+    }
+
+    fn iter(&self) -> impl Iterator<Item = Self> {
+        TzOffsetIter(Some(*self))
+    }
+
+    fn valid_starting(&self) -> Option<DateTime<Utc>> {
+        match self.index {
+            0 => None,
+            _ => DateTime::from_timestamp(self.timespans.rest[self.index - 1].0, 0)
+        }
     }
 }
 
@@ -182,25 +228,41 @@ impl OffsetName for TzOffset {
     }
 
     fn abbreviation(&self) -> Option<&str> {
-        self.offset.name
+        self.timespan().name
     }
 }
 
 impl Offset for TzOffset {
     fn fix(&self) -> FixedOffset {
-        self.offset.fix()
+        self.timespan().fix()
     }
 }
 
 impl Display for TzOffset {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        Display::fmt(&self.offset, f)
+        Display::fmt(&self.timespan(), f)
     }
 }
 
 impl Debug for TzOffset {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        Debug::fmt(&self.offset, f)
+        Debug::fmt(&self.timespan(), f)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct TzOffsetIter(Option<TzOffset>);
+
+impl Iterator for TzOffsetIter {
+    type Item = TzOffset;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(offset) = self.0 {
+            self.0 = offset.next_offset();
+            Some(offset)
+        } else {
+            None
+        }
     }
 }
 
@@ -243,10 +305,16 @@ impl Span {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq)]
 pub struct FixedTimespanSet {
     pub first: FixedTimespan,
     pub rest: &'static [(i64, FixedTimespan)],
+}
+
+impl PartialEq for FixedTimespanSet {
+    fn eq(&self, other: &Self) -> bool {
+        self.first == other.first && std::ptr::eq(self.rest, other.rest)
+    }
 }
 
 impl FixedTimespanSet {
@@ -369,20 +437,21 @@ impl TimeZone for Tz {
         });
         TzOffset::map_localresult(
             *self,
+            timespans,
             match index {
-                Ok(0) if timespans.len() == 1 => LocalResult::Single(timespans.get(0)),
+                Ok(0) if timespans.len() == 1 => LocalResult::Single(0),
                 Ok(0) if timespans.local_span(1).contains(timestamp) => {
-                    LocalResult::Ambiguous(timespans.get(0), timespans.get(1))
+                    LocalResult::Ambiguous(0, 1)
                 }
-                Ok(0) => LocalResult::Single(timespans.get(0)),
+                Ok(0) => LocalResult::Single(0),
                 Ok(i) if timespans.local_span(i - 1).contains(timestamp) => {
-                    LocalResult::Ambiguous(timespans.get(i - 1), timespans.get(i))
+                    LocalResult::Ambiguous(i - 1, i)
                 }
-                Ok(i) if i == timespans.len() - 1 => LocalResult::Single(timespans.get(i)),
+                Ok(i) if i == timespans.len() - 1 => LocalResult::Single(i),
                 Ok(i) if timespans.local_span(i + 1).contains(timestamp) => {
-                    LocalResult::Ambiguous(timespans.get(i), timespans.get(i + 1))
+                    LocalResult::Ambiguous(i, i + 1)
                 }
-                Ok(i) => LocalResult::Single(timespans.get(i)),
+                Ok(i) => LocalResult::Single(i),
                 Err(_) => LocalResult::None,
             },
         )
@@ -401,7 +470,7 @@ impl TimeZone for Tz {
         let timespans = self.timespans();
         let index =
             binary_search(0, timespans.len(), |i| timespans.utc_span(i).cmp(timestamp)).unwrap();
-        TzOffset::new(*self, timespans.get(index))
+        TzOffset::new(*self, timespans, index)
     }
 }
 
@@ -453,7 +522,7 @@ impl GapInfo {
                     .map(|start_time| {
                         (
                             start_time.naive_local(),
-                            TzOffset::new(*tz, timespans.get(start_idx)),
+                            TzOffset::new(*tz, timespans, start_idx),
                         )
                     })
             }
@@ -474,5 +543,67 @@ impl GapInfo {
         };
 
         Some(Self { begin, end })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::TimeZone;
+
+    use crate::US::Eastern;
+    use super::*;
+
+    /// Check that `next_offset` returns the next offset after the input.
+    #[test]
+    fn next_offset_returns_next() {
+        let edt = Eastern.with_ymd_and_hms(2019, 11, 3, 0, 0, 0).unwrap();
+        let edt_offset = edt.offset();
+        let next_offset = TzOffset::new(edt_offset.tz, edt_offset.timespans, edt_offset.index + 1);
+        assert_eq!(edt_offset.next_offset(), Some(next_offset));
+    }
+
+    /// Check that the first iteration after creating an Iterator with `TzOffset::iter()` returns
+    /// an offset which is identical input.
+    #[test]
+    fn iter_first_next_returns_identity() {
+        let edt = Eastern.with_ymd_and_hms(2019, 11, 3, 0, 0, 0).unwrap();
+        let edt_offset = edt.offset();
+        assert_eq!(edt_offset.iter().next(), Some(*edt_offset));
+    }
+
+    /// Check that the second call of `TzOffsetIter::next()` returns `TzOffset::next_offset()`.
+    #[test]
+    fn iter_second_next_returns_next_offset() {
+        let edt = Eastern.with_ymd_and_hms(2019, 11, 3, 0, 0, 0).unwrap();
+        let edt_offset = edt.offset();
+        assert_eq!(edt_offset.iter().nth(1), edt_offset.next_offset());
+    }
+
+    /// Check that an iterator starting at the first possible `TzOffset` iterates over all possible
+    /// offsets for a given timezone.
+    #[test]
+    fn iter_reads_all() {
+        let timespans = Eastern.timespans();
+        let tz = NaiveDateTime::MIN.and_local_timezone(Eastern).unwrap();
+        let base_offset = tz.offset();
+        assert_eq!(base_offset.iter().count(), timespans.len());
+
+        let mut offset_iter = base_offset.iter();
+        assert_eq!(offset_iter.next().unwrap().timespan(), timespans.first);
+        for (offset, (start, timespan)) in offset_iter.zip(timespans.rest) {
+            assert_eq!(offset.valid_starting().unwrap().timestamp(), *start);
+            assert_eq!(offset.timespan(), *timespan);
+        }
+    }
+
+    /// Check that `valid_starting` of the next offset is equal to `valid_until` of the input.
+    #[test]
+    fn check_valid_bounds() {
+        let edt = Eastern.with_ymd_and_hms(2019, 11, 3, 0, 0, 0).unwrap();
+        let edt_offset = edt.offset();
+        assert_eq!(edt_offset.valid_until(), edt_offset.next_offset().unwrap().valid_starting());
+        let mut edt_offset_iter = edt_offset.iter();
+        edt_offset_iter.next();
+        assert_eq!(edt_offset_iter.next(), edt_offset.next_offset());
     }
 }
