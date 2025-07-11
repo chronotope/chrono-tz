@@ -403,6 +403,43 @@ pub enum DaySpec {
     FirstOnOrAfter(Weekday, i8),
 }
 
+impl FromStr for DaySpec {
+    type Err = Error;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        // Parse the field as a number if it vaguely resembles one.
+        if input.chars().all(|c| c.is_ascii_digit()) {
+            return Ok(DaySpec::Ordinal(input.parse().unwrap()));
+        }
+        // Check if it starts with ‘last’, and trim off the first four bytes if it does
+        else if let Some(remainder) = input.strip_prefix("last") {
+            let weekday = remainder.parse()?;
+            return Ok(DaySpec::Last(weekday));
+        }
+
+        let weekday = match input.get(..3) {
+            Some(wd) => Weekday::from_str(wd)?,
+            None => return Err(Error::InvalidDaySpec(input.to_string())),
+        };
+
+        let dir = match input.get(3..5) {
+            Some(">=") => true,
+            Some("<=") => false,
+            _ => return Err(Error::InvalidDaySpec(input.to_string())),
+        };
+
+        let day = match input.get(5..) {
+            Some(day) => u8::from_str(day).map_err(|_| Error::InvalidDaySpec(input.to_string()))?,
+            None => return Err(Error::InvalidDaySpec(input.to_string())),
+        } as i8;
+
+        Ok(match dir {
+            true => DaySpec::FirstOnOrAfter(weekday, day),
+            false => DaySpec::LastOnOrBefore(weekday, day),
+        })
+    }
+}
+
 impl Weekday {
     fn calculate(year: i64, month: Month, day: i8) -> Weekday {
         let m = month as i64;
@@ -921,39 +958,6 @@ impl LineParser {
         }
     }
 
-    fn parse_dayspec(&self, input: &str) -> Result<DaySpec, Error> {
-        // Parse the field as a number if it vaguely resembles one.
-        if input.chars().all(|c| c.is_ascii_digit()) {
-            return Ok(DaySpec::Ordinal(input.parse().unwrap()));
-        }
-        // Check if it starts with ‘last’, and trim off the first four bytes if it does
-        else if let Some(remainder) = input.strip_prefix("last") {
-            let weekday = remainder.parse()?;
-            return Ok(DaySpec::Last(weekday));
-        }
-
-        let weekday = match input.get(..3) {
-            Some(wd) => Weekday::from_str(wd)?,
-            None => return Err(Error::InvalidDaySpec(input.to_string())),
-        };
-
-        let dir = match input.get(3..5) {
-            Some(">=") => true,
-            Some("<=") => false,
-            _ => return Err(Error::InvalidDaySpec(input.to_string())),
-        };
-
-        let day = match input.get(5..) {
-            Some(day) => u8::from_str(day).map_err(|_| Error::InvalidDaySpec(input.to_string()))?,
-            None => return Err(Error::InvalidDaySpec(input.to_string())),
-        } as i8;
-
-        Ok(match dir {
-            true => DaySpec::FirstOnOrAfter(weekday, day),
-            false => DaySpec::LastOnOrBefore(weekday, day),
-        })
-    }
-
     fn parse_rule<'a>(&self, input: &'a str) -> Result<Rule<'a>, Error> {
         if let Some(caps) = self.rule_line.captures(input) {
             let name = caps.name("name").unwrap().as_str();
@@ -977,7 +981,7 @@ impl LineParser {
             }
 
             let month = caps.name("in").unwrap().as_str().parse()?;
-            let day = self.parse_dayspec(caps.name("on").unwrap().as_str())?;
+            let day = DaySpec::from_str(caps.name("on").unwrap().as_str())?;
             let time = self.parse_timespec_and_type(caps.name("at").unwrap().as_str())?;
             let time_to_add = self.parse_timespec(caps.name("save").unwrap().as_str())?;
             let letters = match caps.name("letters").unwrap().as_str() {
@@ -1033,13 +1037,13 @@ impl LineParser {
             (Some(y), Some(m), Some(d), Some(t)) => Some(ChangeTime::UntilTime(
                 y.as_str().parse()?,
                 m.as_str().parse()?,
-                self.parse_dayspec(d.as_str())?,
+                DaySpec::from_str(d.as_str())?,
                 self.parse_timespec_and_type(t.as_str())?,
             )),
             (Some(y), Some(m), Some(d), _) => Some(ChangeTime::UntilDay(
                 y.as_str().parse()?,
                 m.as_str().parse()?,
-                self.parse_dayspec(d.as_str())?,
+                DaySpec::from_str(d.as_str())?,
             )),
             (Some(y), Some(m), _, _) => Some(ChangeTime::UntilMonth(
                 y.as_str().parse()?,
