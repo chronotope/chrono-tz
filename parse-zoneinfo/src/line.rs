@@ -74,7 +74,6 @@ use std::str::FromStr;
 use regex::{Captures, Regex};
 
 pub struct LineParser {
-    rule_line: Regex,
     zone_line: Regex,
     continuation_line: Regex,
     link_line: Regex,
@@ -131,23 +130,6 @@ impl std::error::Error for Error {}
 impl Default for LineParser {
     fn default() -> Self {
         LineParser {
-            rule_line: Regex::new(
-                r##"(?x) ^
-                Rule \s+
-                ( ?P<name>    \S+)  \s+
-                ( ?P<from>    \S+)  \s+
-                ( ?P<to>      \S+)  \s+
-                ( ?P<type>    \S+)  \s+
-                ( ?P<in>      \S+)  \s+
-                ( ?P<on>      \S+)  \s+
-                ( ?P<at>      \S+)  \s+
-                ( ?P<save>    \S+)  \s+
-                ( ?P<letters> \S+)  \s*
-                (\#.*)?
-            $ "##,
-            )
-            .unwrap(),
-
             zone_line: Regex::new(
                 r##"(?x) ^
                 Zone \s+
@@ -935,6 +917,58 @@ impl TimeType {
     }
 }
 
+enum RuleState<'a> {
+    Start,
+    Name,
+    FromYear {
+        name: &'a str,
+    },
+    ToYear {
+        name: &'a str,
+        from_year: Year,
+    },
+    Type {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+    },
+    Month {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+    },
+    Day {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+        month: Month,
+    },
+    Time {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+        month: Month,
+        day: DaySpec,
+    },
+    TimeToAdd {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+        month: Month,
+        day: DaySpec,
+        time: TimeSpecAndType,
+    },
+    Letters {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+        month: Month,
+        day: DaySpec,
+        time: TimeSpecAndType,
+        time_to_add: TimeSpec,
+    },
+}
+
 impl LineParser {
     #[deprecated]
     pub fn new() -> Self {
@@ -942,49 +976,145 @@ impl LineParser {
     }
 
     fn parse_rule<'a>(&self, input: &'a str) -> Result<Rule<'a>, Error> {
-        if let Some(caps) = self.rule_line.captures(input) {
-            let name = caps.name("name").unwrap().as_str();
-
-            let from_year = caps.name("from").unwrap().as_str().parse()?;
-
-            // The end year can be ‘only’ to indicate that this rule only
-            // takes place on that year.
-            let to_year = match caps.name("to").unwrap().as_str() {
-                "only" => None,
-                to => Some(to.parse()?),
-            };
-
-            // According to the spec, the only value inside the ‘type’ column
-            // should be “-”, so throw an error if it isn’t. (It only exists
-            // for compatibility with old versions that used to contain year
-            // types.) Sometimes “‐”, a Unicode hyphen, is used as well.
-            let t = caps.name("type").unwrap().as_str();
-            if t != "-" && t != "\u{2010}" {
-                return Err(Error::TypeColumnContainedNonHyphen(t.to_string()));
+        let mut state = RuleState::Start;
+        // Not handled: quoted strings, parts of which are allowed to contain whitespace.
+        // Extra complexity does not seem worth it while they don't seem to be used in practice.
+        for part in input.split_ascii_whitespace() {
+            if part.starts_with('#') {
+                continue;
             }
 
-            let month = caps.name("in").unwrap().as_str().parse()?;
-            let day = DaySpec::from_str(caps.name("on").unwrap().as_str())?;
-            let time = TimeSpecAndType::from_str(caps.name("at").unwrap().as_str())?;
-            let time_to_add = TimeSpec::from_str(caps.name("save").unwrap().as_str())?;
-            let letters = match caps.name("letters").unwrap().as_str() {
-                "-" => None,
-                l => Some(l),
+            state = match (state, part) {
+                (RuleState::Start, "Rule") => RuleState::Name,
+                (RuleState::Name, name) => RuleState::FromYear { name },
+                (RuleState::FromYear { name }, year) => RuleState::ToYear {
+                    name,
+                    from_year: Year::from_str(year)?,
+                },
+                (RuleState::ToYear { name, from_year }, year) => RuleState::Type {
+                    name,
+                    from_year,
+                    // The end year can be ‘only’ to indicate that this rule only
+                    // takes place on that year.
+                    to_year: match year {
+                        "only" => None,
+                        _ => Some(Year::from_str(year)?),
+                    },
+                },
+                // According to the spec, the only value inside the ‘type’ column
+                // should be “-”, so throw an error if it isn’t. (It only exists
+                // for compatibility with old versions that used to contain year
+                // types.) Sometimes “‐”, a Unicode hyphen, is used as well.
+                (
+                    RuleState::Type {
+                        name,
+                        from_year,
+                        to_year,
+                    },
+                    "-" | "\u{2010}",
+                ) => RuleState::Month {
+                    name,
+                    from_year,
+                    to_year,
+                },
+                (RuleState::Type { .. }, _) => {
+                    return Err(Error::TypeColumnContainedNonHyphen(part.to_string()))
+                }
+                (
+                    RuleState::Month {
+                        name,
+                        from_year,
+                        to_year,
+                    },
+                    month,
+                ) => RuleState::Day {
+                    name,
+                    from_year,
+                    to_year,
+                    month: Month::from_str(month)?,
+                },
+                (
+                    RuleState::Day {
+                        name,
+                        from_year,
+                        to_year,
+                        month,
+                    },
+                    day,
+                ) => RuleState::Time {
+                    name,
+                    from_year,
+                    to_year,
+                    month,
+                    day: DaySpec::from_str(day)?,
+                },
+                (
+                    RuleState::Time {
+                        name,
+                        from_year,
+                        to_year,
+                        month,
+                        day,
+                    },
+                    time,
+                ) => RuleState::TimeToAdd {
+                    name,
+                    from_year,
+                    to_year,
+                    month,
+                    day,
+                    time: TimeSpecAndType::from_str(time)?,
+                },
+                (
+                    RuleState::TimeToAdd {
+                        name,
+                        from_year,
+                        to_year,
+                        month,
+                        day,
+                        time,
+                    },
+                    time_to_add,
+                ) => RuleState::Letters {
+                    name,
+                    from_year,
+                    to_year,
+                    month,
+                    day,
+                    time,
+                    time_to_add: TimeSpec::from_str(time_to_add)?,
+                },
+                (
+                    RuleState::Letters {
+                        name,
+                        from_year,
+                        to_year,
+                        month,
+                        day,
+                        time,
+                        time_to_add,
+                    },
+                    letters,
+                ) => {
+                    return Ok(Rule {
+                        name,
+                        from_year,
+                        to_year,
+                        month,
+                        day,
+                        time,
+                        time_to_add,
+                        letters: match letters {
+                            "-" => None,
+                            _ => Some(letters),
+                        },
+                    })
+                }
+                _ => return Err(Error::NotParsedAsRuleLine),
             };
-
-            Ok(Rule {
-                name,
-                from_year,
-                to_year,
-                month,
-                day,
-                time,
-                time_to_add,
-                letters,
-            })
-        } else {
-            Err(Error::NotParsedAsRuleLine)
         }
+
+        Err(Error::NotParsedAsRuleLine)
     }
 
     fn saving_from_str<'a>(&self, input: &'a str) -> Result<Saving<'a>, Error> {
@@ -1084,9 +1214,8 @@ impl LineParser {
             Some(caps) => return self.zoneinfo_from_captures(caps).map(Line::Continuation),
         }
 
-        match self.parse_rule(input) {
-            Err(Error::NotParsedAsRuleLine) => {}
-            result => return result.map(Line::Rule),
+        if input.starts_with("Rule") {
+            return Ok(Line::Rule(self.parse_rule(input)?));
         }
 
         match self.parse_link(input) {
