@@ -887,13 +887,15 @@ pub enum Line<'a> {
     Link(Link<'a>),
 }
 
-fn parse_time_type(c: &str) -> Option<TimeType> {
-    Some(match c {
-        "w" => TimeType::Wall,
-        "s" => TimeType::Standard,
-        "u" | "g" | "z" => TimeType::UTC,
-        _ => return None,
-    })
+impl TimeType {
+    fn from_char(c: &str) -> Option<Self> {
+        Some(match c {
+            "w" => Self::Wall,
+            "s" => Self::Standard,
+            "u" | "g" | "z" => Self::UTC,
+            _ => return None,
+        })
+    }
 }
 
 impl LineParser {
@@ -920,7 +922,7 @@ impl LineParser {
             let minute: i8 = caps.name("minute").unwrap().as_str().parse().unwrap();
             let flag = caps
                 .name("flag")
-                .and_then(|c| parse_time_type(&c.as_str()[0..1]))
+                .and_then(|c| TimeType::from_char(&c.as_str()[0..1]))
                 .unwrap_or(TimeType::Wall);
 
             Ok(TimeSpecAndType(
@@ -938,7 +940,7 @@ impl LineParser {
             let second: i8 = caps.name("second").unwrap().as_str().parse().unwrap();
             let flag = caps
                 .name("flag")
-                .and_then(|c| parse_time_type(&c.as_str()[0..1]))
+                .and_then(|c| TimeType::from_char(&c.as_str()[0..1]))
                 .unwrap_or(TimeType::Wall);
 
             Ok(TimeSpecAndType(
