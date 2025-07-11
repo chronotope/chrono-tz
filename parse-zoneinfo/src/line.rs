@@ -1251,6 +1251,25 @@ pub struct Zone<'a> {
     pub info: ZoneInfo<'a>,
 }
 
+impl<'a> Zone<'a> {
+    fn from_str(input: &'a str) -> Result<Self, Error> {
+        let mut iter = input.split_ascii_whitespace();
+        if iter.next() != Some("Zone") {
+            return Err(Error::NotParsedAsZoneLine);
+        }
+
+        let name = match iter.next() {
+            Some(name) => name,
+            None => return Err(Error::NotParsedAsZoneLine),
+        };
+
+        Ok(Self {
+            name,
+            info: ZoneInfo::from_iter(iter)?,
+        })
+    }
+}
+
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct Link<'a> {
     pub existing: &'a str,
@@ -1288,23 +1307,6 @@ impl LineParser {
         Self::default()
     }
 
-    fn parse_zone<'a>(&self, input: &'a str) -> Result<Zone<'a>, Error> {
-        let mut iter = input.split_ascii_whitespace();
-        if iter.next() != Some("Zone") {
-            return Err(Error::NotParsedAsZoneLine);
-        }
-
-        let name = match iter.next() {
-            Some(name) => name,
-            None => return Err(Error::NotParsedAsZoneLine),
-        };
-
-        Ok(Zone {
-            name,
-            info: ZoneInfo::from_iter(iter)?,
-        })
-    }
-
     fn parse_link<'a>(&self, input: &'a str) -> Result<Link<'a>, Error> {
         if let Some(caps) = self.link_line.captures(input) {
             let target = caps.name("target").unwrap().as_str();
@@ -1326,7 +1328,7 @@ impl LineParser {
         }
 
         if input.starts_with("Zone") {
-            return Ok(Line::Zone(self.parse_zone(input)?));
+            return Ok(Line::Zone(Zone::from_str(input)?));
         }
 
         if input.starts_with(&[' ', '\t'][..]) {
@@ -1568,8 +1570,7 @@ mod tests {
     #[test]
     fn negative_offsets() {
         static LINE: &str = "Zone    Europe/London   -0:01:15 -  LMT 1847 Dec  1  0:00s";
-        let parser = LineParser::default();
-        let zone = parser.parse_zone(LINE).unwrap();
+        let zone = Zone::from_str(LINE).unwrap();
         assert_eq!(
             zone.info.utc_offset,
             TimeSpec::HoursMinutesSeconds(0, -1, -15)
@@ -1580,8 +1581,7 @@ mod tests {
     fn negative_offsets_2() {
         static LINE: &str =
             "Zone        Europe/Madrid   -0:14:44 -      LMT     1901 Jan  1  0:00s";
-        let parser = LineParser::default();
-        let zone = parser.parse_zone(LINE).unwrap();
+        let zone = Zone::from_str(LINE).unwrap();
         assert_eq!(
             zone.info.utc_offset,
             TimeSpec::HoursMinutesSeconds(0, -14, -44)
@@ -1591,8 +1591,7 @@ mod tests {
     #[test]
     fn negative_offsets_3() {
         static LINE: &str = "Zone America/Danmarkshavn -1:14:40 -    LMT 1916 Jul 28";
-        let parser = LineParser::default();
-        let zone = parser.parse_zone(LINE).unwrap();
+        let zone = Zone::from_str(LINE).unwrap();
         assert_eq!(
             zone.info.utc_offset,
             TimeSpec::HoursMinutesSeconds(-1, -14, -40)
