@@ -826,6 +826,23 @@ pub enum Saving<'a> {
     Multiple(&'a str),
 }
 
+impl<'a> Saving<'a> {
+    fn from_str(input: &'a str) -> Result<Self, Error> {
+        if input == "-" {
+            Ok(Self::NoSaving)
+        } else if input
+            .chars()
+            .all(|c| c == '-' || c == '_' || c.is_alphabetic())
+        {
+            Ok(Self::Multiple(input))
+        } else if let Ok(time) = TimeSpec::from_str(input) {
+            Ok(Self::OneOff(time))
+        } else {
+            Err(Error::CouldNotParseSaving(input.to_string()))
+        }
+    }
+}
+
 /// A **rule** definition line.
 ///
 /// According to the `zic(8)` man page, a rule line has this form, along with
@@ -1119,24 +1136,9 @@ impl LineParser {
         Self::default()
     }
 
-    fn saving_from_str<'a>(&self, input: &'a str) -> Result<Saving<'a>, Error> {
-        if input == "-" {
-            Ok(Saving::NoSaving)
-        } else if input
-            .chars()
-            .all(|c| c == '-' || c == '_' || c.is_alphabetic())
-        {
-            Ok(Saving::Multiple(input))
-        } else if let Ok(time) = TimeSpec::from_str(input) {
-            Ok(Saving::OneOff(time))
-        } else {
-            Err(Error::CouldNotParseSaving(input.to_string()))
-        }
-    }
-
     fn zoneinfo_from_captures<'a>(&self, caps: Captures<'a>) -> Result<ZoneInfo<'a>, Error> {
         let utc_offset = TimeSpec::from_str(caps.name("gmtoff").unwrap().as_str())?;
-        let saving = self.saving_from_str(caps.name("rulessave").unwrap().as_str())?;
+        let saving = Saving::from_str(caps.name("rulessave").unwrap().as_str())?;
         let format = caps.name("format").unwrap().as_str();
 
         // The year, month, day, and time fields are all optional, meaning
