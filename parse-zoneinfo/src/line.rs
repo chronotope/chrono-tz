@@ -604,6 +604,17 @@ impl TimeSpec {
     }
 }
 
+impl FromStr for TimeSpec {
+    type Err = Error;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        match TimeSpecAndType::from_str(input)? {
+            TimeSpecAndType(spec, TimeType::Wall) => Ok(spec),
+            TimeSpecAndType(_, _) => Err(Error::NonWallClockInTimeSpec(input.to_string())),
+        }
+    }
+}
+
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum TimeType {
     Wall,
@@ -931,13 +942,6 @@ impl LineParser {
         Self::default()
     }
 
-    fn parse_timespec(&self, input: &str) -> Result<TimeSpec, Error> {
-        match TimeSpecAndType::from_str(input)? {
-            TimeSpecAndType(spec, TimeType::Wall) => Ok(spec),
-            TimeSpecAndType(_, _) => Err(Error::NonWallClockInTimeSpec(input.to_string())),
-        }
-    }
-
     fn parse_rule<'a>(&self, input: &'a str) -> Result<Rule<'a>, Error> {
         if let Some(caps) = self.rule_line.captures(input) {
             let name = caps.name("name").unwrap().as_str();
@@ -963,7 +967,7 @@ impl LineParser {
             let month = caps.name("in").unwrap().as_str().parse()?;
             let day = DaySpec::from_str(caps.name("on").unwrap().as_str())?;
             let time = TimeSpecAndType::from_str(caps.name("at").unwrap().as_str())?;
-            let time_to_add = self.parse_timespec(caps.name("save").unwrap().as_str())?;
+            let time_to_add = TimeSpec::from_str(caps.name("save").unwrap().as_str())?;
             let letters = match caps.name("letters").unwrap().as_str() {
                 "-" => None,
                 l => Some(l),
@@ -992,7 +996,7 @@ impl LineParser {
             .all(|c| c == '-' || c == '_' || c.is_alphabetic())
         {
             Ok(Saving::Multiple(input))
-        } else if let Ok(time) = self.parse_timespec(input) {
+        } else if let Ok(time) = TimeSpec::from_str(input) {
             Ok(Saving::OneOff(time))
         } else {
             Err(Error::CouldNotParseSaving(input.to_string()))
@@ -1000,7 +1004,7 @@ impl LineParser {
     }
 
     fn zoneinfo_from_captures<'a>(&self, caps: Captures<'a>) -> Result<ZoneInfo<'a>, Error> {
-        let utc_offset = self.parse_timespec(caps.name("gmtoff").unwrap().as_str())?;
+        let utc_offset = TimeSpec::from_str(caps.name("gmtoff").unwrap().as_str())?;
         let saving = self.saving_from_str(caps.name("rulessave").unwrap().as_str())?;
         let format = caps.name("format").unwrap().as_str();
 
