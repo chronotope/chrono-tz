@@ -16,8 +16,7 @@
 //! ```
 //! use parse_zoneinfo::line::*;
 //!
-//! let parser = LineParser::default();
-//! let line = parser.parse_str("Rule  EU  1977    1980    -   Apr Sun>=1   1:00u  1:00    S");
+//! let line = Line::new("Rule  EU  1977    1980    -   Apr Sun>=1   1:00u  1:00    S");
 //!
 //! assert_eq!(line, Ok(Line::Rule(Rule {
 //!     name:         "EU",
@@ -36,8 +35,7 @@
 //! ```
 //! use parse_zoneinfo::line::*;
 //!
-//! let parser = LineParser::default();
-//! let line = parser.parse_str("Zone  Australia/Adelaide  9:30  Aus  AC%sT  1971 Oct 31  2:00:00");
+//! let line = Line::new("Zone  Australia/Adelaide  9:30  Aus  AC%sT  1971 Oct 31  2:00:00");
 //!
 //! assert_eq!(line, Ok(Line::Zone(Zone {
 //!     name: "Australia/Adelaide",
@@ -60,8 +58,7 @@
 //! ```
 //! use parse_zoneinfo::line::*;
 //!
-//! let parser = LineParser::default();
-//! let line = parser.parse_str("Link  Europe/Istanbul  Asia/Istanbul");
+//! let line = Line::new("Link  Europe/Istanbul  Asia/Istanbul");
 //! assert_eq!(line, Ok(Line::Link(Link {
 //!     existing:  "Europe/Istanbul",
 //!     new:       "Asia/Istanbul",
@@ -70,9 +67,6 @@
 
 use std::fmt;
 use std::str::FromStr;
-
-#[derive(Clone, Copy)]
-pub struct LineParser {}
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Error {
@@ -120,12 +114,6 @@ impl fmt::Display for Error {
 }
 
 impl std::error::Error for Error {}
-
-impl Default for LineParser {
-    fn default() -> Self {
-        LineParser {}
-    }
-}
 
 /// A **year** definition field.
 ///
@@ -1282,26 +1270,10 @@ pub enum Line<'a> {
     Link(Link<'a>),
 }
 
-impl TimeType {
-    fn from_char(c: char) -> Option<Self> {
-        Some(match c {
-            'w' => Self::Wall,
-            's' => Self::Standard,
-            'u' | 'g' | 'z' => Self::UTC,
-            _ => return None,
-        })
-    }
-}
-
-impl LineParser {
-    #[deprecated]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
+impl<'a> Line<'a> {
     /// Attempt to parse this line, returning a `Line` depending on what
     /// type of line it was, or an `Error` if it couldn't be parsed.
-    pub fn parse_str<'a>(&self, input: &'a str) -> Result<Line<'a>, Error> {
+    pub fn new(input: &'a str) -> Result<Line<'a>, Error> {
         let input = match input.split_once('#') {
             Some((input, _)) => input,
             None => input,
@@ -1330,6 +1302,17 @@ impl LineParser {
         }
 
         Err(Error::InvalidLineType(input.to_string()))
+    }
+}
+
+impl TimeType {
+    fn from_char(c: char) -> Option<Self> {
+        Some(match c {
+            'w' => Self::Wall,
+            's' => Self::Standard,
+            'u' | 'g' | 'z' => Self::UTC,
+            _ => return None,
+        })
     }
 }
 
@@ -1471,8 +1454,7 @@ mod tests {
         ($name:ident: $input:expr => $result:expr) => {
             #[test]
             fn $name() {
-                let parser = LineParser::default();
-                assert_eq!(parser.parse_str($input), $result);
+                assert_eq!(Line::new($input), $result);
             }
         };
     }

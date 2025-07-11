@@ -1,8 +1,6 @@
 extern crate parse_zoneinfo;
 
-use parse_zoneinfo::line::{
-    ChangeTime, DaySpec, Line, LineParser, Month, TimeSpec, TimeType, Weekday, Year,
-};
+use parse_zoneinfo::line::{ChangeTime, DaySpec, Line, Month, TimeSpec, TimeType, Weekday, Year};
 use parse_zoneinfo::table::{Format, RuleInfo, Saving, Table, TableBuilder, ZoneInfo};
 use parse_zoneinfo::transitions::{FixedTimespan, FixedTimespanSet, TableTransitions};
 
@@ -807,9 +805,8 @@ Zone    Asia/Dushanbe   4:35:12 -   LMT 1924 May  2
 "#;
 
     let mut table = TableBuilder::new();
-    let parser = LineParser::default();
     for line in ZONEINFO.lines() {
-        let line = parser.parse_str(line).unwrap();
+        let line = Line::new(line).unwrap();
         match line {
             Line::Zone(zone) => table.add_zone_line(zone).unwrap(),
             Line::Continuation(cont) => table.add_continuation_line(cont).unwrap(),

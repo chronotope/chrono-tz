@@ -8,7 +8,7 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 
-use parse_zoneinfo::line::{Line, LineParser};
+use parse_zoneinfo::line::Line;
 use parse_zoneinfo::structure::{Child, Structure};
 use parse_zoneinfo::table::{Table, TableBuilder};
 use parse_zoneinfo::transitions::FixedTimespan;
@@ -484,7 +484,6 @@ fn detect_iana_db_version() -> String {
 }
 
 pub fn main(dir: &Path, _filter: bool, _uncased: bool) {
-    let parser = LineParser::default();
     let mut table = TableBuilder::new();
 
     let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::new()));
@@ -494,7 +493,7 @@ pub fn main(dir: &Path, _filter: bool, _uncased: bool) {
             File::open(&path).unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
         for line in BufReader::new(file).lines() {
             let line = strip_comments(line.unwrap());
-            match parser.parse_str(&line).unwrap() {
+            match Line::new(&line).unwrap() {
                 Line::Zone(zone) => table.add_zone_line(zone).unwrap(),
                 Line::Continuation(cont) => table.add_continuation_line(cont).unwrap(),
                 Line::Rule(rule) => table.add_rule_line(rule).unwrap(),
