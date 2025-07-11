@@ -323,9 +323,9 @@ mod tests {
             .unwrap()
             .with_timezone(&Adelaide);
         assert_eq!(dt.to_string(), "2000-09-01 22:00:15 ACST");
-        assert_eq!(format!("{:?}", dt), "2000-09-01T22:00:15ACST");
+        assert_eq!(format!("{dt:?}"), "2000-09-01T22:00:15ACST");
         assert_eq!(dt.to_rfc3339(), "2000-09-01T22:00:15+09:30");
-        assert_eq!(format!("{}", dt), "2000-09-01 22:00:15 ACST");
+        assert_eq!(format!("{dt}"), "2000-09-01 22:00:15 ACST");
     }
 
     #[test]
@@ -480,7 +480,7 @@ mod tests {
 
     #[test]
     fn test_display() {
-        assert_eq!(format!("{}", London), "Europe/London");
+        assert_eq!(format!("{London}"), "Europe/London");
         assert_eq!(format!("{}", Tz::Africa__Abidjan), "Africa/Abidjan");
         assert_eq!(format!("{}", Tz::UTC), "UTC");
         assert_eq!(format!("{}", Tz::Zulu), "Zulu");
@@ -504,15 +504,13 @@ mod tests {
 
     #[test]
     fn test_numeric_names() {
-        let dt = Scoresbysund
-            .with_ymd_and_hms(2024, 05, 01, 0, 0, 0)
-            .unwrap();
+        let dt = Scoresbysund.with_ymd_and_hms(2024, 5, 1, 0, 0, 0).unwrap();
         assert_eq!(format!("{}", dt.offset()), "-01");
         assert_eq!(format!("{:?}", dt.offset()), "-01");
-        let dt = Casey.with_ymd_and_hms(2022, 11, 01, 0, 0, 0).unwrap();
+        let dt = Casey.with_ymd_and_hms(2022, 11, 1, 0, 0, 0).unwrap();
         assert_eq!(format!("{}", dt.offset()), "+11");
         assert_eq!(format!("{:?}", dt.offset()), "+11");
-        let dt = Addis_Ababa.with_ymd_and_hms(1937, 02, 01, 0, 0, 0).unwrap();
+        let dt = Addis_Ababa.with_ymd_and_hms(1937, 2, 1, 0, 0, 0).unwrap();
         assert_eq!(format!("{}", dt.offset()), "+0245");
         assert_eq!(format!("{:?}", dt.offset()), "+0245");
     }

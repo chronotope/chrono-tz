@@ -39,7 +39,7 @@ impl Offset for FixedTimespan {
 impl Display for FixedTimespan {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         if let Some(name) = self.name {
-            return write!(f, "{}", name);
+            return write!(f, "{name}");
         }
         let offset = self.utc_offset + self.dst_offset;
         let (sign, off) = if offset < 0 {
@@ -59,9 +59,9 @@ impl Display for FixedTimespan {
         );
 
         f.write_char(sign)?;
-        write!(f, "{:02}", hours)?;
+        write!(f, "{hours:02}")?;
         if mins != 0 {
-            write!(f, "{:02}", mins)?;
+            write!(f, "{mins:02}")?;
         }
         Ok(())
     }

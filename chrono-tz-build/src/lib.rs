@@ -47,12 +47,8 @@ fn format_rest(rest: Vec<(i64, FixedTimespan)>) -> String {
         };
         ret.push_str(&format!(
             "                    ({start}, FixedTimespan {{ \
-             utc_offset: {utc}, dst_offset: {dst}, name: {name:?} \
+             utc_offset: {utc_offset}, dst_offset: {dst_offset}, name: {timespan_name:?} \
              }}),\n",
-            start = start,
-            utc = utc_offset,
-            dst = dst_offset,
-            name = timespan_name,
         ));
     }
     ret.push_str("                ]");
@@ -114,12 +110,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table) -> io::Result<()
     writeln!(timezone_file, "pub enum Tz {{")?;
     for zone in &zones {
         let zone_name = convert_bad_chars(zone);
-        writeln!(
-            timezone_file,
-            "    /// {raw_zone_name}\n    {zone},",
-            zone = zone_name,
-            raw_zone_name = zone
-        )?;
+        writeln!(timezone_file, "    /// {zone}\n    {zone_name},")?;
     }
     writeln!(timezone_file, "}}")?;
 
@@ -181,12 +172,7 @@ impl FromStr for Tz {{
     )?;
     for zone in &zones {
         let zone_name = convert_bad_chars(zone);
-        writeln!(
-            timezone_file,
-            "            Tz::{zone} => \"{raw_zone_name}\",",
-            zone = zone_name,
-            raw_zone_name = zone
-        )?;
+        writeln!(timezone_file, "            Tz::{zone_name} => \"{zone}\",")?;
     }
     writeln!(
         timezone_file,
@@ -307,11 +293,7 @@ fn write_directory_file(directory_file: &mut File, table: &Table, version: &str)
         .collect::<BTreeSet<_>>();
     for zone in zones {
         let zone = convert_bad_chars(zone);
-        writeln!(
-            directory_file,
-            "pub const {name} : Tz = Tz::{name};",
-            name = zone
-        )?;
+        writeln!(directory_file, "pub const {zone} : Tz = Tz::{zone};")?;
     }
     writeln!(directory_file)?;
 
@@ -321,17 +303,13 @@ fn write_directory_file(directory_file: &mut File, table: &Table, version: &str)
             continue;
         }
         let module_name = convert_bad_chars(entry.name);
-        writeln!(directory_file, "pub mod {name} {{", name = module_name)?;
+        writeln!(directory_file, "pub mod {module_name} {{")?;
         writeln!(directory_file, "    use crate::timezones::Tz;\n",)?;
         for child in entry.children {
             match child {
                 Child::Submodule(name) => {
                     let submodule_name = convert_bad_chars(name);
-                    writeln!(
-                        directory_file,
-                        "    pub mod {name} {{",
-                        name = submodule_name
-                    )?;
+                    writeln!(directory_file, "    pub mod {submodule_name} {{")?;
                     writeln!(directory_file, "        use crate::timezones::Tz;\n",)?;
                     let full_name = entry.name.to_string() + "/" + name;
                     for entry in table.structure() {
@@ -344,10 +322,7 @@ fn write_directory_file(directory_file: &mut File, table: &Table, version: &str)
                                     Child::TimeZone(name) => {
                                         let converted_name = convert_bad_chars(name);
                                         writeln!(directory_file,
-                                    "        pub const {name} : Tz = Tz::{module_name}__{submodule_name}__{name};",
-                                            module_name = module_name,
-                                            submodule_name = submodule_name,
-                                            name = converted_name,
+                                    "        pub const {converted_name} : Tz = Tz::{module_name}__{submodule_name}__{converted_name};",
                                         )?;
                                     }
                                 }
@@ -360,9 +335,7 @@ fn write_directory_file(directory_file: &mut File, table: &Table, version: &str)
                     let name = convert_bad_chars(name);
                     writeln!(
                         directory_file,
-                        "    pub const {name} : Tz = Tz::{module_name}__{name};",
-                        module_name = module_name,
-                        name = name
+                        "    pub const {name} : Tz = Tz::{module_name}__{name};"
                     )?;
                 }
             }
@@ -411,15 +384,13 @@ mod filter {
                 match Regex::new(val) {
                     Ok(regex) => Some(regex),
                     Err(err) => panic!(
-                        "The value '{:?}' for environment variable {} is not a valid regex, err={}",
-                        val, FILTER_ENV_VAR_NAME, err
+                        "The value '{val:?}' for environment variable {FILTER_ENV_VAR_NAME} is not a valid regex, err={err}"
                     ),
                 }
             }
             Err(env::VarError::NotPresent) => None,
             Err(env::VarError::NotUnicode(s)) => panic!(
-                "The value '{:?}' for environment variable {} is not valid Unicode",
-                s, FILTER_ENV_VAR_NAME
+                "The value '{s:?}' for environment variable {FILTER_ENV_VAR_NAME} is not valid Unicode"
             ),
         }
     }
@@ -434,7 +405,7 @@ mod filter {
         if let (Some(p1), Some(p2), Some(_), None) =
             (parts.next(), parts.next(), parts.next(), parts.next())
         {
-            keep.insert(format!("{}/{}", p1, p2));
+            keep.insert(format!("{p1}/{p2}"));
         }
 
         keep.insert(new_value.to_string());
