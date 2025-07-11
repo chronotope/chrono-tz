@@ -859,123 +859,8 @@ pub struct Rule<'a> {
     pub letters: Option<&'a str>,
 }
 
-/// A **zone** definition line.
-///
-/// According to the `zic(8)` man page, a zone line has this form, along with
-/// an example:
-///
-/// ```text
-///     Zone  NAME                GMTOFF  RULES/SAVE  FORMAT  [UNTILYEAR [MONTH [DAY [TIME]]]]
-///     Zone  Australia/Adelaide  9:30    Aus         AC%sT   1971       Oct    31   2:00
-/// ```
-///
-/// The opening `Zone` identifier is ignored, and the last four columns are
-/// all optional, with their variants consolidated into a `ChangeTime`.
-///
-/// The `Rules/Save` column, if it contains a value, *either* contains the
-/// name of the rules to use for this zone, *or* contains a one-off period of
-/// time to save.
-///
-/// A continuation rule line contains all the same fields apart from the
-/// `Name` column and the opening `Zone` identifier.
-#[derive(PartialEq, Debug, Copy, Clone)]
-pub struct Zone<'a> {
-    /// The name of the time zone.
-    pub name: &'a str,
-    /// All the other fields of info.
-    pub info: ZoneInfo<'a>,
-}
-
-#[derive(PartialEq, Debug, Copy, Clone)]
-pub struct Link<'a> {
-    pub existing: &'a str,
-    pub new: &'a str,
-}
-
-#[derive(PartialEq, Debug, Copy, Clone)]
-pub enum Line<'a> {
-    /// This line is empty.
-    Space,
-    /// This line contains a **zone** definition.
-    Zone(Zone<'a>),
-    /// This line contains a **continuation** of a zone definition.
-    Continuation(ZoneInfo<'a>),
-    /// This line contains a **rule** definition.
-    Rule(Rule<'a>),
-    /// This line contains a **link** definition.
-    Link(Link<'a>),
-}
-
-impl TimeType {
-    fn from_char(c: char) -> Option<Self> {
-        Some(match c {
-            'w' => Self::Wall,
-            's' => Self::Standard,
-            'u' | 'g' | 'z' => Self::UTC,
-            _ => return None,
-        })
-    }
-}
-
-enum RuleState<'a> {
-    Start,
-    Name,
-    FromYear {
-        name: &'a str,
-    },
-    ToYear {
-        name: &'a str,
-        from_year: Year,
-    },
-    Type {
-        name: &'a str,
-        from_year: Year,
-        to_year: Option<Year>,
-    },
-    Month {
-        name: &'a str,
-        from_year: Year,
-        to_year: Option<Year>,
-    },
-    Day {
-        name: &'a str,
-        from_year: Year,
-        to_year: Option<Year>,
-        month: Month,
-    },
-    Time {
-        name: &'a str,
-        from_year: Year,
-        to_year: Option<Year>,
-        month: Month,
-        day: DaySpec,
-    },
-    TimeToAdd {
-        name: &'a str,
-        from_year: Year,
-        to_year: Option<Year>,
-        month: Month,
-        day: DaySpec,
-        time: TimeSpecAndType,
-    },
-    Letters {
-        name: &'a str,
-        from_year: Year,
-        to_year: Option<Year>,
-        month: Month,
-        day: DaySpec,
-        time: TimeSpecAndType,
-        time_to_add: TimeSpec,
-    },
-}
-
-impl LineParser {
-    #[deprecated]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    fn parse_rule<'a>(&self, input: &'a str) -> Result<Rule<'a>, Error> {
+impl<'a> Rule<'a> {
+    fn from_str(input: &'a str) -> Result<Self, Error> {
         let mut state = RuleState::Start;
         // Not handled: quoted strings, parts of which are allowed to contain whitespace.
         // Extra complexity does not seem worth it while they don't seem to be used in practice.
@@ -1096,7 +981,7 @@ impl LineParser {
                     },
                     letters,
                 ) => {
-                    return Ok(Rule {
+                    return Ok(Self {
                         name,
                         from_year,
                         to_year,
@@ -1115,6 +1000,123 @@ impl LineParser {
         }
 
         Err(Error::NotParsedAsRuleLine)
+    }
+}
+
+enum RuleState<'a> {
+    Start,
+    Name,
+    FromYear {
+        name: &'a str,
+    },
+    ToYear {
+        name: &'a str,
+        from_year: Year,
+    },
+    Type {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+    },
+    Month {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+    },
+    Day {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+        month: Month,
+    },
+    Time {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+        month: Month,
+        day: DaySpec,
+    },
+    TimeToAdd {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+        month: Month,
+        day: DaySpec,
+        time: TimeSpecAndType,
+    },
+    Letters {
+        name: &'a str,
+        from_year: Year,
+        to_year: Option<Year>,
+        month: Month,
+        day: DaySpec,
+        time: TimeSpecAndType,
+        time_to_add: TimeSpec,
+    },
+}
+
+/// A **zone** definition line.
+///
+/// According to the `zic(8)` man page, a zone line has this form, along with
+/// an example:
+///
+/// ```text
+///     Zone  NAME                GMTOFF  RULES/SAVE  FORMAT  [UNTILYEAR [MONTH [DAY [TIME]]]]
+///     Zone  Australia/Adelaide  9:30    Aus         AC%sT   1971       Oct    31   2:00
+/// ```
+///
+/// The opening `Zone` identifier is ignored, and the last four columns are
+/// all optional, with their variants consolidated into a `ChangeTime`.
+///
+/// The `Rules/Save` column, if it contains a value, *either* contains the
+/// name of the rules to use for this zone, *or* contains a one-off period of
+/// time to save.
+///
+/// A continuation rule line contains all the same fields apart from the
+/// `Name` column and the opening `Zone` identifier.
+#[derive(PartialEq, Debug, Copy, Clone)]
+pub struct Zone<'a> {
+    /// The name of the time zone.
+    pub name: &'a str,
+    /// All the other fields of info.
+    pub info: ZoneInfo<'a>,
+}
+
+#[derive(PartialEq, Debug, Copy, Clone)]
+pub struct Link<'a> {
+    pub existing: &'a str,
+    pub new: &'a str,
+}
+
+#[derive(PartialEq, Debug, Copy, Clone)]
+pub enum Line<'a> {
+    /// This line is empty.
+    Space,
+    /// This line contains a **zone** definition.
+    Zone(Zone<'a>),
+    /// This line contains a **continuation** of a zone definition.
+    Continuation(ZoneInfo<'a>),
+    /// This line contains a **rule** definition.
+    Rule(Rule<'a>),
+    /// This line contains a **link** definition.
+    Link(Link<'a>),
+}
+
+impl TimeType {
+    fn from_char(c: char) -> Option<Self> {
+        Some(match c {
+            'w' => Self::Wall,
+            's' => Self::Standard,
+            'u' | 'g' | 'z' => Self::UTC,
+            _ => return None,
+        })
+    }
+}
+
+impl LineParser {
+    #[deprecated]
+    pub fn new() -> Self {
+        Self::default()
     }
 
     fn saving_from_str<'a>(&self, input: &'a str) -> Result<Saving<'a>, Error> {
@@ -1215,7 +1217,7 @@ impl LineParser {
         }
 
         if input.starts_with("Rule") {
-            return Ok(Line::Rule(self.parse_rule(input)?));
+            return Ok(Line::Rule(Rule::from_str(input)?));
         }
 
         match self.parse_link(input) {
