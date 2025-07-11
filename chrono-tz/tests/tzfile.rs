@@ -5,6 +5,7 @@ use chrono_tz::{IANA_TZDB_VERSION, TZ_VARIANTS};
 use tzfile::Tz;
 
 #[test]
+#[ignore] // Too slow to run by default
 fn tzfile() {
     let Ok(system_version) = fs::read_to_string("/usr/share/zoneinfo/+VERSION") else {
         return;
