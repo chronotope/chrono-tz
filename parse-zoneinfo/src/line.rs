@@ -317,57 +317,6 @@ pub enum DaySpec {
     FirstOnOrAfter(Weekday, i8),
 }
 
-impl FromStr for DaySpec {
-    type Err = Error;
-
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        // Parse the field as a number if it vaguely resembles one.
-        if input.chars().all(|c| c.is_ascii_digit()) {
-            return Ok(DaySpec::Ordinal(input.parse().unwrap()));
-        }
-        // Check if it starts with ‘last’, and trim off the first four bytes if it does
-        else if let Some(remainder) = input.strip_prefix("last") {
-            let weekday = remainder.parse()?;
-            return Ok(DaySpec::Last(weekday));
-        }
-
-        let weekday = match input.get(..3) {
-            Some(wd) => Weekday::from_str(wd)?,
-            None => return Err(Error::InvalidDaySpec(input.to_string())),
-        };
-
-        let dir = match input.get(3..5) {
-            Some(">=") => true,
-            Some("<=") => false,
-            _ => return Err(Error::InvalidDaySpec(input.to_string())),
-        };
-
-        let day = match input.get(5..) {
-            Some(day) => u8::from_str(day).map_err(|_| Error::InvalidDaySpec(input.to_string()))?,
-            None => return Err(Error::InvalidDaySpec(input.to_string())),
-        } as i8;
-
-        Ok(match dir {
-            true => DaySpec::FirstOnOrAfter(weekday, day),
-            false => DaySpec::LastOnOrBefore(weekday, day),
-        })
-    }
-}
-
-fn is_leap(year: i64) -> bool {
-    // Leap year rules: years which are factors of 4, except those divisible
-    // by 100, unless they are divisible by 400.
-    //
-    // We test most common cases first: 4th year, 100th year, then 400th year.
-    //
-    // We factor out 4 from 100 since it was already tested, leaving us checking
-    // if it's divisible by 25. Afterwards, we do the same, factoring 25 from
-    // 400, leaving us with 16.
-    //
-    // Factors of 4 and 16 can quickly be found with bitwise AND.
-    year & 3 == 0 && (year % 25 != 0 || year & 15 == 0)
-}
-
 impl DaySpec {
     /// Converts this day specification to a concrete date, given the year and
     /// month it should occur in.
@@ -427,6 +376,57 @@ impl DaySpec {
                 .unwrap(),
         }
     }
+}
+
+impl FromStr for DaySpec {
+    type Err = Error;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        // Parse the field as a number if it vaguely resembles one.
+        if input.chars().all(|c| c.is_ascii_digit()) {
+            return Ok(DaySpec::Ordinal(input.parse().unwrap()));
+        }
+        // Check if it starts with ‘last’, and trim off the first four bytes if it does
+        else if let Some(remainder) = input.strip_prefix("last") {
+            let weekday = remainder.parse()?;
+            return Ok(DaySpec::Last(weekday));
+        }
+
+        let weekday = match input.get(..3) {
+            Some(wd) => Weekday::from_str(wd)?,
+            None => return Err(Error::InvalidDaySpec(input.to_string())),
+        };
+
+        let dir = match input.get(3..5) {
+            Some(">=") => true,
+            Some("<=") => false,
+            _ => return Err(Error::InvalidDaySpec(input.to_string())),
+        };
+
+        let day = match input.get(5..) {
+            Some(day) => u8::from_str(day).map_err(|_| Error::InvalidDaySpec(input.to_string()))?,
+            None => return Err(Error::InvalidDaySpec(input.to_string())),
+        } as i8;
+
+        Ok(match dir {
+            true => DaySpec::FirstOnOrAfter(weekday, day),
+            false => DaySpec::LastOnOrBefore(weekday, day),
+        })
+    }
+}
+
+fn is_leap(year: i64) -> bool {
+    // Leap year rules: years which are factors of 4, except those divisible
+    // by 100, unless they are divisible by 400.
+    //
+    // We test most common cases first: 4th year, 100th year, then 400th year.
+    //
+    // We factor out 4 from 100 since it was already tested, leaving us checking
+    // if it's divisible by 25. Afterwards, we do the same, factoring 25 from
+    // 400, leaving us with 16.
+    //
+    // Factors of 4 and 16 can quickly be found with bitwise AND.
+    year & 3 == 0 && (year % 25 != 0 || year & 15 == 0)
 }
 
 /// A **time** definition field.
