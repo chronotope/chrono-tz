@@ -608,40 +608,9 @@ impl FromStr for TimeSpec {
     type Err = Error;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        match TimeSpecAndType::from_str(input)? {
-            TimeSpecAndType(spec, TimeType::Wall) => Ok(spec),
-            TimeSpecAndType(_, _) => Err(Error::NonWallClockInTimeSpec(input.to_string())),
-        }
-    }
-}
-
-#[derive(PartialEq, Debug, Copy, Clone)]
-pub enum TimeType {
-    Wall,
-    Standard,
-    UTC,
-}
-
-#[derive(PartialEq, Debug, Copy, Clone)]
-pub struct TimeSpecAndType(pub TimeSpec, pub TimeType);
-
-impl FromStr for TimeSpecAndType {
-    type Err = Error;
-
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
         if input == "-" {
-            return Ok(TimeSpecAndType(TimeSpec::Zero, TimeType::Wall));
-        } else if input.chars().all(|c| c == '-' || c.is_ascii_digit()) {
-            return Ok(TimeSpecAndType(
-                TimeSpec::Hours(input.parse().unwrap()),
-                TimeType::Wall,
-            ));
+            return Ok(TimeSpec::Zero);
         }
-
-        let (input, ty) = match input.chars().last().and_then(TimeType::from_char) {
-            Some(ty) => (&input[..input.len() - 1], Some(ty)),
-            None => (input, None),
-        };
 
         let neg = if input.starts_with('-') { -1 } else { 1 };
         let mut state = TimeSpec::Zero;
@@ -670,7 +639,37 @@ impl FromStr for TimeSpecAndType {
             };
         }
 
-        Ok(TimeSpecAndType(state, ty.unwrap_or(TimeType::Wall)))
+        Ok(state)
+    }
+}
+
+#[derive(PartialEq, Debug, Copy, Clone)]
+pub enum TimeType {
+    Wall,
+    Standard,
+    UTC,
+}
+
+#[derive(PartialEq, Debug, Copy, Clone)]
+pub struct TimeSpecAndType(pub TimeSpec, pub TimeType);
+
+impl FromStr for TimeSpecAndType {
+    type Err = Error;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        if input == "-" {
+            return Ok(TimeSpecAndType(TimeSpec::Zero, TimeType::Wall));
+        } else if input.chars().all(|c| c == '-' || c.is_ascii_digit()) {
+            return Ok(TimeSpecAndType(TimeSpec::from_str(input)?, TimeType::Wall));
+        }
+
+        let (input, ty) = match input.chars().last().and_then(TimeType::from_char) {
+            Some(ty) => (&input[..input.len() - 1], Some(ty)),
+            None => (input, None),
+        };
+
+        let spec = TimeSpec::from_str(input)?;
+        Ok(TimeSpecAndType(spec, ty.unwrap_or(TimeType::Wall)))
     }
 }
 
@@ -1366,7 +1365,7 @@ mod tests {
     test!(comment: "# this is a comment" => Ok(Line::Space));
     test!(another_comment: "     # so is this" => Ok(Line::Space));
     test!(multiple_hash: "     # so is this ## " => Ok(Line::Space));
-    test!(non_comment: " this is not a # comment" => Err(Error::InvalidTimeSpecAndType("thi".to_string())));
+    test!(non_comment: " this is not a # comment" => Err(Error::InvalidTimeSpecAndType("this".to_string())));
 
     test!(comment_after: "Link  Europe/Istanbul  Asia/Istanbul #with a comment after" => Ok(Line::Link(Link {
         existing:  "Europe/Istanbul",
