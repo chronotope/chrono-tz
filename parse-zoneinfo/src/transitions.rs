@@ -255,7 +255,7 @@ impl FixedTimespanSetBuilder {
         start_zone_id: &mut Option<String>,
     ) {
         *dst_offset = amount;
-        *start_zone_id = Some(timespan.format.format(*dst_offset, None));
+        *start_zone_id = Some(timespan.format.format(utc_offset, *dst_offset, None));
 
         if *insert_start_transition {
             let time = self.start_time.unwrap();
@@ -341,22 +341,22 @@ impl FixedTimespanSetBuilder {
                     if earliest_at < self.start_time.unwrap() {
                         let _ = replace(start_utc_offset, timespan.offset);
                         let _ = replace(start_dst_offset, *dst_offset);
-                        let _ = start_zone_id.replace(
-                            timespan
-                                .format
-                                .format(*dst_offset, earliest_rule.letters.as_ref()),
-                        );
+                        let _ = start_zone_id.replace(timespan.format.format(
+                            utc_offset,
+                            *dst_offset,
+                            earliest_rule.letters.as_ref(),
+                        ));
                         continue;
                     }
 
                     if start_zone_id.is_none()
                         && *start_utc_offset + *start_dst_offset == timespan.offset + *dst_offset
                     {
-                        let _ = start_zone_id.replace(
-                            timespan
-                                .format
-                                .format(*dst_offset, earliest_rule.letters.as_ref()),
-                        );
+                        let _ = start_zone_id.replace(timespan.format.format(
+                            utc_offset,
+                            *dst_offset,
+                            earliest_rule.letters.as_ref(),
+                        ));
                     }
                 }
 
@@ -365,9 +365,11 @@ impl FixedTimespanSetBuilder {
                     FixedTimespan {
                         utc_offset: timespan.offset,
                         dst_offset: earliest_rule.time_to_add,
-                        name: timespan
-                            .format
-                            .format(earliest_rule.time_to_add, earliest_rule.letters.as_ref()),
+                        name: timespan.format.format(
+                            timespan.offset,
+                            earliest_rule.time_to_add,
+                            earliest_rule.letters.as_ref(),
+                        ),
                     },
                 );
                 self.rest.push(t);

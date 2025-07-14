@@ -1,6 +1,6 @@
 [package]
 name = "parse-zoneinfo"
-version = "0.4.1"
+version = "0.5.0"
 edition = "2021"
 rust-version = "1.56.0"
 description = "Parse zoneinfo files from the IANA database"
