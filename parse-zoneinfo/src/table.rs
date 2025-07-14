@@ -38,7 +38,7 @@
 //! ```
 
 use std::collections::hash_map::{Entry, HashMap};
-use std::fmt;
+use std::fmt::{self, Write};
 
 use crate::line::{self, ChangeTime, DaySpec, Line, Month, TimeType, Year};
 
@@ -206,6 +206,7 @@ pub enum Saving {
 }
 
 /// The format string to generate a time zone abbreviation from.
+#[non_exhaustive]
 #[derive(PartialEq, Debug, Clone)]
 pub enum Format {
     /// A constant format, which remains the same throughout both standard
@@ -225,6 +226,9 @@ pub enum Format {
     /// A format with a placeholder `%s`, which uses the `letters` field in
     /// a `RuleInfo` to generate the time zone abbreviation.
     Placeholder(String),
+
+    /// The special %z placeholder that gets formatted as a numeric offset.
+    Offset,
 }
 
 impl Format {
@@ -239,12 +243,14 @@ impl Format {
             }
         } else if template.contains("%s") {
             Format::Placeholder(template.to_owned())
+        } else if template == "%z" {
+            Format::Offset
         } else {
             Format::Constant(template.to_owned())
         }
     }
 
-    pub fn format(&self, dst_offset: i64, letters: Option<&String>) -> String {
+    pub fn format(&self, utc_offset: i64, dst_offset: i64, letters: Option<&String>) -> String {
         let letters = match letters {
             Some(l) => &**l,
             None => "",
@@ -255,6 +261,32 @@ impl Format {
             Format::Placeholder(ref s) => s.replace("%s", letters),
             Format::Alternate { ref standard, .. } if dst_offset == 0 => standard.clone(),
             Format::Alternate { ref dst, .. } => dst.clone(),
+            Format::Offset => {
+                let offset = utc_offset + dst_offset;
+                let (sign, off) = if offset < 0 {
+                    ('-', -offset)
+                } else {
+                    ('+', offset)
+                };
+
+                let mut f = String::from(sign);
+
+                let minutes = off / 60;
+                let secs = (off % 60) as u8;
+                let mins = (minutes % 60) as u8;
+                let hours = (minutes / 60) as u8;
+
+                assert!(
+                    secs == 0,
+                    "numeric names are not used if the offset has fractional minutes"
+                );
+
+                let _ = write!(&mut f, "{hours:02}");
+                if mins != 0 {
+                    let _ = write!(&mut f, "{mins:02}");
+                }
+                f
+            }
         }
     }
 
