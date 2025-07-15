@@ -44,12 +44,12 @@ fn format_rest(rest: Vec<(i64, FixedTimespan)>) -> String {
     ) in rest
     {
         ret.push_str(&format!(
-            "                    ({start}, FixedTimespan {{ \
+            "                ({start}, FixedTimespan {{ \
              utc_offset: {utc_offset}, dst_offset: {dst_offset}, name: Some({name:?}) \
              }}),\n",
         ));
     }
-    ret.push_str("                ]");
+    ret.push_str("            ]");
     ret
 }
 
@@ -211,35 +211,51 @@ impl FromStr for Tz {{
     writeln!(
         timezone_file,
         "impl TimeSpans for Tz {{
-    fn timespans(&self) -> FixedTimespanSet {{
-        match *self {{"
+    fn timespans(&self) -> FixedTimespanSet {{"
     )?;
     for zone in &zones {
-        let timespans = table.timespans(zone).unwrap();
+        if table.links.get(zone.as_str()).is_some() {
+            continue;
+        }
         let zone_name = convert_bad_chars(zone);
+        let timespans = table.timespans(zone).unwrap();
         writeln!(
             timezone_file,
-            "            Tz::{zone} => {{
-                const REST: &[(i64, FixedTimespan)] = {rest};
-                FixedTimespanSet {{
-                    first: FixedTimespan {{
-                        utc_offset: {utc},
-                        dst_offset: {dst},
-                        name: Some({name:?}),
-                    }},
-                    rest: REST
-                }}
-            }},\n",
-            zone = zone_name,
+            "        const {zone}: FixedTimespanSet = FixedTimespanSet {{
+            first: FixedTimespan {{ utc_offset: {utc}, dst_offset: {dst}, name: Some({name:?}) }},
+            rest: {rest},
+        }};\n",
+            zone = zone_name.to_uppercase(),
             rest = format_rest(timespans.rest),
             utc = timespans.first.utc_offset,
             dst = timespans.first.dst_offset,
             name = timespans.first.name,
         )?;
     }
+
     write!(
         timezone_file,
-        "         }}
+        "
+        match *self {{
+"
+    )?;
+
+    for zone in &zones {
+        let zone_name = convert_bad_chars(zone);
+        let target_name = if let Some(target) = table.links.get(zone.as_str()) {
+            convert_bad_chars(target)
+        } else {
+            zone_name.clone()
+        };
+        writeln!(
+            timezone_file,
+            "            Tz::{zone_name} => {target_name},",
+            target_name = target_name.to_uppercase(),
+        )?;
+    }
+    write!(
+        timezone_file,
+        "        }}
     }}
 }}\n"
     )?;
