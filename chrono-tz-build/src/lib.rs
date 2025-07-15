@@ -45,7 +45,7 @@ fn format_rest(rest: Vec<(i64, FixedTimespan)>) -> String {
     {
         ret.push_str(&format!(
             "                ({start}, FixedTimespan {{ \
-             utc_offset: {utc_offset}, dst_offset: {dst_offset}, name: Some({name:?}) \
+             utc_offset: {utc_offset}, dst_offset: {dst_offset}, name: {name:?} \
              }}),\n",
         ));
     }
@@ -222,7 +222,7 @@ impl FromStr for Tz {{
         writeln!(
             timezone_file,
             "        const {zone}: FixedTimespanSet = FixedTimespanSet {{
-            first: FixedTimespan {{ utc_offset: {utc}, dst_offset: {dst}, name: Some({name:?}) }},
+            first: FixedTimespan {{ utc_offset: {utc}, dst_offset: {dst}, name: {name:?} }},
             rest: {rest},
         }};\n",
             zone = zone_name.to_uppercase(),
