@@ -13,20 +13,47 @@ use crate::timezones::Tz;
 /// For example, [`::US::Eastern`] is composed of at least two
 /// `FixedTimespan`s: `EST` and `EDT`, that are variously in effect.
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub struct FixedTimespan {
-    pub(crate) offset: i32,
-    pub(crate) name: &'static str,
-}
+pub struct FixedTimespan(i32);
 
 impl FixedTimespan {
     /// The base offset from UTC; this usually doesn't change unless the government changes something
     pub fn offset(self) -> i32 {
-        self.offset
+        self.0 >> 14
     }
     /// The name of this timezone, for example the difference between `EDT`/`EST`
     pub fn name(self) -> &'static str {
-        self.name
+        let idx = ((self.0 & 0b_11111_11111_0000) >> 4) as usize;
+        let len = (self.0 & 0b11_11) as usize;
+        &crate::timezones::COMPACT_NAMES[idx..(idx + len)]
     }
+
+    pub(crate) const fn from_offset_and_name_indices(
+        offset: i32,
+        name_idx: usize,
+        name_len: usize,
+    ) -> Self {
+        if FixedOffset::east_opt(offset).is_none() {
+            panic!("invalid offset");
+        }
+        // The compacted string currently has length 520
+        if name_idx >= 1024 {
+            panic!("offset not encodable");
+        }
+        // TZDB tries to use names between 3 and 6 letters
+        // (https://data.iana.org/time-zones/theory.html#:~:text=Use%20three%20to%20six%20characters)
+        // but because that is not a hard rule and we we have space to spare we support 0..16.
+        if name_len >= 16 {
+            panic!("length not encodable");
+        }
+
+        // offset is 18 bits (-86400..86400), name_idx (0..1024) is 10, name_len 4,
+        Self(offset << 14 | (name_idx as i32) << 4 | name_len as i32)
+    }
+}
+
+#[test]
+fn size() {
+    assert_eq!(core::mem::size_of::<TzOffset>(), 8);
 }
 
 impl Display for FixedTimespan {
