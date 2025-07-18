@@ -14,15 +14,24 @@ use crate::timezones::Tz;
 /// `FixedTimespan`s: `EST` and `EDT`, that are variously in effect.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct FixedTimespan {
+    pub(crate) offset: i32,
+    pub(crate) name: &'static str,
+}
+
+impl FixedTimespan {
     /// The base offset from UTC; this usually doesn't change unless the government changes something
-    pub offset: i32,
+    pub fn offset(self) -> i32 {
+        self.offset
+    }
     /// The name of this timezone, for example the difference between `EDT`/`EST`
-    pub name: &'static str,
+    pub fn name(self) -> &'static str {
+        self.name
+    }
 }
 
 impl Display for FixedTimespan {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "{}", self.name)
+        write!(f, "{}", self.name())
     }
 }
 
@@ -96,13 +105,13 @@ impl OffsetName for TzOffset {
     }
 
     fn abbreviation(&self) -> &str {
-        self.offset.name
+        self.offset.name()
     }
 }
 
 impl Offset for TzOffset {
     fn fix(&self) -> FixedOffset {
-        FixedOffset::east_opt(self.offset.offset).unwrap()
+        FixedOffset::east_opt(self.offset.offset()).unwrap()
     }
 }
 
@@ -191,14 +200,14 @@ impl FixedTimespanSet {
                 None
             } else {
                 let span = self.rest[index - 1];
-                Some(span.0 + span.1.offset as i64)
+                Some(span.0 + span.1.offset() as i64)
             },
             end: if index == self.rest.len() {
                 None
             } else if index == 0 {
-                Some(self.rest[index].0 + self.first.offset as i64)
+                Some(self.rest[index].0 + self.first.offset() as i64)
             } else {
-                Some(self.rest[index].0 + self.rest[index - 1].1.offset as i64)
+                Some(self.rest[index].0 + self.rest[index - 1].1.offset() as i64)
             },
         }
     }
