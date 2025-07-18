@@ -2,8 +2,7 @@ use core::cmp::Ordering;
 use core::fmt::{Debug, Display, Error, Formatter};
 
 use chrono::{
-    DateTime, Duration, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, Offset,
-    TimeZone,
+    DateTime, FixedOffset, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, Offset, TimeZone,
 };
 
 use crate::binary_search::binary_search;
@@ -16,17 +15,9 @@ use crate::timezones::Tz;
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct FixedTimespan {
     /// The base offset from UTC; this usually doesn't change unless the government changes something
-    pub utc_offset: i32,
-    /// The additional offset from UTC for this timespan; typically for daylight saving time
-    pub dst_offset: i32,
+    pub offset: i32,
     /// The name of this timezone, for example the difference between `EDT`/`EST`
     pub name: &'static str,
-}
-
-impl Offset for FixedTimespan {
-    fn fix(&self) -> FixedOffset {
-        FixedOffset::east_opt(self.utc_offset + self.dst_offset).unwrap()
-    }
 }
 
 impl Display for FixedTimespan {
@@ -45,41 +36,6 @@ impl Debug for FixedTimespan {
 pub struct TzOffset {
     tz: Tz,
     offset: FixedTimespan,
-}
-
-/// Detailed timezone offset components that expose any special conditions currently in effect.
-///
-/// This trait breaks down an offset into the standard UTC offset and any special offset
-/// in effect (such as DST) at a given time.
-///
-/// ```
-/// # extern crate chrono;
-/// # extern crate chrono_tz;
-/// use chrono::{Duration, Offset, TimeZone};
-/// use chrono_tz::Europe::London;
-/// use chrono_tz::OffsetComponents;
-///
-/// # fn main() {
-/// let london_time = London.ymd(2016, 5, 10).and_hms(12, 0, 0);
-///
-/// // London typically has zero offset from UTC, but has a 1h adjustment forward
-/// // when summer time is in effect.
-/// let lon_utc_offset = london_time.offset().base_utc_offset();
-/// let lon_dst_offset = london_time.offset().dst_offset();
-/// let total_offset = lon_utc_offset + lon_dst_offset;
-/// assert_eq!(lon_utc_offset, Duration::hours(0));
-/// assert_eq!(lon_dst_offset, Duration::hours(1));
-///
-/// // As a sanity check, make sure that the total offsets added together are equivalent to the
-/// // total fixed offset.
-/// assert_eq!(total_offset.num_seconds(), london_time.offset().fix().local_minus_utc() as i64);
-/// # }
-/// ```
-pub trait OffsetComponents {
-    /// The base offset from UTC; this usually doesn't change unless the government changes something
-    fn base_utc_offset(&self) -> Duration;
-    /// The additional offset from UTC that is currently in effect; typically for daylight saving time
-    fn dst_offset(&self) -> Duration;
 }
 
 /// Timezone offset name information.
@@ -134,16 +90,6 @@ impl TzOffset {
     }
 }
 
-impl OffsetComponents for TzOffset {
-    fn base_utc_offset(&self) -> Duration {
-        Duration::seconds(self.offset.utc_offset as i64)
-    }
-
-    fn dst_offset(&self) -> Duration {
-        Duration::seconds(self.offset.dst_offset as i64)
-    }
-}
-
 impl OffsetName for TzOffset {
     fn tz_id(&self) -> &str {
         self.tz.name()
@@ -156,7 +102,7 @@ impl OffsetName for TzOffset {
 
 impl Offset for TzOffset {
     fn fix(&self) -> FixedOffset {
-        self.offset.fix()
+        FixedOffset::east_opt(self.offset.offset).unwrap()
     }
 }
 
@@ -245,22 +191,14 @@ impl FixedTimespanSet {
                 None
             } else {
                 let span = self.rest[index - 1];
-                Some(span.0 + span.1.utc_offset as i64 + span.1.dst_offset as i64)
+                Some(span.0 + span.1.offset as i64)
             },
             end: if index == self.rest.len() {
                 None
             } else if index == 0 {
-                Some(
-                    self.rest[index].0
-                        + self.first.utc_offset as i64
-                        + self.first.dst_offset as i64,
-                )
+                Some(self.rest[index].0 + self.first.offset as i64)
             } else {
-                Some(
-                    self.rest[index].0
-                        + self.rest[index - 1].1.utc_offset as i64
-                        + self.rest[index - 1].1.dst_offset as i64,
-                )
+                Some(self.rest[index].0 + self.rest[index - 1].1.offset as i64)
             },
         }
     }
