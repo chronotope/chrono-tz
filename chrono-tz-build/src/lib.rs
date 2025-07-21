@@ -32,7 +32,7 @@ fn strip_comments(mut line: String) -> String {
 
 // Generate a list of the time zone periods beyond the first that apply
 // to this zone, as a string representation of a static slice.
-fn format_rest(rest: Vec<(i64, FixedTimespan)>) -> String {
+fn format_rest(rest: Vec<(i64, FixedTimespan)>, strs: &str) -> String {
     let mut ret = "&[\n".to_string();
     for (
         start,
@@ -44,10 +44,10 @@ fn format_rest(rest: Vec<(i64, FixedTimespan)>) -> String {
     ) in rest
     {
         ret.push_str(&format!(
-            "                ({start}, FixedTimespan {{ \
-             offset: {offset}, name: {name:?} \
-             }}),\n",
+            "                ({start}, FixedTimespan::from_offset_and_name_indices({offset}, {name_idx}, {name_len})),\n",
             offset = utc_offset + dst_offset,
+            name_idx = strs.find(&name).unwrap(),
+            name_len = name.len(),
         ));
     }
     ret.push_str("            ]");
@@ -209,6 +209,50 @@ impl FromStr for Tz {{
     }}
 }}\n"
     )?;
+
+    let names_trie = zones
+        .iter()
+        .filter_map(|z| table.timespans(z))
+        .flat_map(|ts| ts.rest.into_iter().map(|t| t.1.name).chain([ts.first.name]))
+        .collect::<trie_rs::Trie<_>>();
+
+    let names_reverse_trie = zones
+        .iter()
+        .filter_map(|z| table.timespans(z))
+        .flat_map(|ts| {
+            ts.rest
+                .into_iter()
+                .map(|t| t.1.name)
+                .chain([ts.first.name])
+                .map(|x| x.chars().rev().collect::<String>())
+        })
+        .collect::<trie_rs::Trie<_>>();
+
+    let strs = names_trie
+        .iter()
+        .filter(|x: &String| {
+            // Any string that is not a prefix or a suffix (prefix in inverse trie) of another string.
+            // Solving this optimally is NP-complete (shortest common superstring), and even implementing
+            // an approximate solution to that problem is probably not worth it.
+            !names_trie.is_prefix(x)
+                && !names_reverse_trie.is_prefix(x.chars().rev().collect::<String>())
+        })
+        .collect::<Vec<_>>();
+
+    writeln!(
+        timezone_file,
+        "pub(crate) const COMPACT_NAMES: &str = concat!("
+    )?;
+    for s in &strs {
+        writeln!(timezone_file, "    {s:?},")?;
+    }
+    writeln!(timezone_file, ");\n")?;
+
+    let strs = strs.into_iter().fold(String::new(), |mut s, x| {
+        s.push_str(&x);
+        s
+    });
+
     writeln!(
         timezone_file,
         "impl TimeSpans for Tz {{
@@ -223,13 +267,14 @@ impl FromStr for Tz {{
         writeln!(
             timezone_file,
             "        const {zone}: FixedTimespanSet = FixedTimespanSet {{
-            first: FixedTimespan {{ offset: {offset}, name: {name:?} }},
+            first: FixedTimespan::from_offset_and_name_indices({offset}, {name_idx}, {name_len}),
             rest: {rest},
         }};\n",
             zone = zone_name.to_uppercase(),
-            rest = format_rest(timespans.rest),
+            rest = format_rest(timespans.rest, &strs),
             offset = timespans.first.utc_offset + timespans.first.dst_offset,
-            name = timespans.first.name,
+            name_idx = strs.find(&timespans.first.name).unwrap(),
+            name_len = timespans.first.name.len(),
         )?;
     }
 
