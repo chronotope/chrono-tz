@@ -1,5 +1,5 @@
 /// This test is compiled by the Github workflows with the
-/// filter regex set thusly: CHRONO_TZ_TIMEZONE_FILTER="(Europe/London|GMT)"
+/// filter regex set thusly: CHRONO_TZ_TIMEZONE_FILTER="Europe/(London|Vaduz)"
 ///
 /// We use it to check two things:
 /// 1) That the compiled chrono-tz contains the correct timezones (a compilation
@@ -12,25 +12,22 @@
 #[cfg(test)]
 mod tests {
     use chrono::offset::TimeZone;
-    use chrono_tz::{Europe, Europe::London, Tz, TZ_VARIANTS};
+    use chrono_tz::{Europe, Tz, TZ_VARIANTS};
     use std::str::FromStr;
 
     #[test]
     fn london_compiles() {
         // This line will be a compilation failure if the code generation
         // mistakenly excluded Europe::London.
-        let _london_time = London.with_ymd_and_hms(2013, 12, 25, 14, 0, 0);
-        assert_eq!("Europe/London", London.name());
+        let _london_time = Europe::London.with_ymd_and_hms(2013, 12, 25, 14, 0, 0);
+        assert_eq!("Europe/London", Europe::London.name());
 
         // Since London is included, converting from the corresponding
         // string representation should also work.
-        assert_eq!(Tz::from_str("Europe/London"), Ok(London));
+        assert_eq!(Tz::from_str("Europe/London"), Ok(Europe::London));
 
-        // We did not explicitly ask for Isle Of Man or Belfast in our regex, but there is a link
-        // from Europe::London to Isle_of_Man and Belfast (amongst others)
-        // so these conversions should also work.
-        assert_eq!(Tz::from_str("Europe/Isle_of_Man"), Ok(Europe::Isle_of_Man));
-        assert_eq!(Tz::from_str("Europe/Belfast"), Ok(Europe::Belfast));
+        // Vaduz is a link to a zone we didn't ask for, check that it still works.
+        assert_eq!(Tz::from_str("Europe/Vaduz"), Ok(Europe::Vaduz));
     }
 
     #[test]
@@ -44,24 +41,22 @@ mod tests {
         assert!(Tz::from_str("Pacific/Kwajalein").is_err());
         assert!(Tz::from_str("US/Central").is_err());
 
-        // The link table caused us to include some extra items from the UK (see
-        // `london_compiles()`), but it should NOT include various other timezones
-        // from around Europe since there is no linkage between them.
+        // Similar for timezones inside Europe, including those that link
+        // to London, or that Vaduz links to.
+        assert!(Tz::from_str("Europe/Isle_Of_Man").is_err());
+        assert!(Tz::from_str("Europe/Belfast").is_err());
+        assert!(Tz::from_str("Europe/Zurich").is_err());
+        assert!(Tz::from_str("Europe/Brussels").is_err());
         assert!(Tz::from_str("Europe/Brussels").is_err());
         assert!(Tz::from_str("Europe/Dublin").is_err());
         assert!(Tz::from_str("Europe/Warsaw").is_err());
 
-        // Also, entire continents outside Europe should be excluded.
-        for tz in TZ_VARIANTS.iter() {
-            assert!(!tz.name().starts_with("Africa"));
-            assert!(!tz.name().starts_with("Asia"));
-            assert!(!tz.name().starts_with("Australia"));
-            assert!(!tz.name().starts_with("Canada"));
-            assert!(!tz.name().starts_with("Chile"));
-            assert!(!tz.name().starts_with("Indian"));
-            assert!(!tz.name().starts_with("Mexico"));
-            assert!(!tz.name().starts_with("Pacific"));
-            assert!(!tz.name().starts_with("US"));
-        }
+        // Top level zones, including UTC and GMT should also be excluded
+        assert!(Tz::from_str("UTC").is_err());
+        assert!(Tz::from_str("GMT").is_err());
+        assert!(Tz::from_str("EST5EDT").is_err());
+
+        // There should only really be those two zones.
+        assert_eq!(TZ_VARIANTS.len(), 2);
     }
 }

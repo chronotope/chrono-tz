@@ -3,7 +3,7 @@
 set -euxo pipefail
 
 export RUST_BACKTRACE=1
-export CHRONO_TZ_TIMEZONE_FILTER='(Europe/London)'
+export CHRONO_TZ_TIMEZONE_FILTER='Europe/(London|Vaduz)'
 
 cd chrono-tz/tests/check-regex-filtering
 

@@ -1,6 +1,6 @@
-pub const IANA_TZDB_VERSION: &str = "2025b";
-
 use crate::timezones::Tz;
+
+pub const IANA_TZDB_VERSION: &str = "2025b";
 
 pub const CET: Tz = Tz::CET;
 pub const CST6CDT: Tz = Tz::CST6CDT;
@@ -48,7 +48,7 @@ pub const WET: Tz = Tz::WET;
 pub const Zulu: Tz = Tz::Zulu;
 
 pub mod Africa {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const Abidjan: Tz = Tz::Africa__Abidjan;
     pub const Accra: Tz = Tz::Africa__Accra;
@@ -107,7 +107,7 @@ pub mod Africa {
 }
 
 pub mod America {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub mod Argentina {
         use crate::timezones::Tz;
@@ -301,7 +301,7 @@ pub mod America {
 }
 
 pub mod Antarctica {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const Casey: Tz = Tz::Antarctica__Casey;
     pub const Davis: Tz = Tz::Antarctica__Davis;
@@ -318,13 +318,13 @@ pub mod Antarctica {
 }
 
 pub mod Arctic {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const Longyearbyen: Tz = Tz::Arctic__Longyearbyen;
 }
 
 pub mod Asia {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const Aden: Tz = Tz::Asia__Aden;
     pub const Almaty: Tz = Tz::Asia__Almaty;
@@ -428,7 +428,7 @@ pub mod Asia {
 }
 
 pub mod Atlantic {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const Azores: Tz = Tz::Atlantic__Azores;
     pub const Bermuda: Tz = Tz::Atlantic__Bermuda;
@@ -445,7 +445,7 @@ pub mod Atlantic {
 }
 
 pub mod Australia {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const ACT: Tz = Tz::Australia__ACT;
     pub const Adelaide: Tz = Tz::Australia__Adelaide;
@@ -473,7 +473,7 @@ pub mod Australia {
 }
 
 pub mod Brazil {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const Acre: Tz = Tz::Brazil__Acre;
     pub const DeNoronha: Tz = Tz::Brazil__DeNoronha;
@@ -482,7 +482,7 @@ pub mod Brazil {
 }
 
 pub mod Canada {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const Atlantic: Tz = Tz::Canada__Atlantic;
     pub const Central: Tz = Tz::Canada__Central;
@@ -495,14 +495,14 @@ pub mod Canada {
 }
 
 pub mod Chile {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const Continental: Tz = Tz::Chile__Continental;
     pub const EasterIsland: Tz = Tz::Chile__EasterIsland;
 }
 
 pub mod Etc {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const GMT: Tz = Tz::Etc__GMT;
     pub const GMTPlus0: Tz = Tz::Etc__GMTPlus0;
@@ -542,7 +542,7 @@ pub mod Etc {
 }
 
 pub mod Europe {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const Amsterdam: Tz = Tz::Europe__Amsterdam;
     pub const Andorra: Tz = Tz::Europe__Andorra;
@@ -611,7 +611,7 @@ pub mod Europe {
 }
 
 pub mod Indian {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const Antananarivo: Tz = Tz::Indian__Antananarivo;
     pub const Chagos: Tz = Tz::Indian__Chagos;
@@ -627,7 +627,7 @@ pub mod Indian {
 }
 
 pub mod Mexico {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const BajaNorte: Tz = Tz::Mexico__BajaNorte;
     pub const BajaSur: Tz = Tz::Mexico__BajaSur;
@@ -635,7 +635,7 @@ pub mod Mexico {
 }
 
 pub mod Pacific {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const Apia: Tz = Tz::Pacific__Apia;
     pub const Auckland: Tz = Tz::Pacific__Auckland;
@@ -684,7 +684,7 @@ pub mod Pacific {
 }
 
 pub mod US {
-    use crate::timezones::Tz;
+    use super::*;
 
     pub const Alaska: Tz = Tz::US__Alaska;
     pub const Aleutian: Tz = Tz::US__Aleutian;

@@ -42,37 +42,46 @@ pub trait Structure {
 
 impl Structure for Table {
     fn structure(&self) -> TableStructure {
-        let mut mappings = BTreeMap::new();
+        build_tree(
+            self.zonesets
+                .keys()
+                .chain(self.links.keys())
+                .map(|s| s.as_str()),
+        )
+    }
+}
 
-        for key in self.zonesets.keys().chain(self.links.keys()) {
-            // Extract the name from the *last* slash. So
-            // `America/Kentucky/Louisville` is split into
-            // `America/Kentucky` and `Louisville` components.
-            let last_slash = match key.rfind('/') {
-                Some(pos) => pos,
-                None => continue,
-            };
+pub fn build_tree<'a>(entries: impl Iterator<Item = &'a str>) -> TableStructure<'a> {
+    let mut mappings = BTreeMap::new();
 
-            // Split the string around the slash, which gets removed.
-            let parent = &key[..last_slash];
-            {
-                let set = mappings.entry(parent).or_insert_with(BTreeSet::new);
-                set.insert(Child::TimeZone(&key[last_slash + 1..]));
-            }
+    for key in entries {
+        // Extract the name from the *last* slash. So
+        // `America/Kentucky/Louisville` is split into
+        // `America/Kentucky` and `Louisville` components.
+        let last_slash = match key.rfind('/') {
+            Some(pos) => pos,
+            None => continue,
+        };
 
-            // If the *parent* name still has a slash in it, then this is
-            // a time zone of the form `America/Kentucky/Louisville`. We
-            // need to make sure that `America` now has a `Kentucky`
-            // child, too.
-            if let Some(first_slash) = parent.find('/') {
-                let grandparent = &parent[..first_slash];
-                let set = mappings.entry(grandparent).or_insert_with(BTreeSet::new);
-                set.insert(Child::Submodule(&parent[first_slash + 1..]));
-            }
+        // Split the string around the slash, which gets removed.
+        let parent = &key[..last_slash];
+        {
+            let set = mappings.entry(parent).or_insert_with(BTreeSet::new);
+            set.insert(Child::TimeZone(&key[last_slash + 1..]));
         }
 
-        TableStructure { mappings }
+        // If the *parent* name still has a slash in it, then this is
+        // a time zone of the form `America/Kentucky/Louisville`. We
+        // need to make sure that `America` now has a `Kentucky`
+        // child, too.
+        if let Some(first_slash) = parent.find('/') {
+            let grandparent = &parent[..first_slash];
+            let set = mappings.entry(grandparent).or_insert_with(BTreeSet::new);
+            set.insert(Child::Submodule(&parent[first_slash + 1..]));
+        }
     }
+
+    TableStructure { mappings }
 }
 
 /// The structure of a set of time zone names.
