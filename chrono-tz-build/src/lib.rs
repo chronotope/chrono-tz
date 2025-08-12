@@ -2,6 +2,9 @@ extern crate parse_zoneinfo;
 #[cfg(feature = "filter-by-regex")]
 extern crate regex;
 
+mod zoneinfo_structure;
+use zoneinfo_structure::{Child, Structure};
+
 use std::collections::BTreeSet;
 use std::env;
 use std::fs::File;
@@ -9,7 +12,6 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 
 use parse_zoneinfo::line::Line;
-use parse_zoneinfo::structure::{Child, Structure};
 use parse_zoneinfo::table::{Table, TableBuilder};
 use parse_zoneinfo::transitions::FixedTimespan;
 use parse_zoneinfo::transitions::TableTransitions;
@@ -78,12 +80,12 @@ fn convert_bad_chars(name: &str) -> String {
 // The timezone file contains impls of `Timespans` for all timezones in the
 // database. The `Wrap` wrapper in the `timezone_impl` module then implements
 // TimeZone for any contained struct that implements `Timespans`.
-fn write_timezone_file(timezone_file: &mut File, table: &Table, uncased: bool) -> io::Result<()> {
-    let zones = table
-        .zonesets
-        .keys()
-        .chain(table.links.keys())
-        .collect::<BTreeSet<_>>();
+fn write_timezone_file(
+    timezone_file: &mut File,
+    table: &Table,
+    zones: &BTreeSet<&str>,
+    uncased: bool,
+) -> io::Result<()> {
     writeln!(
         timezone_file,
         "use core::fmt::{{self, Debug, Display, Formatter}};",
@@ -107,14 +109,14 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table, uncased: bool) -
         r#"#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]"#
     )?;
     writeln!(timezone_file, "pub enum Tz {{")?;
-    for zone in &zones {
+    for &zone in zones {
         let zone_name = convert_bad_chars(zone);
         writeln!(timezone_file, "    /// {zone}\n    {zone_name},")?;
     }
     writeln!(timezone_file, "}}")?;
 
     let mut map = phf_codegen::Map::new();
-    for zone in &zones {
+    for &zone in zones {
         map.entry(zone, format!("Tz::{}", convert_bad_chars(zone)));
     }
     writeln!(
@@ -127,7 +129,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table, uncased: bool) -
     if uncased {
         writeln!(timezone_file, "use uncased::UncasedStr;\n",)?;
         let mut map = phf_codegen::Map::new();
-        for zone in &zones {
+        for &zone in zones {
             map.entry(
                 uncased::UncasedStr::new(zone),
                 format!("Tz::{}", convert_bad_chars(zone)),
@@ -169,7 +171,7 @@ impl FromStr for Tz {{
     pub fn name(self) -> &'static str {{
         match self {{"
     )?;
-    for zone in &zones {
+    for &zone in zones {
         let zone_name = convert_bad_chars(zone);
         writeln!(timezone_file, "            Tz::{zone_name} => \"{zone}\",")?;
     }
@@ -214,10 +216,11 @@ impl FromStr for Tz {{
         "impl TimeSpans for Tz {{
     fn timespans(&self) -> FixedTimespanSet {{"
     )?;
-    for zone in &zones {
-        if table.links.get(zone.as_str()).is_some() {
-            continue;
-        }
+    for zone in zones
+        .iter()
+        .map(|&z| table.links.get(z).map(String::as_str).unwrap_or(z))
+        .collect::<BTreeSet<_>>()
+    {
         let zone_name = convert_bad_chars(zone);
         let timespans = table.timespans(zone).unwrap();
         writeln!(
@@ -240,9 +243,9 @@ impl FromStr for Tz {{
 "
     )?;
 
-    for zone in &zones {
+    for &zone in zones {
         let zone_name = convert_bad_chars(zone);
-        let target_name = if let Some(target) = table.links.get(zone.as_str()) {
+        let target_name = if let Some(target) = table.links.get(zone) {
             convert_bad_chars(target)
         } else {
             zone_name.clone()
@@ -273,7 +276,7 @@ pub static TZ_VARIANTS: [Tz; {num}] = [
 ",
         num = zones.len()
     )?;
-    for zone in &zones {
+    for &zone in zones {
         writeln!(
             timezone_file,
             "    Tz::{zone},",
@@ -286,21 +289,22 @@ pub static TZ_VARIANTS: [Tz; {num}] = [
 
 // Create a file containing nice-looking re-exports such as Europe::London
 // instead of having to use chrono_tz::timezones::Europe__London
-fn write_directory_file(directory_file: &mut File, table: &Table, version: &str) -> io::Result<()> {
+fn write_directory_file(
+    directory_file: &mut File,
+    table: &Table,
+    zones: &BTreeSet<&str>,
+    version: &str,
+) -> io::Result<()> {
+    writeln!(directory_file, "use crate::timezones::Tz;\n")?;
+
     // expose the underlying IANA TZDB version
     writeln!(
         directory_file,
         "pub const IANA_TZDB_VERSION: &str = \"{version}\";\n"
     )?;
+
     // add the `loose' zone definitions first
-    writeln!(directory_file, "use crate::timezones::Tz;\n")?;
-    let zones = table
-        .zonesets
-        .keys()
-        .chain(table.links.keys())
-        .filter(|zone| !zone.contains('/'))
-        .collect::<BTreeSet<_>>();
-    for zone in zones {
+    for &zone in zones.iter().filter(|zone| !zone.contains('/')) {
         let zone = convert_bad_chars(zone);
         writeln!(directory_file, "pub const {zone}: Tz = Tz::{zone};")?;
     }
@@ -308,7 +312,7 @@ fn write_directory_file(directory_file: &mut File, table: &Table, version: &str)
 
     // now add the `structured' zone names in submodules
     let mut first = true;
-    for entry in table.structure() {
+    for entry in zoneinfo_structure::build_tree(zones.iter().copied()) {
         if entry.name.contains('/') {
             continue;
         }
@@ -320,7 +324,7 @@ fn write_directory_file(directory_file: &mut File, table: &Table, version: &str)
 
         let module_name = convert_bad_chars(entry.name);
         writeln!(directory_file, "pub mod {module_name} {{")?;
-        writeln!(directory_file, "    use crate::timezones::Tz;\n",)?;
+        writeln!(directory_file, "    use super::*;\n",)?;
         for child in entry.children {
             let name = match child {
                 Child::Submodule(name) => name,
@@ -365,112 +369,28 @@ fn write_directory_file(directory_file: &mut File, table: &Table, version: &str)
     Ok(())
 }
 
-/// Module containing code supporting filter-by-regex feature
-///
-/// The "GMT" and "UTC" time zones are always included.
+/// Checks the `CHRONO_TZ_TIMEZONE_FILTER` environment variable.
+/// Converts it to a regex if set. Panics if the regex is not valid, as we want
+/// to fail the build if that happens.
 #[cfg(feature = "filter-by-regex")]
-mod filter {
-    use std::collections::HashSet;
-    use std::env;
-
-    use regex::Regex;
-
-    use crate::{Table, FILTER_ENV_VAR_NAME};
-
-    /// Filter `table` by applying [`FILTER_ENV_VAR_NAME`].
-    pub(crate) fn maybe_filter_timezone_table(table: &mut Table) {
-        if let Some(filter_regex) = get_filter_regex() {
-            filter_timezone_table(table, filter_regex);
-        }
-    }
-
-    /// Checks the `CHRONO_TZ_TIMEZONE_FILTER` environment variable.
-    /// Converts it to a regex if set. Panics if the regex is not valid, as we want
-    /// to fail the build if that happens.
-    fn get_filter_regex() -> Option<Regex> {
-        match env::var(FILTER_ENV_VAR_NAME) {
-            Ok(val) => {
-                let val = val.trim();
-                if val.is_empty() {
-                    return None;
-                }
-                match Regex::new(val) {
+fn get_filter_regex() -> Option<regex::Regex> {
+    match std::env::var(FILTER_ENV_VAR_NAME) {
+        Ok(val) => {
+            let val = val.trim();
+            if val.is_empty() {
+                return None;
+            }
+            match regex::Regex::new(val) {
                     Ok(regex) => Some(regex),
                     Err(err) => panic!(
                         "The value '{val:?}' for environment variable {FILTER_ENV_VAR_NAME} is not a valid regex, err={err}"
                     ),
                 }
-            }
-            Err(env::VarError::NotPresent) => None,
-            Err(env::VarError::NotUnicode(s)) => panic!(
-                "The value '{s:?}' for environment variable {FILTER_ENV_VAR_NAME} is not valid Unicode"
-            ),
         }
-    }
-
-    /// Insert a new name in the list of names to keep. If the name has 3
-    /// parts, then also insert the 2-part prefix. If we don't do this we will lose
-    /// half of Indiana in `directory.rs`. But we *don't* want to keep one-part names,
-    /// otherwise we will inevitably end up with 'America' and include too much as
-    /// a consequence.
-    fn insert_keep_entry(keep: &mut HashSet<String>, new_value: &str) {
-        let mut parts = new_value.split('/');
-        if let (Some(p1), Some(p2), Some(_), None) =
-            (parts.next(), parts.next(), parts.next(), parts.next())
-        {
-            keep.insert(format!("{p1}/{p2}"));
-        }
-
-        keep.insert(new_value.to_string());
-    }
-
-    /// Filter `table` by applying `filter_regex`.
-    fn filter_timezone_table(table: &mut Table, filter_regex: Regex) {
-        // Compute the transitive closure of things to keep.
-        // Doing this, instead of just filtering `zonesets` and `links` by the
-        // regex, helps to keep the `structure()` intact.
-        let mut keep = HashSet::new();
-        for (k, v) in &table.links {
-            if filter_regex.is_match(k) || k == "GMT" || k == "UTC" {
-                insert_keep_entry(&mut keep, k);
-            }
-            if filter_regex.is_match(v) || k == "GMT" || k == "UTC" {
-                insert_keep_entry(&mut keep, v);
-            }
-        }
-
-        let mut n = 0;
-        loop {
-            let len = keep.len();
-
-            for (k, v) in &table.links {
-                if keep.contains(k) && !keep.contains(v) {
-                    insert_keep_entry(&mut keep, v);
-                }
-                if keep.contains(v) && !keep.contains(k) {
-                    insert_keep_entry(&mut keep, k);
-                }
-            }
-
-            if keep.len() == len {
-                break;
-            }
-
-            n += 1;
-            if n == 50 {
-                println!("cargo:warning=Recursion limit reached while building filter list");
-                break;
-            }
-        }
-
-        // Actually do the filtering.
-        table
-            .links
-            .retain(|k, v| keep.contains(k) || keep.contains(v));
-
-        table
-            .zonesets
-            .retain(|k, _| filter_regex.is_match(k) || keep.iter().any(|s| k.starts_with(s)));
+        Err(env::VarError::NotPresent) => None,
+        Err(env::VarError::NotUnicode(s)) => panic!(
+            "The value '{s:?}' for environment variable {FILTER_ENV_VAR_NAME} is not valid Unicode"
+        ),
     }
 }
 
@@ -495,7 +415,7 @@ fn detect_iana_db_version() -> String {
     unreachable!("no version found")
 }
 
-pub fn main(dir: &Path, _filter: bool, _uncased: bool) {
+pub fn main(dir: &Path, _filter: bool, uncased: bool) {
     let mut table = TableBuilder::new();
 
     let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| String::new()));
@@ -509,19 +429,29 @@ pub fn main(dir: &Path, _filter: bool, _uncased: bool) {
         }
     }
 
-    #[allow(unused_mut)]
-    let mut table = table.build();
+    let table = table.build();
+
     #[cfg(feature = "filter-by-regex")]
-    if _filter {
-        filter::maybe_filter_timezone_table(&mut table);
-    }
+    let regex = _filter.then(get_filter_regex).flatten();
+    #[cfg(feature = "filter-by-regex")]
+    let filter = |tz: &str| regex.as_ref().is_none_or(|r| r.is_match(tz));
+    #[cfg(not(feature = "filter-by-regex"))]
+    let filter = |_: &str| true;
+
+    let zones = table
+        .zonesets
+        .keys()
+        .chain(table.links.keys())
+        .filter(|s| filter(s))
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
 
     let timezone_path = dir.join("timezones.rs");
     let mut timezone_file = File::create(timezone_path).unwrap();
-    write_timezone_file(&mut timezone_file, &table, _uncased).unwrap();
+    write_timezone_file(&mut timezone_file, &table, &zones, uncased).unwrap();
 
     let directory_path = dir.join("directory.rs");
     let mut directory_file = File::create(directory_path).unwrap();
     let version = detect_iana_db_version();
-    write_directory_file(&mut directory_file, &table, &version).unwrap();
+    write_directory_file(&mut directory_file, &table, &zones, &version).unwrap();
 }
