@@ -2,6 +2,9 @@ extern crate parse_zoneinfo;
 #[cfg(feature = "filter-by-regex")]
 extern crate regex;
 
+mod zoneinfo_structure;
+use zoneinfo_structure::{Child, Structure};
+
 use std::collections::BTreeSet;
 use std::env;
 use std::fs::File;
@@ -9,7 +12,6 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 
 use parse_zoneinfo::line::Line;
-use parse_zoneinfo::structure::{Child, Structure};
 use parse_zoneinfo::table::{Table, TableBuilder};
 use parse_zoneinfo::transitions::FixedTimespan;
 use parse_zoneinfo::transitions::TableTransitions;
@@ -310,7 +312,7 @@ fn write_directory_file(
 
     // now add the `structured' zone names in submodules
     let mut first = true;
-    for entry in parse_zoneinfo::structure::build_tree(zones.iter().copied()) {
+    for entry in zoneinfo_structure::build_tree(zones.iter().copied()) {
         if entry.name.contains('/') {
             continue;
         }
