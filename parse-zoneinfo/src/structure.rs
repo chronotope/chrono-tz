@@ -37,11 +37,11 @@ use crate::table::Table;
 /// Trait to put the `structure` method on Tables.
 pub trait Structure {
     /// Returns an iterator over the structure of this table.
-    fn structure(&self) -> TableStructure;
+    fn structure(&self) -> TableStructure<'_>;
 }
 
 impl Structure for Table {
-    fn structure(&self) -> TableStructure {
+    fn structure(&self) -> TableStructure<'_> {
         let mut mappings = BTreeMap::new();
 
         for key in self.zonesets.keys().chain(self.links.keys()) {
