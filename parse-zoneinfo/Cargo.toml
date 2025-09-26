@@ -2,7 +2,7 @@
 name = "parse-zoneinfo"
 version = "0.5.0"
 edition = "2021"
-rust-version = "1.56.0"
+rust-version = "1.66"
 description = "Parse zoneinfo files from the IANA database"
 repository = "https://github.com/chronotope/chrono-tz"
 readme = "README.md"
