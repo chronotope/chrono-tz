@@ -28,10 +28,6 @@ Parse-zoneinfo is a fork of [`zoneinfo_parse`] by Benjamin Sago (now unmaintaine
 [`zoneinfo_parse`]: https://crates.io/crates/zoneinfo_parse
 [`chrono-tz`]: https://crates.io/crates/chrono-tz
 
-## Rust version requirements
-
-The Minimum Supported Rust Version (MSRV) is currently **Rust 1.57.0**.
-
 # Usage
 
 The zoneinfo files contains `Zone`, `Rule`, and `Link` information. Each type of line forms a variant in the `line::Line` enum.
