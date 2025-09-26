@@ -1,7 +1,5 @@
-extern crate serde;
-
-use self::serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use core::fmt;
+use serde_core::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::timezones::Tz;
 

@@ -32,14 +32,14 @@ include = [
 [dependencies]
 arbitrary = { version = "1.2", optional = true, features = ["derive"] }
 chrono = { version = "0.4.25", default-features = false }
-serde = { version = "1.0.99", optional = true, default-features = false }
+serde_core = { version = "1.0.220", optional = true, default-features = false }
 phf = { version = "0.12", default-features = false }
 uncased = { version = "0.9", optional = true, default-features = false }
 
 [features]
 default = ["std"]
 std = []
-serde = ["dep:serde"]
+serde = ["dep:serde_core"]
 filter-by-regex = ["chrono-tz-build", "chrono-tz-build/filter-by-regex"]
 case-insensitive = ["dep:uncased", "chrono-tz-build", "chrono-tz-build/case-insensitive", "phf/uncased"]
 
