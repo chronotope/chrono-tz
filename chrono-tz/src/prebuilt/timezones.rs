@@ -8,6 +8,7 @@ use crate::timezone_impl::{TimeSpans, FixedTimespanSet, FixedTimespan};
 /// This implements [`chrono::TimeZone`] so that it may be used in and to
 /// construct chrono's DateTime type. See the root module documentation
 /// for details.
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum Tz {
@@ -1931,6 +1932,7 @@ static TIMEZONES: ::phf::Map<&'static str, Tz> =
         ("Asia/Harbin", Tz::Asia__Harbin),
     ],
 };
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct ParseError(());
 

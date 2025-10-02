@@ -101,6 +101,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table, uncased: bool) -
 /// construct chrono's DateTime type. See the root module documentation
 /// for details."
     )?;
+    writeln!(timezone_file, "#[cfg_attr(feature = \"defmt\", derive(defmt::Format))]")?;
     writeln!(timezone_file, "#[derive(Clone, Copy, PartialEq, Eq, Hash)]")?;
     writeln!(
         timezone_file,
@@ -140,6 +141,7 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table, uncased: bool) -
         )?;
     }
 
+    writeln!(timezone_file, "#[cfg_attr(feature = \"defmt\", derive(defmt::Format))]")?;
     writeln!(
         timezone_file,
         r#"#[derive(Copy, Clone, Debug, PartialEq, Eq)]
