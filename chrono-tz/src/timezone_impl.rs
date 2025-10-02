@@ -12,6 +12,7 @@ use crate::timezones::Tz;
 ///
 /// For example, [`::US::Eastern`] is composed of at least two
 /// `FixedTimespan`s: `EST` and `EDT`, that are variously in effect.
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct FixedTimespan {
     /// The base offset from UTC; this usually doesn't change unless the government changes something
@@ -32,6 +33,7 @@ impl Debug for FixedTimespan {
     }
 }
 
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct TzOffset {
     tz: Tz,
