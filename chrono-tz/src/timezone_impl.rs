@@ -32,7 +32,7 @@ impl Debug for FixedTimespan {
         Display::fmt(self, f)
     }
 }
- 
+
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct TzOffset {
