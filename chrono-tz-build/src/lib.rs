@@ -142,6 +142,10 @@ fn write_timezone_file(timezone_file: &mut File, table: &Table, uncased: bool) -
 
     writeln!(
         timezone_file,
+        "#[cfg_attr(feature = \"defmt\", derive(defmt::Format))]"
+    )?;
+    writeln!(
+        timezone_file,
         r#"#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct ParseError(());
 
@@ -208,6 +212,16 @@ impl FromStr for Tz {{
         f.write_str(self.name().as_ref())
     }}
 }}\n"
+    )?;
+    writeln!(
+        timezone_file,
+        r#"#[cfg(feature = "defmt")]
+impl defmt::Format for Tz {{
+    fn format(&self, f: defmt::Formatter) {{
+        defmt::write!(f, "{{:?}}", self.name());
+    }}
+}}
+"#
     )?;
     writeln!(
         timezone_file,

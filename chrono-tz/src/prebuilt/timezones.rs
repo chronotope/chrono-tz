@@ -1931,6 +1931,7 @@ static TIMEZONES: ::phf::Map<&'static str, Tz> =
         ("Asia/Harbin", Tz::Asia__Harbin),
     ],
 };
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct ParseError(());
 
@@ -2562,6 +2563,13 @@ impl Debug for Tz {
 impl Display for Tz {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.write_str(self.name().as_ref())
+    }
+}
+
+#[cfg(feature = "defmt")]
+impl defmt::Format for Tz {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(f, "{:?}", self.name());
     }
 }
 
