@@ -215,7 +215,7 @@ impl FromStr for Tz {{
     fn timespans(&self) -> FixedTimespanSet {{"
     )?;
     for zone in &zones {
-        if table.links.get(zone.as_str()).is_some() {
+        if table.links.contains_key(zone.as_str()) {
             continue;
         }
         let zone_name = convert_bad_chars(zone);
@@ -315,7 +315,7 @@ fn write_directory_file(directory_file: &mut File, table: &Table, version: &str)
 
         match first {
             true => first = false,
-            false => writeln!(directory_file, "")?,
+            false => writeln!(directory_file)?,
         }
 
         let module_name = convert_bad_chars(entry.name);
